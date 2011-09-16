@@ -1,5 +1,5 @@
 Cloudname
-==========
+=========
 
 This is just getting started.  We'll have one subdirectory per subproject,
 one for global documentation and one for the license.  Right now we have
