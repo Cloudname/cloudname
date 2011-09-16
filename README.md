@@ -30,9 +30,12 @@ The main parts so far
 
 Cloudname, BucketManager and DNS do not exist yet.  A prototype API exists
 for parts of Cloudname. The BucketManager has been mostly figured out, but
-not started.  DNS has not been started and not been thought about that
-much yet (Arnt expressed an interest in writing it.  I'd be interested in
-seeing if a DNS server could be done using Netty).
+not started.
+
+DNS has not been started. It's simple, dnsjava contains an example which
+can be butchered to do what we want. The example sucks, but the sucky bits
+are the ones we don't want, so all that's fine. Needs the API to map from
+service to set of IPv4/6 addresses.
 
 Appbase, A3, Idgen and Timber exist as started projects. The initial
 checkin on Appbase was this sunday by me :).  A3 and IdGen have enough
