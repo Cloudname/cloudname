@@ -1,0 +1,57 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <parent>
+    <groupId>org.cloudname</groupId>
+    <artifactId>cloudname-parent</artifactId>
+    <version>2.0-SNAPSHOT</version>
+  </parent>
+
+  <groupId>org.cloudname</groupId>
+  <artifactId>base</artifactId>
+  <version>2.0-SNAPSHOT</version>
+  <packaging>jar</packaging>
+  
+  <name>Cloudname Base</name>
+  <description>Basic utilities for cloud based services.</description>
+  <url>http://cloudname.org</url>
+
+  <dependencies>
+    <dependency>
+      <groupId>org.cloudname</groupId>
+      <artifactId>log</artifactId>
+    </dependency>
+
+    <dependency>
+      <groupId>org.cloudname</groupId>
+      <artifactId>testtools</artifactId>
+    </dependency>
+
+    <dependency>
+      <groupId>org.cloudname</groupId>
+      <artifactId>cn</artifactId>
+    </dependency>
+
+    <!-- Jetty -->
+    <dependency>
+      <groupId>org.eclipse.jetty</groupId>
+      <artifactId>jetty-server</artifactId>
+      <scope>provided</scope>
+    </dependency>
+
+    <dependency>
+      <groupId>org.eclipse.jetty</groupId>
+      <artifactId>jetty-servlet</artifactId>
+      <scope>provided</scope>
+    </dependency>
+
+    <!-- Testing artifacts -->
+    <dependency>
+      <groupId>junit</groupId>
+      <artifactId>junit</artifactId>
+      <scope>test</scope>
+    </dependency>
+
+  </dependencies>
+</project>

@@ -1,0 +1,91 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <parent>
+    <groupId>org.cloudname</groupId>
+    <artifactId>cloudname-parent</artifactId>
+    <version>2.0-SNAPSHOT</version>
+  </parent>
+
+  <groupId>org.cloudname</groupId>
+  <artifactId>log</artifactId>
+  <version>2.0-SNAPSHOT</version>
+  <packaging>jar</packaging>
+
+  <name>Cloudname Log</name>
+  <description>Logging tools.</description>
+  <url>http://cloudname.org/</url>
+
+  <!-- Profiles used to determine which protoc compiler binary we need to use -->
+  <profiles>
+    <profile>
+      <id>profile-protoc-mac-x86_64</id>
+      <activation>
+        <os>
+          <family>mac</family>
+          <name>mac os x</name>
+          <arch>x86_64</arch>
+        </os>
+      </activation>
+      <properties>
+        <protoc.executable>bin/protoc-mac_os_x-x86_64</protoc.executable>
+      </properties>
+    </profile>
+
+    <profile>
+      <id>profile-protoc-linux-x86</id>
+      <activation>
+	<os>
+	  <family>unix</family>
+	  <name>linux</name>
+	  <arch>i386</arch>
+	</os>
+      </activation>
+      <properties>
+	<protoc.executable>bin/protoc-linux-i386</protoc.executable>
+      </properties>
+    </profile>
+  </profiles>
+
+  <build>
+    <plugins>
+      <plugin>
+	<artifactId>maven-antrun-plugin</artifactId>
+	<executions>
+	  <execution>
+	    <id>generate-sources</id>
+	    <phase>generate-sources</phase>
+	    <configuration>
+	      <tasks>
+		<mkdir dir="target/generated-sources"/>
+		<exec executable="${protoc.executable}">
+		  <arg value="--java_out=target/generated-sources"/>
+		  <arg value="src/main/protobuf/timber.proto"/>
+		</exec>
+	      </tasks>
+	      <sourceRoot>target/generated-sources</sourceRoot>
+	    </configuration>
+	    <goals>
+	      <goal>run</goal>
+	    </goals>
+	  </execution>
+	</executions>
+      </plugin>
+    </plugins>
+  </build>
+
+  <dependencies>      
+    <dependency>
+      <groupId>com.google.protobuf</groupId>
+      <artifactId>protobuf-java</artifactId>
+    </dependency>
+
+    <dependency>
+      <groupId>junit</groupId>
+      <artifactId>junit</artifactId>
+      <scope>test</scope>
+    </dependency>
+  </dependencies>      
+  
+</project>

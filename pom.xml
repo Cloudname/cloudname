@@ -1,0 +1,183 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://maven.apache.org/POM/4.0.0" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <groupId>org.cloudname</groupId>
+  <artifactId>cloudname-parent</artifactId>
+  <version>2.0-SNAPSHOT</version>
+ <packaging>pom</packaging>
+
+  <name>Cloudname Parent</name>
+  <url>http://org.cloudname/</url>
+  <description>Cloudname Parent Pom</description>
+
+  <organization>
+    <name>Cloudname Project</name>
+    <url>http://cloudname.org/</url>
+  </organization>
+
+  <developers>
+    <developer>
+      <id>borud</id>
+      <name>Bjorn Borud</name>
+      <email>bborud@gmail.com</email>
+    </developer>
+  </developers>
+
+  <properties>
+    <!-- Sheer optimism -->
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+
+    <!-- Dependency versions -->
+    <cn.zookeeper.version>3.3.3</cn.zookeeper.version>
+    <cn.jackson.version>1.8.1</cn.jackson.version>
+    <cn.junit.version>4.8.1</cn.junit.version>
+    <cn.jetty.version>8.0.0.M2</cn.jetty.version>
+    <cn.netty.version>3.2.3.Final</cn.netty.version>
+    <cn.protobuf.version>2.3.0</cn.protobuf.version>
+
+    <!-- Internal dependency versions -->
+    <cn.base.version>2.0-SNAPSHOT</cn.base.version>
+    <cn.cn.version>2.0-SNAPSHOT</cn.cn.version>
+    <cn.testtools.version>2.0-SNAPSHOT</cn.testtools.version>
+    <cn.timber.version>2.0-SNAPSHOT</cn.timber.version>
+    <cn.log.version>2.0-SNAPSHOT</cn.log.version>
+  </properties>
+
+  <modules>
+    <module>cn</module>
+    <module>testtools</module>
+    <module>base</module>
+    <module>log</module>
+    <module>timber</module>
+  </modules>
+
+  <build>
+    <plugins>
+      <!-- Use Java 6 -->
+      <plugin>
+	<artifactId>maven-compiler-plugin</artifactId>
+	<version>2.3.2</version>
+	<configuration>
+	  <source>1.6</source>
+	  <target>1.6</target>
+	</configuration>
+      </plugin>
+      
+      <!-- Output test errors to console -->
+      <plugin>
+	<groupId>org.apache.maven.plugins</groupId>
+	<artifactId>maven-surefire-plugin</artifactId>
+	<version>2.7.2</version>
+	<configuration>
+	  <useFile>false</useFile>
+	</configuration>
+      </plugin>
+
+    </plugins>
+  </build>
+
+  <dependencyManagement>
+    <dependencies>
+
+      <!-- Internal dependencies -->
+      <dependency>
+	<groupId>org.cloudname</groupId>
+	<artifactId>cn</artifactId>
+	<version>${cn.cn.version}</version>
+      </dependency>
+
+      <dependency>
+	<groupId>org.cloudname</groupId>
+	<artifactId>testtools</artifactId>
+	<version>${cn.testtools.version}</version>
+      </dependency>
+
+      <dependency>
+	<groupId>org.cloudname</groupId>
+	<artifactId>log</artifactId>
+	<version>${cn.log.version}</version>
+      </dependency>
+
+      <!-- Netty -->
+      <dependency>
+	<groupId>org.jboss.netty</groupId>
+	<artifactId>netty</artifactId>
+	<version>${cn.netty.version}</version>
+      </dependency>
+
+      <!-- JoptSimple command line argument parser -->
+      <dependency>
+	<groupId>net.sf.jopt-simple</groupId>
+	<artifactId>jopt-simple</artifactId>
+	<version>3.2</version>
+      </dependency>
+
+      <!-- Jetty -->
+      <dependency>
+	<groupId>org.eclipse.jetty</groupId>
+	<artifactId>jetty-server</artifactId>
+	<version>${cn.jetty.version}</version>
+	<scope>provided</scope>
+      </dependency>
+      
+      <dependency>
+	<groupId>org.eclipse.jetty</groupId>
+	<artifactId>jetty-servlet</artifactId>
+	<version>${cn.jetty.version}</version>
+	<scope>provided</scope>
+      </dependency>
+
+      <!-- Google Protocol Buffers -->
+      <dependency>
+	<groupId>com.google.protobuf</groupId>
+	<artifactId>protobuf-java</artifactId>
+	<version>${cn.protobuf.version}</version>
+      </dependency>
+  
+      <!-- ZooKeeper -->
+      <dependency>
+	<groupId>org.apache.zookeeper</groupId>
+	<artifactId>zookeeper</artifactId>
+	<version>${cn.zookeeper.version}</version>
+	<exclusions>
+          <exclusion>
+            <groupId>com.sun.jmx</groupId>
+            <artifactId>jmxri</artifactId>
+          </exclusion>
+          <exclusion>
+            <groupId>com.sun.jdmk</groupId>
+            <artifactId>jmxtools</artifactId>
+          </exclusion>
+          <exclusion>
+            <groupId>javax.jms</groupId>
+            <artifactId>jms</artifactId>
+          </exclusion>
+        </exclusions>
+      </dependency>
+      
+      <!-- Jackson JSON library -->
+      <dependency>
+	<groupId>org.codehaus.jackson</groupId>
+	<artifactId>jackson-core-asl</artifactId>
+	<version>${cn.jackson.version}</version>
+      </dependency>
+      
+      <dependency>
+	<groupId>org.codehaus.jackson</groupId>
+	<artifactId>jackson-mapper-asl</artifactId>
+	<version>${cn.jackson.version}</version>
+      </dependency>
+      
+      <!-- Junit -->
+      <dependency>
+	<groupId>junit</groupId>
+	<artifactId>junit</artifactId>
+	<version>${cn.junit.version}</version>
+	<scope>test</scope>
+      </dependency>
+    </dependencies>
+  </dependencyManagement>
+</project>
+
+  

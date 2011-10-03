@@ -1,0 +1,57 @@
+//
+// Protocol Buffer definitions for Timber
+//
+
+option java_package = "org.cloudname.log.pb";
+option optimize_for = SPEED;
+
+// This message represents the envelope of a log message.  These are
+// the only fields that the core log server framework should deal with
+// minus the payload.  In the interest of simplicity and performance
+// the core framework should never mess around with the contents of
+// the Payload.  This is a task for the EventHandler implementations.
+//
+//
+message LogEvent {
+  // Timestamp is in milliseconds since epoch
+  required int64 timestamp = 1;
+  
+  // The level of this event.
+  required int32 level = 2;
+
+  // Hostname of the machine where the log event originated.
+  required string host = 3;
+
+  // The name of the service or the application that emitted the
+  // event.
+  required string service_name = 4;
+
+  // For Java programs the class and method where the log event
+  // originated.
+  required string source = 5;
+
+  // The process id of the originating program.  If unknown this
+  // defaults to zero.
+  required int32 pid = 6 [default = 0];
+
+  // The thread id of the originating program.  If unknown this
+  // defaults to zero.
+  required int32 tid = 7 [default = 0];
+
+  // The type of log event.
+  required string type = 8;
+
+  // Zero or more payloads associated with this log event.
+  repeated Payload payload = 9;
+}
+
+// This message represents the payload of a log message.
+//
+message Payload {
+  // The content type of the event payload.  Modeled after the MIME
+  // types used in HTTP.
+  required string content_type = 1;
+
+  // The payload.
+  required bytes payload = 2;
+}

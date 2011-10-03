@@ -1,0 +1,103 @@
+package org.cloudname.log.archiver;
+
+import org.cloudname.log.pb.Timber;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.logging.Logger;
+import java.util.logging.Level;
+
+/**
+ * This class implements a very simplistic log archiver that merely
+ * only writes log messages to disk files.  The purpose of this class
+ * is primarily to experiment with serialization of log messages.
+ */
+public class Archiver {
+    private static final Logger log = Logger.getLogger(Archiver.class.getName());
+    private static final int MAX_FILES_OPEN = 50;
+
+    private final SlotMapper slotMapper = new SlotMapper();
+    private final SlotLruCache<String,Slot> slotLruCache = new SlotLruCache<String,Slot>(MAX_FILES_OPEN);
+
+    private String logPath;
+    private File logDir;
+    private long maxFileSize;
+
+    private boolean closed = false;
+
+    /**
+     * The directory
+     */
+    public Archiver(String logPath, long maxFileSize) {
+        this.logPath = logPath;
+        this.maxFileSize = maxFileSize;
+    }
+
+    /**
+     * Initialize the archiver.
+     */
+    public void init() {
+        logDir = new File(logPath);
+
+        // Make the root log directory if it does not exist
+        if (! logDir.exists()) {
+            log.info("Creating log directory: " + logDir.getAbsolutePath());
+            logDir.mkdirs();
+        }
+    }
+
+    public void handle(Timber.LogEvent logEvent) {
+        if (closed) {
+            throw new IllegalStateException("Archiver was closed");
+        }
+
+        try {
+            getSlot(logEvent).write(logEvent);
+        } catch (IOException e) {
+            throw new ArchiverException("Got IOException while handling logEvent", e);
+        }
+    }
+
+    public void flush() {
+        for (Slot slot : slotLruCache.values()) {
+            try {
+                slot.flush();
+            } catch (IOException e) {
+                throw new ArchiverException("Got IOException while flushing " + slot.toString(), e);
+            }
+        }
+    }
+
+    public void close() {
+        for (Slot slot : slotLruCache.values()) {
+            try {
+                slot.close();
+            } catch (IOException e) {
+                throw new ArchiverException("Got IOException while closing " + slot.toString(), e);
+            }
+        }
+        closed = true;
+    }
+
+    public String getName() {
+        return Archiver.class.getName();
+    }
+
+    /**
+     * @return the slot a Timber.LogEvent belongs in.
+     */
+    private Slot getSlot(Timber.LogEvent event) {
+        String slotPathPrefix = logPath + File.separator + slotMapper.map(event.getTimestamp());
+        Slot slot = slotLruCache.get(slotPathPrefix);
+        if (null != slot) {
+            return slot;
+        }
+
+        slot = new Slot(slotPathPrefix, maxFileSize);
+        slotLruCache.put(slotPathPrefix, slot);
+
+        log.info("Created new slot " + slot.toString());
+
+        return slot;
+    }
+}
