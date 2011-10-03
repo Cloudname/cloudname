@@ -18,13 +18,17 @@ import java.net.MalformedURLException;
  */
 public class Http {
     private static final int HTTP_BUFFER_LEN = 10 * 1024;
+
     /**
-     * Very primitive method for
+     * Fetch an URL using HTTP GET and return the contents as a
+     * String.
      *
      * @param url the URL we want to GET.
-     * @return the content of the URL as a String.
+     *
      * @throws MalformedURLException if the URL is invalid.
      * @throws IOException if an IO error occurs.
+     *
+     * @return the content of the URL as a String.
      */
     public static String doGet(String urlString) throws MalformedURLException, IOException {
         URL url = new URL(urlString);
