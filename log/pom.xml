@@ -39,7 +39,6 @@
 	<os>
 	  <family>unix</family>
 	  <name>linux</name>
-	  <arch>i386</arch>
 	</os>
       </activation>
       <properties>
