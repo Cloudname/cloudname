@@ -9,4 +9,8 @@ would be the Cloudname Library.
 
 The rest of the artifacts in this project are things that may or may
 not be of interest to you, but we wanted to open source these
-artifacts as well so this is why they are here.
+artifacts as well so this is why they are here.  Some of them were
+written some time ago and will undergo significant changes as we turn
+our attention to them.
+
+-Bjørn

@@ -15,8 +15,7 @@ import java.util.logging.Logger;
 import java.util.logging.Level;
 
 /**
- * This class implements a very simplistic log archiver that merely
- * only writes log messages to disk files.
+ * This class implements a very simplistic log archiver.
  *
  * @author borud
  */
