@@ -33,7 +33,7 @@ public class RecordWriterTest {
             .setType("T")
             .addPayload(
                 Timber.Payload.newBuilder()
-                .setContentType("text/plain")
+                .setName("msg")
                 .setPayload(ByteString.copyFromUtf8(message)))
             .build();
     }

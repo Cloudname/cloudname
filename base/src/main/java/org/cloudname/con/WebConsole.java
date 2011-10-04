@@ -121,15 +121,10 @@ public class WebConsole {
      * system servlets.
      *
      * @param port the port the server should be listening on.
-     * @throws PortInUseException
      */
-    public static WebConsole create(int port) throws PortInUseException {
+    public static WebConsole create(int port) {
         WebConsole console = new WebConsole();
         console.port = port;
-
-        if (!isPortAvailable(port)) {
-            throw new PortInUseException();
-        }
 
         // Create server with default connectors and a given port
         // number.
@@ -154,41 +149,6 @@ public class WebConsole {
         console.addServlet(new SystemPropertiesServlet(), "/propz/*");
 
         return console;
-    }
-
-    /**
-     * Check if a given port is free.
-     *
-     * @param port
-     * @return true if free, false if taken
-     */
-    public static boolean isPortAvailable(int port) {
-        ServerSocket ss = null;
-        DatagramSocket ds = null;
-
-        try {
-            ss = new ServerSocket(port);
-            ss.setReuseAddress(true);
-            ds = new DatagramSocket(port);
-            ds.setReuseAddress(true);
-
-            return true;
-        } catch (IOException e) {
-        } finally {
-            if (ds != null) {
-                ds.close();
-            }
-
-            if (ss != null) {
-                try {
-                    ss.close();
-                } catch (IOException e) {
-                    /* should not be thrown */
-                }
-            }
-        }
-
-        return false;
     }
 
     /**

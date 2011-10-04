@@ -58,7 +58,7 @@ public class ConverterTest {
         assertEquals(1, event.getPayloadCount());
 
         Timber.Payload payload = event.getPayload(0);
-        assertEquals("text/plain", payload.getContentType());
+        assertEquals("msg", payload.getName());
         assertEquals(logMessage, payload.getPayload().toStringUtf8());
     }
 
@@ -69,7 +69,7 @@ public class ConverterTest {
         rec.setThrown(new RuntimeException("meh"));
         Timber.LogEvent event = conv.convertFrom(rec);
 
-        assertEquals("text/plain", event.getPayload(0).getContentType());
+        assertEquals("msg", event.getPayload(0).getName());
         assertEquals("application/java-exception", event.getPayload(1).getContentType());
     }
 }

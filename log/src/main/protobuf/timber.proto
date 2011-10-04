@@ -23,35 +23,38 @@ message LogEvent {
   required string host = 3;
 
   // The name of the service or the application that emitted the
-  // event.
+  // event.  If used in conjunction with cloudname this is where
+  // we put the primary service coordinate.
   required string service_name = 4;
 
   // For Java programs the class and method where the log event
   // originated.
   required string source = 5;
 
+  // The type of log event.
+  required string type = 6;
+
+  // Zero or more payloads associated with this log event.
+  repeated Payload payload = 7;
+
   // The process id of the originating program.  If unknown this
   // defaults to zero.
-  required int32 pid = 6 [default = 0];
+  optional int32 pid = 8 [default = 0];
 
   // The thread id of the originating program.  If unknown this
   // defaults to zero.
-  required int32 tid = 7 [default = 0];
-
-  // The type of log event.
-  required string type = 8;
-
-  // Zero or more payloads associated with this log event.
-  repeated Payload payload = 9;
+  optional int32 tid = 9 [default = 0];
 }
 
 // This message represents the payload of a log message.
 //
 message Payload {
-  // The content type of the event payload.  Modeled after the MIME
-  // types used in HTTP.
-  required string content_type = 1;
+  required string name = 1;
 
   // The payload.
   required bytes payload = 2;
+
+  // The content type of the event payload.  Modeled after the MIME
+  // types used in HTTP.
+  optional string content_type = 3;
 }

@@ -40,7 +40,7 @@ public class SlotTest {
             .setType("T")
             .addPayload(
                 Timber.Payload.newBuilder()
-                .setContentType("text/plain")
+                .setName("msg")
                 .setPayload(ByteString.copyFromUtf8("log message from t=" + time)))
             .build();
     }

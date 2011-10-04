@@ -64,7 +64,7 @@ public class Converter {
             .setType("T")
             .addPayload(
                 Timber.Payload.newBuilder()
-                .setContentType("text/plain")
+                .setName("msg")
                 .setPayload(ByteString.copyFromUtf8(rec.getMessage())));
 
         // Check if we have an exception
@@ -76,6 +76,7 @@ public class Converter {
 
             eventBuilder.addPayload(
                 Timber.Payload.newBuilder()
+                .setName("exception")
                 .setContentType("application/java-exception")
                 .setPayload(ByteString.copyFrom(os.toByteArray()))
             );
