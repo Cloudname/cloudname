@@ -3,6 +3,11 @@ package org.cloudname.mon;
 import org.junit.Test;
 import static org.junit.Assert.*;
 
+/**
+ * Unit test for Variable.
+ * @author espen
+ *
+ */
 public class VariableTest {
 
     private static Variable variableOne = Variable.getVariable("test.cloudname.one");
