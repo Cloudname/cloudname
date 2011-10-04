@@ -47,6 +47,26 @@ public class MonitorManagerTest {
         Variable v = Variable.getVariable("this.should.collide");
         MonitorManager.getInstance().addVariable(v.getName(), v);
     }
+    
+    /**
+     * Try to add an averagelong with the same name twice.  Should result
+     * in exception.
+     */
+    @Test (expected = IllegalStateException.class)
+    public void testDuplicateAddAverageLong() {
+        AverageLong al = AverageLong.getAverageLong("this.should.collide");
+        MonitorManager.getInstance().addAverageLong(al.getName(), al);
+    }
+    
+    /**
+     * Try to add a histogram with the same name twice.  Should result
+     * in exception.
+     */
+    @Test (expected = IllegalStateException.class)
+    public void testDuplicateAddHistogram() {
+        HistogramCounter v = HistogramCounter.getHistogramCounter("this.should.collide");
+        MonitorManager.getInstance().addHistogramCounter(v.getName(), v);
+    }
 
     /**
      * Make sure that we can find counters through the
@@ -86,6 +106,52 @@ public class MonitorManagerTest {
 
         boolean found = false;
         for (String n : MonitorManager.getVariableNames()) {
+            if (name.equals(n)) {
+                found = true;
+            }
+        }
+
+        assertTrue(found);
+    }
+    
+    /**
+     * Make sure that we can find variables through the
+     * getAverageLongNames() method.  Somewhat limited what we can test
+     * here.
+     */
+    @Test
+    public void testGetAverageLongNames() {
+        String name = "the.variable.we.use.for.testGetAverageLongNames";
+
+        // Make sure we have one known name in the average long list
+        AverageLong v = AverageLong.getAverageLong(name);
+        assertNotNull(v);
+
+        boolean found = false;
+        for (String n : MonitorManager.getAverageLongNames()) {
+            if (name.equals(n)) {
+                found = true;
+            }
+        }
+
+        assertTrue(found);
+    }
+    
+    /**
+     * Make sure that we can find variables through the
+     * getHistogramCounterNames() method.  Somewhat limited what we can test
+     * here.
+     */
+    @Test
+    public void testGetHistogramCounterNames() {
+        String name = "the.variable.we.use.for.testGetHistogramCounterNames";
+
+        // Make sure we have one known name in the histogram counter list
+        HistogramCounter v = HistogramCounter.getHistogramCounter(name);
+        assertNotNull(v);
+
+        boolean found = false;
+        for (String n : MonitorManager.getHistogramCounterNames()) {
             if (name.equals(n)) {
                 found = true;
             }

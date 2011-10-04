@@ -17,7 +17,7 @@ import java.util.concurrent.atomic.AtomicLong;
  *
  * Concurrency is dealt with by the MonitorManager.
  *
- * @author borud
+ * @author borud, espen
  */
 public class Variable {
     private final AtomicLong var = new AtomicLong();
@@ -49,7 +49,7 @@ public class Variable {
     }
 
     /**
-     * Set the variable to a fiven value.
+     * Set the variable to a given value.
      */
     public void set(long value) {
         var.set(value);
