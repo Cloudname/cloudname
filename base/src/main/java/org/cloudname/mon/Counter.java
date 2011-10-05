@@ -23,7 +23,6 @@ import java.util.concurrent.atomic.AtomicLong;
  */
 public class Counter {
     private final AtomicLong count = new AtomicLong();
-    private String name;
 
     /**
      * Counters should be instantiated by users using the getCounter()
@@ -44,7 +43,6 @@ public class Counter {
         Counter c = manager.getCounter(name);
         if (null == c) {
             c = new Counter();
-            c.name = name;
             manager.addCounter(name, c);
         }
         return c;
@@ -75,13 +73,6 @@ public class Counter {
      */
     public long getCount() {
         return count.get();
-    }
-
-    /**
-     * @return name of the counter.
-     */
-    public String getName() {
-        return name;
     }
     
     /**

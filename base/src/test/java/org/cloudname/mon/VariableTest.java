@@ -15,9 +15,6 @@ public class VariableTest {
     
     @Test
     public void testVariables() {
-        // Trivial test of getName()
-        assertEquals("test.cloudname.one", variableOne.getName());
-        assertEquals("test.cloudname.two", variableTwo.getName());
         
         variableOne.set(100);
         Variable.getVariable("test.cloudname.two").set(50);

@@ -1,5 +1,7 @@
 package org.cloudname.mon;
 
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import org.junit.*;
@@ -35,7 +37,7 @@ public class MonitorManagerTest {
     @Test (expected = IllegalStateException.class)
     public void testDuplicateAddCounter() {
         Counter c = Counter.getCounter("this.should.collide");
-        MonitorManager.getInstance().addCounter(c.getName(), c);
+        MonitorManager.getInstance().addCounter("this.should.collide", c);
     }
     
     /**
@@ -45,7 +47,7 @@ public class MonitorManagerTest {
     @Test (expected = IllegalStateException.class)
     public void testDuplicateAddVariable() {
         Variable v = Variable.getVariable("this.should.collide");
-        MonitorManager.getInstance().addVariable(v.getName(), v);
+        MonitorManager.getInstance().addVariable("this.should.collide", v);
     }
     
     /**
@@ -55,7 +57,7 @@ public class MonitorManagerTest {
     @Test (expected = IllegalStateException.class)
     public void testDuplicateAddAverageLong() {
         AverageLong al = AverageLong.getAverageLong("this.should.collide");
-        MonitorManager.getInstance().addAverageLong(al.getName(), al);
+        MonitorManager.getInstance().addAverageLong("this.should.collide", al);
     }
     
     /**
@@ -64,8 +66,8 @@ public class MonitorManagerTest {
      */
     @Test (expected = IllegalStateException.class)
     public void testDuplicateAddHistogram() {
-        HistogramCounter v = HistogramCounter.getHistogramCounter("this.should.collide");
-        MonitorManager.getInstance().addHistogramCounter(v.getName(), v);
+        HistogramCounter v = HistogramCounter.getHistogramCounter("this.should.collide", Arrays.asList(1L, 5L, 10L));
+        MonitorManager.getInstance().addHistogramCounter("this.should.collide", v);
     }
 
     /**
@@ -147,7 +149,7 @@ public class MonitorManagerTest {
         String name = "the.variable.we.use.for.testGetHistogramCounterNames";
 
         // Make sure we have one known name in the histogram counter list
-        HistogramCounter v = HistogramCounter.getHistogramCounter(name);
+        HistogramCounter v = HistogramCounter.getHistogramCounter(name, Arrays.asList(1L));
         assertNotNull(v);
 
         boolean found = false;
