@@ -1,7 +1,5 @@
 package org.cloudname.mon;
 
-import java.util.concurrent.Semaphore;
-import java.util.logging.Logger;
 
 /**
  * This class handles numeric values. It aggregates the data in a variable
@@ -33,27 +31,10 @@ import java.util.logging.Logger;
  * @author espen
  */
 public class AverageLong {
-    private static Logger log = Logger.getLogger(AverageLong.class.getName());
-    
     /**
-     * Used to ensure thread safety.
+     * The data of the class. Containing an aggregated value and a count.
      */
-    private Semaphore semaphore = new Semaphore(1);
-    
-    /**
-     * Total aggregated records
-     */
-    private Long aggregated = new Long(0L);
-    
-    /**
-     * Number of records stored
-     */
-    private Long counter = new Long(0L);
-    
-    /**
-     * Name of the AverageLong
-     */
-    private String name;
+    AverageLongData data = new AverageLongData(0L, 0L);
 
     /**
      * Variables should be instantiated by users using the getVariable()
@@ -74,7 +55,6 @@ public class AverageLong {
         AverageLong v = manager.getAverageLong(name);
         if (null == v) {
             v = new AverageLong();
-            v.name = name;
             manager.addAverageLong(name, v);
         }
         return v;
@@ -83,30 +63,18 @@ public class AverageLong {
     /**
      * Record a number of type Long
      */
-    public void record(Long value) {
-        try {
-            semaphore.acquire();
-            aggregated = aggregated + value;
-            counter++;
-        } catch (InterruptedException e) {
-            log.fine("InterruptedException while accessing variable: "+name);
-        } finally {
-            semaphore.release();
+    public void record(long value) {
+        synchronized (data) {
+            data.record(value);
         }
     }
 
     /**
      * Record a number of type Integer
      */
-    public void record(Integer value) {
-        try {
-            semaphore.acquire();
-            aggregated = aggregated + value;
-            counter++;
-        } catch (InterruptedException e) {
-            log.fine("InterruptedException while accessing variable: "+name);
-        } finally {
-            semaphore.release();
+    public void record(int value) {
+        synchronized (data) {
+            data.record(value);
         }
     }
 
@@ -114,22 +82,9 @@ public class AverageLong {
      * @return AverageLongData containing the aggregated value and the count
      */
     public AverageLongData getRecords() {
-        try {
-            semaphore.acquire();
-            return new AverageLongData(aggregated, counter);
-        } catch (InterruptedException e) {
-            log.fine("InterruptedException while accessing variable: "+name);
-            return null;
-        } finally {
-            semaphore.release();
+        synchronized (data) {
+            return data;
         }
-    }
-
-    /**
-     * @return name of the counter.
-     */
-    public String getName() {
-        return name;
     }
 
 }

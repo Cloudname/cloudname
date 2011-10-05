@@ -21,7 +21,6 @@ import java.util.concurrent.atomic.AtomicLong;
  */
 public class Variable {
     private final AtomicLong var = new AtomicLong();
-    private String name;
 
     /**
      * Variables should be instantiated by users using the getVariable()
@@ -42,7 +41,6 @@ public class Variable {
         Variable v = manager.getVariable(name);
         if (null == v) {
             v = new Variable();
-            v.name = name;
             manager.addVariable(name, v);
         }
         return v;
@@ -60,13 +58,6 @@ public class Variable {
      */
     public long getValue() {
         return var.get();
-    }
-
-    /**
-     * @return name of the counter.
-     */
-    public String getName() {
-        return name;
     }
     
 }

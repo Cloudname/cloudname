@@ -1,6 +1,7 @@
 package org.cloudname.mon;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 
 import java.util.AbstractMap;
 import java.util.ArrayList;
@@ -17,19 +18,17 @@ import org.junit.Test;
  * @author borud, espen
  */
 public class HistogramCounterTest {
-
+    
     /**
      * Kick-the-tyres test.
      */
     @Test
     public void testHistogram() {
-        HistogramCounter h = HistogramCounter.getHistogramCounter("histogram1");
-        h.setCeilings(
-            Arrays.asList(10L,
-                          100L,
-                          1000L,
-                          10000L,
-                          100000L));
+        HistogramCounter h = HistogramCounter.getHistogramCounter("histogram1", Arrays.asList(10L,
+                100L,
+                1000L,
+                10000L,
+                100000L));
 
 
         Random random = new Random();
@@ -40,9 +39,20 @@ public class HistogramCounterTest {
     }
 
     @Test
+    public void createAndGetTest() {
+        HistogramCounter h = HistogramCounter.getHistogramCounter("histogram2", Arrays.asList(1L, 5L, 10L));
+        HistogramCounter found = HistogramCounter.getHistogramCounter("histogram2");
+        HistogramCounter foundAgain = HistogramCounter.getHistogramCounter("histogram2", Arrays.asList(1L, 5L, 10L));
+        HistogramCounter notFound = HistogramCounter.getHistogramCounter("notFound");
+        assertEquals(h, found);
+        assertEquals(h, foundAgain);
+        assertEquals(found, foundAgain);
+        assertNull(notFound);
+    }
+    
+    @Test
     public void testGetEntries() {
-        HistogramCounter h = HistogramCounter.getHistogramCounter("histogram2");
-        h.setCeilings(Arrays.asList(1L, 5L, 10L));
+        HistogramCounter h = HistogramCounter.getHistogramCounter("histogram3", Arrays.asList(1L, 5L, 10L));
         for (long lo = 0; lo < 11; lo++) {
             h.count(lo);
         }
