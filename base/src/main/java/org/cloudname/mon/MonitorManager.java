@@ -20,7 +20,7 @@ public class MonitorManager {
 
     // Map of counters
     private Map<String, Counter> counters = new HashMap<String, Counter>();
-    
+
     // Map of variables
     private Map<String, Variable> variables = new HashMap<String, Variable>();
 
@@ -55,7 +55,7 @@ public class MonitorManager {
         }
         return this;
     }
-    
+
     /**
      * You should not use this method directly. Use Variable.getVariable() instead.
      *
@@ -85,7 +85,7 @@ public class MonitorManager {
             return counters.get(name);
         }
     }
-    
+
     /**
      * @param name the name of the variable.
      * @return variable specified by {@code name}
@@ -115,16 +115,16 @@ public class MonitorManager {
      */
     private List<String> getCounterNamesInternal() {
         synchronized(counters) {
-            return new ArrayList(counters.keySet());
+            return new ArrayList<String>(counters.keySet());
         }
     }
-    
+
     /**
      * @return a list of the variable names that have been defined.
      */
     private List<String> getVariableNamesInternal() {
         synchronized(variables) {
-            return new ArrayList(variables.keySet());
+            return new ArrayList<String>(variables.keySet());
         }
     }
 
