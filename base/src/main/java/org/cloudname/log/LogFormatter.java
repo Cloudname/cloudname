@@ -1,14 +1,11 @@
 package org.cloudname.log;
 
-import java.text.DecimalFormat;
 import java.net.InetAddress;
-import java.util.regex.Pattern;
-import java.util.regex.Matcher;
-import java.util.logging.SimpleFormatter;
-import java.util.logging.LogRecord;
-import java.util.logging.Level;
-
 import java.net.UnknownHostException;
+import java.util.logging.LogRecord;
+import java.util.logging.SimpleFormatter;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * Log formatter that outputs a sensible and parseable format.
