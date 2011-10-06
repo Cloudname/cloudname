@@ -33,6 +33,12 @@
       <artifactId>cn</artifactId>
     </dependency>
 
+    <!-- Netty --> 
+    <dependency>
+      <groupId>org.jboss.netty</groupId>
+      <artifactId>netty</artifactId>
+    </dependency>
+
     <!-- Testing artifacts -->
     <dependency>
       <groupId>junit</groupId>
