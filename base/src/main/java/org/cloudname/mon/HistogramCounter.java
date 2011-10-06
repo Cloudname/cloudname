@@ -16,7 +16,6 @@ import java.util.concurrent.atomic.AtomicLong;
  * @author borud, espen
  */
 public class HistogramCounter {
-    private String name;
     private TreeMap<Long, AtomicLong> histogram = null;
 
     /**
@@ -25,42 +24,48 @@ public class HistogramCounter {
      *
      * @param name the name of the histogram counter we wish to create or look
      *   up.
-     * @return the histogram counter with name {@code name}
+     * @return the histogram counter with name {@code name}. Null if
+     * no HistogramCounter is found.
+     * Use getHistogramCounter(String name, Collection<Long> ceilings) to create one.
      */
     public static synchronized HistogramCounter getHistogramCounter(String name) {
         MonitorManager manager = MonitorManager.getInstance();
-        HistogramCounter c = manager.getHistogramCounter(name);
-        if (null == c) {
-            c = new HistogramCounter();
-            c.name = name;
-            manager.addHistogramCounter(name, c);
-        }
-        return c;
+        return manager.getHistogramCounter(name);
     }
+    
+    /**
+     * HistogramCounters should be instantiated by users using the
+     * geHistogramCounter(String name, Collection<Long> ceilings)
+     * factory method and not the constructor.
+     */
+    private HistogramCounter() {}
     
     /**
      * Create a histogram given a list of ceiling values. This will
      * make a histogram that has N+1 elements where the last element
      * is used for anything that is larger than the last ceiling
      * value.
+     * 
      * @param ceilings the ceiling values for the histogram.
+     * @return the named histogramCounter that already exists, or the
+     * newly created HistogramCounter.
      */
-    public void setCeilings(Collection<Long> ceilings) {
-        histogram = new TreeMap<Long, AtomicLong>();
-        for (Long ceiling : ceilings) {
-            histogram.put(ceiling, new AtomicLong(0L));
-        }
+    public static synchronized HistogramCounter getHistogramCounter(String name, Collection<Long> ceilings) {
+        MonitorManager manager = MonitorManager.getInstance();
+        HistogramCounter hc = manager.getHistogramCounter(name);
+        if (null == hc) {
+            hc = new HistogramCounter();
+            hc.histogram = new TreeMap<Long, AtomicLong>();
+            for (Long ceiling : ceilings) {
+                hc.histogram.put(ceiling, new AtomicLong(0L));
+            }
 
-        // Add element for Long.MAX_VALUE
-        histogram.put(Long.MAX_VALUE, new AtomicLong(0L));
+            // Add element for Long.MAX_VALUE
+            hc.histogram.put(Long.MAX_VALUE, new AtomicLong(0L));
+            manager.addHistogramCounter(name, hc);
+        }
+        return hc;
     }
-    
-    /**
-     * HistogramCounters should be instantiated by users using the
-     * getHistogramCounter() factory method and not the constructor.
-     * Remember to use the setCeilings(...) method.
-     */
-    public HistogramCounter() {}
 
     /**
      * Count an observed value in the correct interval of the
@@ -116,10 +121,4 @@ public class HistogramCounter {
         return buff.toString();
     }
     
-    /**
-     * @return name of the histogram counter.
-     */
-    public String getName() {
-        return name;
-    }
 }
