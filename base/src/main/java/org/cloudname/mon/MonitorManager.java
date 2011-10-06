@@ -20,7 +20,7 @@ public class MonitorManager {
 
     // Map of counters
     private Map<String, Counter> counters = new HashMap<String, Counter>();
-    
+
     // Map of variables
     private Map<String, Variable> variables = new HashMap<String, Variable>();
 
@@ -29,7 +29,7 @@ public class MonitorManager {
 
     // Map of timers
     private Map<String, HistogramCounter> histograms = new HashMap<String, HistogramCounter>();
-    
+
     // Static initialization
     static {
         manager = new MonitorManager();
@@ -61,7 +61,7 @@ public class MonitorManager {
         }
         return this;
     }
-    
+
     /**
      * You should not use this method directly. Use Variable.getVariable() instead.
      *
@@ -101,7 +101,7 @@ public class MonitorManager {
         }
         return this;
     }
-    
+
     /**
      * You should not use this method directly. Use AverageLong.getAverageLong() instead.
      *
@@ -121,7 +121,7 @@ public class MonitorManager {
         }
         return this;
     }
-    
+
     /**
      * @param name the name of the counter.
      * @return counter specified by {@code name}
@@ -131,7 +131,7 @@ public class MonitorManager {
             return counters.get(name);
         }
     }
-    
+
     /**
      * @param name the name of the variable.
      * @return variable specified by {@code name}
@@ -141,7 +141,7 @@ public class MonitorManager {
             return variables.get(name);
         }
     }
-    
+
     /**
      * @param name the name of the histogram.
      * @return histogram specified by {@code name}
@@ -151,7 +151,7 @@ public class MonitorManager {
             return histograms.get(name);
         }
     }
-    
+
     /**
      * @param name the name of the average long.
      * @return timer specified by {@code name}
@@ -175,14 +175,14 @@ public class MonitorManager {
     public static List<String> getVariableNames() {
         return getInstance().getVariableNamesInternal();
     }
-    
+
     /**
      * @return a list of the names of the histograms that have been defined.
      */
     public static List<String> getHistogramCounterNames() {
         return getInstance().getHistogramCounterNamesInternal();
     }
-    
+
     /**
      * @return a list of the names of the average longs that have been defined.
      */
@@ -198,7 +198,7 @@ public class MonitorManager {
             return new ArrayList<String>(counters.keySet());
         }
     }
-    
+
     /**
      * @return a list of the variable names that have been defined.
      */
@@ -225,5 +225,5 @@ public class MonitorManager {
             return new ArrayList<String>(averageLongs.keySet());
         }
     }
-    
+
 }

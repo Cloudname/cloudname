@@ -40,7 +40,7 @@ public class BaseTest {
             .setLogPath(logDir.getAbsolutePath())
             .setCoordinate("0.test.testuser.dc")
             .logHandlerSetup(true)
-            .setEnableWebConsole(true);
+            .setEnableHttpConsole(true);
         base.init();
 
         // Inject a log message to make sure we log messages.

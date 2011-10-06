@@ -1,6 +1,6 @@
 package org.cloudname.base;
 
-import org.cloudname.con.WebConsole;
+import org.cloudname.con.HttpConsole;
 import org.cloudname.log.ComboHandler;
 
 import org.cloudname.Coordinate;
@@ -26,9 +26,9 @@ public class Base {
     private static final Logger log = Logger.getLogger(Base.class.getName());
 
     private Coordinate coordinate = null;
-    private WebConsole webConsole;
+    private HttpConsole webConsole;
     private ComboHandler comboHandler;
-    private boolean enableWebConsole = true;
+    private boolean enableHttpConsole = true;
     private int webConsolePort = 0;
     private boolean setupLogging = false;
     private String logPath = null;
@@ -53,23 +53,23 @@ public class Base {
     }
 
     /**
-     * Explicitly set the WebConsole port.
+     * Explicitly set the HttpConsole port.
      *
      * @param webconsolePort the web console port.
      */
-    public Base setWebConsolePort(int port) {
+    public Base setHttpConsolePort(int port) {
         webConsolePort = port;
         return this;
     }
 
     /**
-     * @return the WebConsole port of this service.  Note that if no
+     * @return the HttpConsole port of this service.  Note that if no
      *   port was set explicitly prior to calling the init() method,
      *   the value of this port will be 0 before init() is called and
      *   it will have a randomly assigned port number after the method
      *   has been called.
      */
-    public int getWebConsolePort() {
+    public int getHttpConsolePort() {
         return webConsolePort;
     }
 
@@ -108,15 +108,15 @@ public class Base {
 
 
     /**
-     * Enable or disable the WebConsole.  By default the web console
+     * Enable or disable the HttpConsole.  By default the web console
      * is enabled.
      *
-     * @param enableWebConsole if {@code true} we enable the web
+     * @param enableHttpConsole if {@code true} we enable the web
      *   console, if set to {@code false} we do not enable the web
      *   console.
      */
-    public Base setEnableWebConsole(boolean enableWebConsole) {
-        this.enableWebConsole = enableWebConsole;
+    public Base setEnableHttpConsole(boolean enableHttpConsole) {
+        this.enableHttpConsole = enableHttpConsole;
         return this;
     }
 
@@ -131,15 +131,15 @@ public class Base {
      *   anything about.
      */
     public void init() throws Exception {
-        initWebConsole();
+        initHttpConsole();
         initLogging();
     }
 
     /**
-     * Initialize the WebConsole.
+     * Initialize the HttpConsole.
      */
-    private void initWebConsole() throws Exception {
-        if (! enableWebConsole) {
+    private void initHttpConsole() throws Exception {
+        if (! enableHttpConsole) {
             return;
         }
 
@@ -149,7 +149,7 @@ public class Base {
             webConsolePort = getFreePort();
         }
 
-        webConsole = WebConsole.create(webConsolePort).start();
+        webConsole = HttpConsole.create(webConsolePort).start();
     }
 
     /**

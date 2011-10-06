@@ -32,7 +32,6 @@
     <cn.zookeeper.version>3.3.3</cn.zookeeper.version>
     <cn.jackson.version>1.8.1</cn.jackson.version>
     <cn.junit.version>4.8.1</cn.junit.version>
-    <cn.jetty.version>8.0.0.M2</cn.jetty.version>
     <cn.netty.version>3.2.3.Final</cn.netty.version>
     <cn.protobuf.version>2.3.0</cn.protobuf.version>
 
@@ -111,21 +110,6 @@
 	<groupId>net.sf.jopt-simple</groupId>
 	<artifactId>jopt-simple</artifactId>
 	<version>3.2</version>
-      </dependency>
-
-      <!-- Jetty -->
-      <dependency>
-	<groupId>org.eclipse.jetty</groupId>
-	<artifactId>jetty-server</artifactId>
-	<version>${cn.jetty.version}</version>
-	<scope>provided</scope>
-      </dependency>
-      
-      <dependency>
-	<groupId>org.eclipse.jetty</groupId>
-	<artifactId>jetty-servlet</artifactId>
-	<version>${cn.jetty.version}</version>
-	<scope>provided</scope>
       </dependency>
 
       <!-- Google Protocol Buffers -->

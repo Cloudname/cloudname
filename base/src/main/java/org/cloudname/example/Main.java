@@ -1,6 +1,6 @@
 package org.cloudname.example;
 
-import org.cloudname.con.WebConsole;
+import org.cloudname.con.HttpConsole;
 import org.cloudname.mon.Counter;
 
 /**
@@ -10,12 +10,12 @@ import org.cloudname.mon.Counter;
  * @author borud
  */
 public class Main {
+    private static final int HTTPCONSOLE_PORT = 4601;
     private final static Counter fooBarCounter = Counter.getCounter("example.foobar.count");
     private static volatile boolean keepRunning = true;
 
     public static void main(String[] args) throws Exception {
-        WebConsole console = WebConsole.create(5601).start();
-
+        HttpConsole console = HttpConsole.create(HTTPCONSOLE_PORT).start();
 
         // Spin off a Thread which just ups the counter
         new Thread(new Runnable() {
