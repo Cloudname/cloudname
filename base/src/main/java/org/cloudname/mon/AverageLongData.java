@@ -7,8 +7,8 @@ package org.cloudname.mon;
  *
  */
 public class AverageLongData {
-    private final long aggergated;
-    private final long count;
+    private long aggregated;
+    private long count;
 
     /**
      * Set the aggregated value and the number of times it has been aggregated.
@@ -16,7 +16,7 @@ public class AverageLongData {
      * @param count
      */
     public AverageLongData(long aggregated, long count) {
-      this.aggergated = aggregated;
+      this.aggregated = aggregated;
       this.count = count;
     }
 
@@ -24,12 +24,21 @@ public class AverageLongData {
      * 
      * @return long - the aggregated value
      */
-    public long getAggregated() { return aggergated; }
+    public long getAggregated() { return aggregated; }
     
     /**
      * 
      * @return long - the number of times aggregated
      */
     public long getCount() { return count; }
+
+    /**
+     * Record a new value
+     * @param value
+     */
+    public void record(long value) {
+        aggregated += value;
+        count++;
+    }
 
 }

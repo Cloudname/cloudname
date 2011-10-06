@@ -16,9 +16,6 @@ public class CounterTest {
 
     @Test
     public void testSpinCounters() {
-        // Trivial test of getName()
-        assertEquals("test.cloudname.one", counterOne.getName());
-        assertEquals("test.cloudname.two", counterTwo.getName());
 
         // Make sure the counter is zero.
         assertEquals(0L, counterOne.getCount());
@@ -42,12 +39,12 @@ public class CounterTest {
         // make sure we find the counters.
         int hitCount = 0;
         for (String s : MonitorManager.getInstance().getCounterNames()) {
-            if (s.equals(counterOne.getName())) {
+            if (s.equals("test.cloudname.one")) {
                 assertEquals(counterOne, Counter.getCounter(s));
                 hitCount++;
             }
 
-            if (s.equals(counterTwo.getName())) {
+            if (s.equals("test.cloudname.two")) {
                 assertEquals(counterTwo, Counter.getCounter(s));
                 hitCount++;
             }
