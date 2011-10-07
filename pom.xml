@@ -5,7 +5,7 @@
   <groupId>org.cloudname</groupId>
   <artifactId>cloudname-parent</artifactId>
   <version>2.0-SNAPSHOT</version>
- <packaging>pom</packaging>
+  <packaging>pom</packaging>
 
   <name>Cloudname Parent</name>
   <url>http://org.cloudname/</url>
@@ -55,22 +55,22 @@
     <plugins>
       <!-- Use Java 6 -->
       <plugin>
-	<artifactId>maven-compiler-plugin</artifactId>
-	<version>2.3.2</version>
-	<configuration>
-	  <source>1.6</source>
-	  <target>1.6</target>
-	</configuration>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <version>2.3.2</version>
+        <configuration>
+          <source>1.6</source>
+          <target>1.6</target>
+        </configuration>
       </plugin>
-      
+
       <!-- Output test errors to console -->
       <plugin>
-	<groupId>org.apache.maven.plugins</groupId>
-	<artifactId>maven-surefire-plugin</artifactId>
-	<version>2.7.2</version>
-	<configuration>
-	  <useFile>false</useFile>
-	</configuration>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-surefire-plugin</artifactId>
+        <version>2.7.2</version>
+        <configuration>
+          <useFile>false</useFile>
+        </configuration>
       </plugin>
 
     </plugins>
@@ -81,50 +81,50 @@
 
       <!-- Internal dependencies -->
       <dependency>
-	<groupId>org.cloudname</groupId>
-	<artifactId>cn</artifactId>
-	<version>${cn.cn.version}</version>
+        <groupId>org.cloudname</groupId>
+        <artifactId>cn</artifactId>
+        <version>${cn.cn.version}</version>
       </dependency>
 
       <dependency>
-	<groupId>org.cloudname</groupId>
-	<artifactId>testtools</artifactId>
-	<version>${cn.testtools.version}</version>
+        <groupId>org.cloudname</groupId>
+        <artifactId>testtools</artifactId>
+        <version>${cn.testtools.version}</version>
       </dependency>
 
       <dependency>
-	<groupId>org.cloudname</groupId>
-	<artifactId>log</artifactId>
-	<version>${cn.log.version}</version>
+        <groupId>org.cloudname</groupId>
+        <artifactId>log</artifactId>
+        <version>${cn.log.version}</version>
       </dependency>
 
       <!-- Netty -->
       <dependency>
-	<groupId>org.jboss.netty</groupId>
-	<artifactId>netty</artifactId>
-	<version>${cn.netty.version}</version>
+        <groupId>org.jboss.netty</groupId>
+        <artifactId>netty</artifactId>
+        <version>${cn.netty.version}</version>
       </dependency>
 
       <!-- JoptSimple command line argument parser -->
       <dependency>
-	<groupId>net.sf.jopt-simple</groupId>
-	<artifactId>jopt-simple</artifactId>
-	<version>3.2</version>
+        <groupId>net.sf.jopt-simple</groupId>
+        <artifactId>jopt-simple</artifactId>
+        <version>3.2</version>
       </dependency>
 
       <!-- Google Protocol Buffers -->
       <dependency>
-	<groupId>com.google.protobuf</groupId>
-	<artifactId>protobuf-java</artifactId>
-	<version>${cn.protobuf.version}</version>
+        <groupId>com.google.protobuf</groupId>
+        <artifactId>protobuf-java</artifactId>
+        <version>${cn.protobuf.version}</version>
       </dependency>
-  
+
       <!-- ZooKeeper -->
       <dependency>
-	<groupId>org.apache.zookeeper</groupId>
-	<artifactId>zookeeper</artifactId>
-	<version>${cn.zookeeper.version}</version>
-	<exclusions>
+        <groupId>org.apache.zookeeper</groupId>
+        <artifactId>zookeeper</artifactId>
+        <version>${cn.zookeeper.version}</version>
+        <exclusions>
           <exclusion>
             <groupId>com.sun.jmx</groupId>
             <artifactId>jmxri</artifactId>
@@ -139,26 +139,26 @@
           </exclusion>
         </exclusions>
       </dependency>
-      
+
       <!-- Jackson JSON library -->
       <dependency>
-	<groupId>org.codehaus.jackson</groupId>
-	<artifactId>jackson-core-asl</artifactId>
-	<version>${cn.jackson.version}</version>
+        <groupId>org.codehaus.jackson</groupId>
+        <artifactId>jackson-core-asl</artifactId>
+        <version>${cn.jackson.version}</version>
       </dependency>
-      
+
       <dependency>
-	<groupId>org.codehaus.jackson</groupId>
-	<artifactId>jackson-mapper-asl</artifactId>
-	<version>${cn.jackson.version}</version>
+        <groupId>org.codehaus.jackson</groupId>
+        <artifactId>jackson-mapper-asl</artifactId>
+        <version>${cn.jackson.version}</version>
       </dependency>
-      
+
       <!-- Junit -->
       <dependency>
-	<groupId>junit</groupId>
-	<artifactId>junit</artifactId>
-	<version>${cn.junit.version}</version>
-	<scope>test</scope>
+        <groupId>junit</groupId>
+        <artifactId>junit</artifactId>
+        <version>${cn.junit.version}</version>
+        <scope>test</scope>
       </dependency>
     </dependencies>
   </dependencyManagement>

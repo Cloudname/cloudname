@@ -2,10 +2,10 @@ package org.cloudname.con;
 
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Set;
 import java.util.concurrent.Executors;
-import java.util.Collections;
 
 import org.cloudname.con.netty.HttpConsolePipelineFactory;
 import org.cloudname.con.widget.HttpWidget;
@@ -27,6 +27,8 @@ import org.jboss.netty.channel.socket.nio.NioServerSocketChannelFactory;
  *
  */
 public class HttpConsole {
+    public static final int HTTPCONSOLE_DEFAULT_PORT = 4601;
+
     private int port;
     private Channel channel;
     private ServerBootstrap bootstrap;
@@ -43,7 +45,7 @@ public class HttpConsole {
     }
 
     /**
-     * TODO(paulrene): write javadoc.
+     * Create a new HttpConsole instance which listens to {@code port}.
      */
     public static HttpConsole create(int port) {
         return new HttpConsole(port);
@@ -74,7 +76,14 @@ public class HttpConsole {
     }
 
     /**
-     * TODO(paulrene): write javadoc.
+     * Add a new HttpWidget to the given path and initialize it
+     * 
+     * @param widget Widget to add to the path
+     * @param path The path to add the Widget to. You may use the wildcard at the end of the path, eg. "/hello/*"
+     * @throws NullPointerException Will be thrown if widget or path is null.
+     * @throws IllegalArgumentException Will be thrown if you try to add a Widget to the root path
+     * @throws IllegalStateException Will be thrown if you try to add a Widget to a path that is already taken
+     * 
      */
     public HttpConsole addWidget(HttpWidget widget, String path) {
         if (null == path) {
@@ -105,7 +114,11 @@ public class HttpConsole {
 
 
     /**
-     * TODO(paulrene): write javadoc.
+     * 
+     * Unbinds the connector and releases resources.
+     * 
+     * This will also invoke destroy() on all registered Widgets
+     * 
      */
     public void shutdown() {
         if (null == channel) {
@@ -130,6 +143,10 @@ public class HttpConsole {
         return port;
     }
 
+    
+    /**
+     * @return The registered paths
+     */
     public Set<String> getWidgetPaths() {
         return Collections.unmodifiableSet(pathToWidgetMap.keySet());
     }

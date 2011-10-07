@@ -10,8 +10,6 @@ import org.cloudname.con.HttpConsole;
  * 
  * Provides an interface to be implemented by Widgets wishing to handle HTTP requests
  * 
- * 
- * 
  * @author paulrene
  *
  */
