@@ -2,10 +2,10 @@ package org.cloudname.con;
 
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Set;
 import java.util.concurrent.Executors;
-import java.util.Collections;
 
 import org.cloudname.con.netty.HttpConsolePipelineFactory;
 import org.cloudname.con.widget.HttpWidget;
@@ -27,6 +27,8 @@ import org.jboss.netty.channel.socket.nio.NioServerSocketChannelFactory;
  *
  */
 public class HttpConsole {
+    public static final int HTTPCONSOLE_DEFAULT_PORT = 4601;
+
     private int port;
     private Channel channel;
     private ServerBootstrap bootstrap;
