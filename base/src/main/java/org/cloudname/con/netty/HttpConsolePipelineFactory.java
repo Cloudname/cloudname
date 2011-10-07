@@ -26,6 +26,9 @@ public class HttpConsolePipelineFactory implements ChannelPipelineFactory {
         this.console = console;
     }
     
+    /* (non-Javadoc)
+     * @see org.jboss.netty.channel.ChannelPipelineFactory#getPipeline()
+     */
     public ChannelPipeline getPipeline() throws Exception {
         // Create a default pipeline implementation.
         ChannelPipeline pipeline = Channels.pipeline();
