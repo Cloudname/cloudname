@@ -17,6 +17,37 @@ The current implementation uses Apache ZooKeeper to do the heavy
 lifting, but programmers should never have to deal directly with
 ZooKeeper -- only the library interface provided by Cloudname.
 
+# What is in the repository
+
+## cn
+
+This is the Cloudname Library and the artifact that the project is
+named after.  This is probably the directory you want to look at.
+
+## base
+
+Various common tools and helper classes for services.  Most of the
+things under this directory are are tools used by the us in our
+projects.  You may find things of interest there -- or not.
+
+## log
+
+This directory contains some of the tools we use for logging.
+
+## timber
+
+A skeletal implementation of a simple log server.
+
+## testtools
+
+Various classes that are useful when writing tests.  For instance
+we have some helper classes for network related things as well as
+tools for doing tests against an embedded ZooKeeper instance.
+
+
+# Cloudname basics.
+
+In the following sections we will cover some of the Cloudname basics.
 
 ## Cloudname coordinate.
 
