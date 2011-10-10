@@ -1,7 +1,7 @@
 # A word of caution.
 
 **This project is still under initial development and thus neither APIs
-not implementation are finished.  This means that right now this
+nor implementations are finished.  This means that right now this
 software can't be used directly, but you can use it as an inspiration
 or you can choose to contribute to it if you like.**
 
@@ -27,8 +27,8 @@ named after.  This is probably the directory you want to look at.
 #### base
 
 Various common tools and helper classes for services.  Most of the
-things under this directory are are tools used by the us in our
-projects.  You may find things of interest there -- or not.
+things under this directory are tools used by us in our projects. 
+You may find things of interest there -- or not.
 
 #### log
 
