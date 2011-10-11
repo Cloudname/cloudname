@@ -4,16 +4,16 @@
 
   <groupId>org.cloudname</groupId>
   <artifactId>cloudname-parent</artifactId>
-  <version>2.0</version>
+  <version>2.0.0</version>
   <packaging>pom</packaging>
 
   <name>Cloudname Parent</name>
-  <url>http://org.cloudname/</url>
+  <url>https://github.com/Cloudname/cloudname</url>
   <description>Cloudname Parent Pom</description>
 
   <organization>
     <name>Cloudname Project</name>
-    <url>http://cloudname.org/</url>
+	  <url>https://github.com/Cloudname/cloudname</url>
   </organization>
 
   <developers>
@@ -36,11 +36,11 @@
     <cn.protobuf.version>2.3.0</cn.protobuf.version>
 
     <!-- Internal dependency versions -->
-    <cn.base.version>2.0</cn.base.version>
-    <cn.cn.version>2.0</cn.cn.version>
-    <cn.testtools.version>2.0</cn.testtools.version>
-    <cn.timber.version>2.0</cn.timber.version>
-    <cn.log.version>2.0</cn.log.version>
+    <cn.base.version>2.0.0</cn.base.version>
+    <cn.cn.version>2.0.0</cn.cn.version>
+    <cn.testtools.version>2.0.0</cn.testtools.version>
+    <cn.timber.version>2.0.0</cn.timber.version>
+    <cn.log.version>2.0.0</cn.log.version>
   </properties>
 
   <modules>
