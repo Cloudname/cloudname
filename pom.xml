@@ -8,12 +8,12 @@
   <packaging>pom</packaging>
 
   <name>Cloudname Parent</name>
-  <url>http://org.cloudname/</url>
+  <url>https://github.com/Cloudname/cloudname</url>
   <description>Cloudname Parent Pom</description>
 
   <organization>
     <name>Cloudname Project</name>
-    <url>http://cloudname.org/</url>
+	  <url>https://github.com/Cloudname/cloudname</url>
   </organization>
 
   <developers>

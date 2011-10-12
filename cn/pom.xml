@@ -13,7 +13,7 @@
   
   <name>Cloudname Library</name>
   <description>Simple library for managing resources using ZooKeeper.</description>
-  <url>http://cloudname.org</url>
+  <url>https://github.com/Cloudname/cloudname</url>
 
   <dependencies>
     <dependency>
