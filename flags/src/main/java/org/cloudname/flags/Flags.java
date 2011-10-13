@@ -67,7 +67,7 @@ public class Flags {
             Flag flag = field.getAnnotation(Flag.class);
             if (flag != null) {
                 String name = flag.name();
-                //check to see that we can set the field«s value
+                //check to see that we can set the field's value
                 if (!Modifier.isStatic(field.getModifiers())) {
                     throw new IllegalStateException("Field "+field.toGenericString()+" is not static and cannot be modified.");
                 } else {
@@ -222,7 +222,7 @@ public class Flags {
     }
 
     /**
-     * Holds an option«s corresponding Field, Flag and OptionSpec
+     * Holds an option's corresponding Field, Flag and OptionSpec
      * 
      * @author acidmoose
      *
