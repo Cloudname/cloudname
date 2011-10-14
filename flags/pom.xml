@@ -11,7 +11,7 @@
   <artifactId>flags</artifactId>
   <packaging>jar</packaging>
   
-  <name>Flags</name>
+  <name>Cloudname Flags</name>
   <description>Utility for handling command line arguments based on Flag annotations.</description>
   <url>https://github.com/Cloudname/cloudname</url>
 
