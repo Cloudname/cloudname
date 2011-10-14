@@ -11,14 +11,14 @@ import joptsimple.OptionSet;
 import joptsimple.OptionSpec;
 
 /**
- * This class can load command line arguments based of Flag annotations through JOpt Simple.
+ * This class can load command line arguments based of Flag annotations.
  * 
- * Fields must be static, and defined as a String, Long, long, Integer, int, Boolean or boolean
- * and the Flag must have the corresponding type.
+ * Fields must be static, and defined as a String, Long, long, Integer,
+ * int, Boolean or boolean.
  * 
  * Typical use:
  * 
- * @Flag(name="text", type=Flag.TYPE_STRING, defaultValue="N/A", description="Output text")
+ * @Flag(name="text", defaultValue="N/A", description="Output text")
  * public static String text;
  * 
  * Flags flags = new Flags()
@@ -35,6 +35,14 @@ import joptsimple.OptionSpec;
  */
 public class Flags {
 
+    /**
+     * The supported field types. Determined in determinType(Field field).
+     * 
+     * @author acidmoose
+     *
+     */
+    public enum FieldType {STRING, INTEGER, LONG, BOOLEAN, UNKNOWN}
+    
     /**
      * The option set builder.
      */
@@ -65,78 +73,120 @@ public class Flags {
     public Flags loadOpts(Class<?> c) {
         for (Field field : c.getFields()) {
             Flag flag = field.getAnnotation(Flag.class);
-            if (flag != null) {
-                String name = flag.name();
-                //check to see that we can set the field's value
-                if (!Modifier.isStatic(field.getModifiers())) {
-                    throw new IllegalStateException("Field "+field.toGenericString()+" is not static and cannot be modified.");
+
+            //check for flag
+            if (flag == null)
+                continue;
+
+            String name = flag.name();
+            //check to see that we can set the field's value
+            if (!Modifier.isStatic(field.getModifiers()))
+                throw new IllegalStateException("Field "+field.toGenericString()+" is not static and cannot be modified.");
+            
+            String description = flag.description();
+
+            //determine the type of field
+            FieldType type = determinType(field);
+            
+            switch (type) {
+            
+            case UNKNOWN:
+                throw new IllegalArgumentException("Field "+field.toGenericString()+" is not of a supported type.");
+
+            case INTEGER:
+                OptionSpec<Integer> intOption;
+                if (flag.required()) {
+                    intOption = optionParser
+                            .accepts(name, description)
+                            .withRequiredArg()
+                            .ofType(Integer.class);
                 } else {
-                    String description = flag.description();
-                    if (flag.type() == Flag.TYPE_INTEGER) {
-                        if (!field.getType().isAssignableFrom(Integer.TYPE) && !field.getType().isAssignableFrom(Integer.class)) {
-                            throw new IllegalArgumentException("Field "+field.toGenericString()+" is not the same type (Integer) as defined in the Flag.");
-                        }
-                        OptionSpec<Integer> option;
-                        if (flag.required()) {
-                            option = optionParser
-                                    .accepts(name, description)
-                                    .withRequiredArg().ofType(Integer.class);
-                        } else {
-                            option = optionParser
-                                    .accepts(name, description)
-                                    .withOptionalArg().ofType(Integer.class);
-                        }
-                        options.add(new OptionHolder(flag, field, option));
-                    } else if (flag.type() == Flag.TYPE_STRING) {
-                        if (!field.getType().isAssignableFrom(String.class)) {
-                            throw new IllegalArgumentException("Field "+field.toGenericString()+" is not the same type (String) as defined in the Flag.");
-                        }
-                        OptionSpec<String> option;
-                        if (flag.required()) {
-                            option = optionParser
-                                    .accepts(name, description)
-                                    .withRequiredArg().ofType(String.class);
-                        } else {
-                            option = optionParser
-                                    .accepts(name, description)
-                                    .withOptionalArg().ofType(String.class);
-                        }
-                        options.add(new OptionHolder(flag, field, option));
-                    } else if (flag.type() == Flag.TYPE_LONG) {
-                        if (!field.getType().isAssignableFrom(Long.TYPE) && field.getType().isAssignableFrom(Long.class)) {
-                            throw new IllegalArgumentException("Field "+field.toGenericString()+" is not the same type (Long) as defined in the Flag.");
-                        }
-                        OptionSpec<Long> option;
-                        if (flag.required()) {
-                            option = optionParser
-                                    .accepts(name, description)
-                                    .withRequiredArg().ofType(Long.class);
-                        } else {
-                            option = optionParser
-                                    .accepts(name, description)
-                                    .withOptionalArg().ofType(Long.class);
-                        }
-                        options.add(new OptionHolder(flag, field, option));
-                    } else if (flag.type() == Flag.TYPE_BOOLEAN) {
-                        if (!field.getType().isAssignableFrom(Boolean.TYPE) && field.getType().isAssignableFrom(Boolean.class)) {
-                            throw new IllegalArgumentException("Field "+field.toGenericString()+" is not the same type (Boolean) as defined in the Flag.");
-                        }
-                        OptionSpec<Boolean> option;
-                        if (flag.required()) {
-                            option = optionParser
-                                    .accepts(name, description)
-                                    .withRequiredArg().ofType(Boolean.class);
-                        } else {
-                            option = optionParser
-                                    .accepts(name, description)
-                                    .withOptionalArg().ofType(Boolean.class);
-                        }
-                        options.add(new OptionHolder(flag, field, option));
-                    }
+                    intOption = optionParser
+                            .accepts(name, description)
+                            .withOptionalArg()
+                            .ofType(Integer.class);
                 }
+                options.add(new OptionHolder(type, flag, field, intOption));
+                break;
+
+            case STRING:
+                OptionSpec<String> stringOption;
+                if (flag.required()) {
+                    stringOption = optionParser
+                            .accepts(name, description)
+                            .withRequiredArg()
+                            .ofType(String.class);
+                } else {
+                    stringOption = optionParser
+                            .accepts(name, description)
+                            .withOptionalArg()
+                            .ofType(String.class);
+                }
+                options.add(new OptionHolder(type, flag, field, stringOption));
+                break;
+
+            case BOOLEAN:
+                OptionSpec<Boolean> booleanOption;
+                if (flag.required()) {
+                    booleanOption = optionParser
+                            .accepts(name, description)
+                            .withRequiredArg()
+                            .ofType(Boolean.class);
+                } else {
+                    booleanOption = optionParser
+                            .accepts(name, description)
+                            .withOptionalArg()
+                            .ofType(Boolean.class);
+                }
+                options.add(new OptionHolder(type, flag, field, booleanOption));
+                break;
+
+            case LONG:
+                OptionSpec<Long> longOption;
+                if (flag.required()) {
+                    longOption = optionParser
+                            .accepts(name, description)
+                            .withRequiredArg()
+                            .ofType(Long.class);
+                } else {
+                    longOption = optionParser
+                            .accepts(name, description)
+                            .withOptionalArg()
+                            .ofType(Long.class);
+                }
+                options.add(new OptionHolder(type, flag, field, longOption));
+                break;
+                
+            default:
+                break;
             }
         }
         return this;
+    }
+
+    /**
+     * Determine the type of the field.
+     * 
+     * @param field
+     * @return
+     */
+    private FieldType determinType(Field field) {
+        if (field.getType().isAssignableFrom(Long.TYPE) ||
+                field.getType().isAssignableFrom(Long.class))
+            return FieldType.LONG;
+        
+        if (field.getType().isAssignableFrom(Boolean.TYPE) ||
+                field.getType().isAssignableFrom(Boolean.class))
+            return FieldType.BOOLEAN;
+        
+        if (field.getType().isAssignableFrom(String.class))
+            return FieldType.STRING;
+        
+        if (field.getType().isAssignableFrom(Integer.TYPE) ||
+                field.getType().isAssignableFrom(Integer.class))
+            return FieldType.INTEGER;
+        
+        return FieldType.UNKNOWN;
     }
 
     /**
@@ -159,17 +209,17 @@ public class Flags {
             if (optionSet.has(optionSpec)) {
                 //set the option provided
                 try {
-                    if (holder.getFlag().type() == Flag.TYPE_INTEGER) {
-                        holder.getField().setInt(holder.getField().getClass(), (Integer) optionSet.valueOf(optionSpec));
-                    } else if (holder.getFlag().type() == Flag.TYPE_LONG) {
-                        holder.getField().setLong(holder.getField().getClass(), (Long) optionSet.valueOf(optionSpec));
-                    } else if (holder.getFlag().type() == Flag.TYPE_STRING) {
+                    if (holder.getType() == FieldType.INTEGER) {
+                        holder.getField().set(holder.getField().getClass(), (Integer) optionSet.valueOf(optionSpec));
+                    } else if (holder.getType() == FieldType.LONG) {
+                        holder.getField().set(holder.getField().getClass(), (Long) optionSet.valueOf(optionSpec));
+                    } else if (holder.getType() == FieldType.STRING) {
                         holder.getField().set(holder.getField().getClass(), (String) optionSet.valueOf(optionSpec));
-                    } else if (holder.getFlag().type() == Flag.TYPE_BOOLEAN) {
-                        holder.getField().setBoolean(holder.getField().getClass(), (Boolean) optionSet.valueOf(optionSpec));
+                    } else if (holder.getType() == FieldType.BOOLEAN) {
+                        holder.getField().set(holder.getField().getClass(), (Boolean) optionSet.valueOf(optionSpec));
                     }
                 } catch (IllegalArgumentException e) {
-                    throw e;
+                    throw new IllegalArgumentException("Unable to set the value for field: "+holder.getField().toGenericString(), e);
                 } catch (IllegalAccessException e) {
                     throw new IllegalStateException("Unable to set the value for field: "+holder.getField().toGenericString(), e);
                 }
@@ -181,28 +231,29 @@ public class Flags {
                 //not provided, but optional... set the default value
                 String defaultValue = holder.getFlag().defaultValue();
                 try {
-                    if (holder.getFlag().type() == Flag.TYPE_INTEGER) {
-                        holder.getField().setInt(holder.getField().getClass(), Integer.parseInt(defaultValue));
-                    } else if (holder.getFlag().type() == Flag.TYPE_LONG) {
-                        holder.getField().setLong(holder.getField().getClass(), Long.parseLong(defaultValue));
-                    } else if (holder.getFlag().type() == Flag.TYPE_STRING) {
+                    if (holder.getType() == FieldType.INTEGER) {
+                        holder.getField().set(holder.getField().getClass(), Integer.parseInt(defaultValue));
+                    } else if (holder.getType() == FieldType.LONG) {
+                        holder.getField().set(holder.getField().getClass(), Long.parseLong(defaultValue));
+                    } else if (holder.getType() == FieldType.STRING) {
                         holder.getField().set(holder.getField().getClass(), defaultValue);
-                    } else if (holder.getFlag().type() == Flag.TYPE_BOOLEAN) {
-                        holder.getField().setBoolean(holder.getField().getClass(), Boolean.getBoolean(defaultValue));
+                    } else if (holder.getType() == FieldType.BOOLEAN) {
+                        holder.getField().set(holder.getField().getClass(), Boolean.getBoolean(defaultValue));
                     }
                 } catch (IllegalArgumentException e) {
                     throw e;
                 } catch (IllegalAccessException e) {
                     throw new IllegalStateException("Unable to set the value for field: "+holder.getField().toGenericString(), e);
-                } catch (ClassCastException e) {
-                    throw new IllegalArgumentException("Default value \""+defaultValue+"\"can not be casted to correct type.");
                 }
             }
         }
 
         return this;
     }
-    
+
+    /**
+     * Prints the help.
+     */
     public void printHelp() {
         try {
             optionParser.printHelpOn(System.out);
@@ -222,17 +273,30 @@ public class Flags {
     }
 
     /**
-     * Holds an option's corresponding Field, Flag and OptionSpec
+     * Debugging method. Prints the Flags found and the corresponding Fields.
+     */
+    public void printFlags() {
+        for (OptionHolder holder : options) {
+            System.out.println("Field: "+holder.getField().toGenericString()+"\nFlag: name:"+holder.getFlag().name()
+                    +", description:"+holder.getFlag().description()+", type:"+holder.getType()
+                    +", default:"+holder.getFlag().defaultValue());
+        }
+    }
+    
+    /**
+     * Internal class that holds an option's corresponding FieldType, Field, Flag and OptionSpec.
      * 
      * @author acidmoose
      *
      */
-    private class OptionHolder {
+    private static class OptionHolder {
         private Flag flag;
         private Field field;
         private OptionSpec<?> optionSpec;
+        private final FieldType type;
 
-        public OptionHolder(Flag flag, Field field, OptionSpec<?> optionSpec) {
+        public OptionHolder(FieldType type, Flag flag, Field field, OptionSpec<?> optionSpec) {
+            this.type = type;
             this.flag = flag;
             this.field = field;
             this.optionSpec = optionSpec;
@@ -249,17 +313,9 @@ public class Flags {
         public OptionSpec<?> getOptionSpec() {
             return optionSpec;
         }
-    }
 
-    /**
-     * Debugging method. Prints the Flags found and the corresponding Fields.
-     */
-    public void printFlags() {
-        for (OptionHolder holder : options) {
-            System.out.println("Field: "+holder.getField().toGenericString()+"\nFlag: name:"+holder.getFlag().name()
-                    +", description:"+holder.getFlag().description()+", type:"+holder.getFlag().type()
-                    +", default:"+holder.getFlag().defaultValue());
+        public FieldType getType() {
+            return type;
         }
     }
-
 }

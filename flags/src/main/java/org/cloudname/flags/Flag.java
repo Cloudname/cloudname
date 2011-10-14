@@ -17,32 +17,6 @@ import java.lang.annotation.Target;
 public @interface Flag {
     
     /**
-     * Use if type of Field is String.
-     */
-    static int TYPE_STRING = 0;
-    
-    /**
-     * Use if type of Field is Integer or int.
-     */
-    static int TYPE_INTEGER = 1;
-    
-    /**
-     * Use if type of Field is Long or long.
-     */
-    static int TYPE_LONG = 2;
-    
-    /**
-     * Use if type of Field is Boolean or boolean.
-     */
-    static int TYPE_BOOLEAN = 3;
-    
-    /**
-     * The type of a field. Use TYPE_STRING, TYPE_INTEGER, TYPE_LONG or TYPE_BOOLEAN.
-     * @return
-     */
-    int type();
-    
-    /**
      * The name used in command line argument. e.g. "bar" in "java Foo --bar 1".
      * @return
      */
@@ -50,6 +24,7 @@ public @interface Flag {
     
     /**
      * The default value of the field, if it is not given as a command line argument.
+     * Overridden by required().
      * @return
      */
     String defaultValue();
@@ -61,7 +36,8 @@ public @interface Flag {
     String description() default "";
     
     /**
-     * Defines if a field is required or not.
+     * Defines if a field is required to be present in the String[] or not.
+     * Overrides defaultValue.
      * @return
      */
     boolean required() default false;
