@@ -13,7 +13,7 @@
 
   <name>Cloudname Log</name>
   <description>Logging tools.</description>
-  <url>http://cloudname.org/</url>
+  <url>https://github.com/Cloudname/cloudname</url>
 
   <!-- Profiles used to determine which protoc compiler binary we need to use -->
   <profiles>

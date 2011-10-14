@@ -12,7 +12,7 @@
   <packaging>jar</packaging>
   
   <name>Cloudname Test Tools</name>
-  <url>http://cloudname.org</url>
+  <url>https://github.com/Cloudname/cloudname</url>
   
   <dependencies>
     <dependency>
