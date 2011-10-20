@@ -1,0 +1,15 @@
+[ {
+  "username" : "bakksjo",
+  "password" : "alicehash",
+  "realName" : "Oyvind Bakksjo",
+  "email" : "bakksjo@comoyo.com",
+  "roles" : [],
+  "properties" : {"foo":"foovalue", "bar":"barvalue"}
+}, {
+  "username" : "borud",
+  "password" : "bobhash",
+  "realName" : "Bjorn Borud",
+  "email" : "borud@comoyo.com",
+  "roles" : ["foo", "bar"],
+  "properties" : {"foo":"foovalue", "bar":"barvalue"}
+} ]
