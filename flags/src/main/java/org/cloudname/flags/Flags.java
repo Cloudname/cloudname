@@ -12,24 +12,24 @@ import joptsimple.OptionSpec;
 
 /**
  * This class can load command line arguments based of Flag annotations.
- * 
+ *
  * Fields must be static, and defined as a String, Long, long, Integer,
  * int, Boolean or boolean.
- * 
+ *
  * Typical use:
- * 
+ *
  * @Flag(name="text", defaultValue="N/A", description="Output text")
  * public static String text;
- * 
+ *
  * Flags flags = new Flags()
  *              .loadOpts(MyClass.class)
  *              .parse(args);
- *              
+ *
  * System.out.print(text);
- * 
+ *
  * The class supports the use of --help. If --help is given, parse will just print the help
  * and not attempt to set any values.
- * 
+ *
  * @author acidmoose
  *
  */
@@ -37,12 +37,12 @@ public class Flags {
 
     /**
      * The supported field types. Determined in determinType(Field field).
-     * 
+     *
      * @author acidmoose
      *
      */
     public enum FieldType {STRING, INTEGER, LONG, BOOLEAN, UNKNOWN}
-    
+
     /**
      * The option set builder.
      */
@@ -66,7 +66,7 @@ public class Flags {
 
     /**
      * Load a class that contains Flag annotations.
-     * 
+     *
      * @param c - the class to load options from.
      * @return this
      */
@@ -82,14 +82,14 @@ public class Flags {
             //check to see that we can set the field's value
             if (!Modifier.isStatic(field.getModifiers()))
                 throw new IllegalStateException("Field "+field.toGenericString()+" is not static and cannot be modified.");
-            
+
             String description = flag.description();
 
             //determine the type of field
             FieldType type = determinType(field);
-            
+
             switch (type) {
-            
+
             case UNKNOWN:
                 throw new IllegalArgumentException("Field "+field.toGenericString()+" is not of a supported type.");
 
@@ -156,7 +156,7 @@ public class Flags {
                 }
                 options.add(new OptionHolder(type, flag, field, longOption));
                 break;
-                
+
             default:
                 break;
             }
@@ -166,32 +166,36 @@ public class Flags {
 
     /**
      * Determine the type of the field.
-     * 
+     *
      * @param field
      * @return
      */
     private FieldType determinType(Field field) {
-        if (field.getType().isAssignableFrom(Long.TYPE) ||
-                field.getType().isAssignableFrom(Long.class))
+        if (field.getType().isAssignableFrom(Long.TYPE)
+            || field.getType().isAssignableFrom(Long.class)) {
             return FieldType.LONG;
-        
-        if (field.getType().isAssignableFrom(Boolean.TYPE) ||
-                field.getType().isAssignableFrom(Boolean.class))
+        }
+
+        if (field.getType().isAssignableFrom(Boolean.TYPE)
+            || field.getType().isAssignableFrom(Boolean.class)) {
             return FieldType.BOOLEAN;
-        
-        if (field.getType().isAssignableFrom(String.class))
+        }
+
+        if (field.getType().isAssignableFrom(String.class)) {
             return FieldType.STRING;
-        
-        if (field.getType().isAssignableFrom(Integer.TYPE) ||
-                field.getType().isAssignableFrom(Integer.class))
+        }
+
+        if (field.getType().isAssignableFrom(Integer.TYPE)
+            || field.getType().isAssignableFrom(Integer.class)) {
             return FieldType.INTEGER;
-        
+        }
+
         return FieldType.UNKNOWN;
     }
 
     /**
      * Try to set the arguments from main method on the fields loaded by loadOpts(Class<?> c).
-     * 
+     *
      * @param args - Arguments passed from main method.
      * @return this
      */
@@ -265,7 +269,7 @@ public class Flags {
     /**
      * Returns true if "--help" was one of the arguments.
      * This means that no values has been set when calling parse().
-     * 
+     *
      * @return true if "help" was used, false if not.
      */
     public boolean helpCalled() {
@@ -282,10 +286,10 @@ public class Flags {
                     +", default:"+holder.getFlag().defaultValue());
         }
     }
-    
+
     /**
      * Internal class that holds an option's corresponding FieldType, Field, Flag and OptionSpec.
-     * 
+     *
      * @author acidmoose
      *
      */
