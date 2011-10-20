@@ -5,7 +5,7 @@
   <parent>
     <groupId>org.cloudname</groupId>
     <artifactId>cloudname-parent</artifactId>
-    <version>${cn.version}</version>
+	<version>2.1.0</version>
   </parent>
 
   <artifactId>testtools</artifactId>
