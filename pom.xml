@@ -4,7 +4,7 @@
 
   <groupId>org.cloudname</groupId>
   <artifactId>cloudname-parent</artifactId>
-  <version>2.0-SNAPSHOT</version>
+  <version>${cn.version}</version>
   <packaging>pom</packaging>
 
   <name>Cloudname Parent</name>
@@ -34,16 +34,19 @@
     <cn.junit.version>4.8.1</cn.junit.version>
     <cn.netty.version>3.2.3.Final</cn.netty.version>
     <cn.protobuf.version>2.3.0</cn.protobuf.version>
+    <cn.jline.version>0.9.94</cn.jline.version>
+    <cn.jmxri.version>1.2.1</cn.jmxri.version>
+    <cn.jsr250-api.version>1.0</cn.jsr250-api.version>
+    <cn.jersey.version>1.8</cn.jersey.version>
+    <cn.jbcrypt.version>0.3m</cn.jbcrypt.version>
+    <cn.joda-time.version>2.0</cn.joda-time.version>
 
     <!-- Internal dependency versions -->
-    <cn.base.version>2.0-SNAPSHOT</cn.base.version>
-    <cn.cn.version>2.0-SNAPSHOT</cn.cn.version>
-    <cn.testtools.version>2.0-SNAPSHOT</cn.testtools.version>
-    <cn.timber.version>2.0-SNAPSHOT</cn.timber.version>
-    <cn.log.version>2.0-SNAPSHOT</cn.log.version>
+    <cn.version>2.1-SNAPSHOT</cn.version>
   </properties>
 
   <modules>
+	<module>a3</module>
     <module>cn</module>
     <module>testtools</module>
     <module>base</module>
@@ -84,19 +87,25 @@
       <dependency>
         <groupId>org.cloudname</groupId>
         <artifactId>cn</artifactId>
-        <version>${cn.cn.version}</version>
+        <version>${cn.version}</version>
       </dependency>
 
       <dependency>
         <groupId>org.cloudname</groupId>
         <artifactId>testtools</artifactId>
-        <version>${cn.testtools.version}</version>
+        <version>${cn.version}</version>
       </dependency>
 
       <dependency>
         <groupId>org.cloudname</groupId>
         <artifactId>log</artifactId>
-        <version>${cn.log.version}</version>
+        <version>${cn.version}</version>
+      </dependency>
+
+      <dependency>
+        <groupId>org.cloudname</groupId>
+        <artifactId>flags</artifactId>
+        <version>${cn.version}</version>
       </dependency>
 
       <!-- Netty -->
@@ -161,6 +170,46 @@
         <version>${cn.junit.version}</version>
         <scope>test</scope>
       </dependency>
+
+	<!-- Jline -->
+    <dependency>
+      <groupId>jline</groupId>
+      <artifactId>jline</artifactId>
+      <version>${cn.jline.version}</version>
+    </dependency>
+
+	<!-- JMX -->
+    <dependency>
+      <groupId>com.sun.jmx</groupId>
+      <artifactId>jmxri</artifactId>
+      <version>${cn.jmxri.version}</version>
+    </dependency>
+
+	<!-- Joda time -->
+    <dependency>
+      <groupId>joda-time</groupId>
+      <artifactId>joda-time</artifactId>
+      <version>${cn.joda-time.version}</version>
+    </dependency>
+
+    <dependency>
+      <groupId>org.mindrot</groupId>
+      <artifactId>jbcrypt</artifactId>
+      <version>${cn.jbcrypt.version}</version>
+    </dependency>
+
+    <dependency>
+      <groupId>com.sun.jersey</groupId>
+      <artifactId>jersey-server</artifactId>
+      <version>${cn.jersey.version}</version>
+    </dependency>
+
+    <dependency>
+      <groupId>javax.annotation</groupId>
+      <artifactId>jsr250-api</artifactId>
+      <version>${cn.jsr250-api.version}</version>
+    </dependency>
+
     </dependencies>
   </dependencyManagement>
 </project>
