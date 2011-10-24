@@ -24,12 +24,6 @@ ZooKeeper -- only the library interface provided by Cloudname.
 This is the Cloudname Library and the artifact that the project is
 named after.  This is probably the directory you want to look at.
 
-#### base
-
-Various common tools and helper classes for services.  Most of the
-things under this directory are tools used by us in our projects. 
-You may find things of interest there -- or not.
-
 #### log
 
 This directory contains some of the tools we use for logging.
