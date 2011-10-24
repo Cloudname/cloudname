@@ -46,7 +46,7 @@
   </properties>
 
   <modules>
-	<module>a3</module>
+    <module>a3</module>
     <module>cn</module>
     <module>testtools</module>
     <module>log</module>
