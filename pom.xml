@@ -49,7 +49,6 @@
 	<module>a3</module>
     <module>cn</module>
     <module>testtools</module>
-    <module>base</module>
     <module>log</module>
     <module>timber</module>
     <module>flags</module>
