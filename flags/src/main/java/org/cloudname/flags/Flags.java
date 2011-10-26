@@ -8,6 +8,7 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.io.PrintWriter;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -45,12 +46,12 @@ import java.util.TreeMap;
 public class Flags {
 
     /**
-     * The supported field types. Determined in determinType(Field field).
+     * The supported field types. Determined in fieldTypeOf(Field field).
      *
      * @author acidmoose
      *
      */
-    public enum FieldType {STRING, INTEGER, LONG, BOOLEAN, UNKNOWN}
+    private enum FieldType {STRING, INTEGER, LONG, BOOLEAN, UNKNOWN}
 
     //The option set builder.
     private final static OptionParser optionParser = new OptionParser();
@@ -168,35 +169,6 @@ public class Flags {
     }
 
     /**
-     * Determine the type of the field.
-     *
-     * @param field
-     * @return the type of the {@code field} in question.
-     */
-    private static FieldType fieldTypeOf(Field field) {
-        if (field.getType().isAssignableFrom(Long.TYPE)
-            || field.getType().isAssignableFrom(Long.class)) {
-            return FieldType.LONG;
-        }
-
-        if (field.getType().isAssignableFrom(Boolean.TYPE)
-            || field.getType().isAssignableFrom(Boolean.class)) {
-            return FieldType.BOOLEAN;
-        }
-
-        if (field.getType().isAssignableFrom(String.class)) {
-            return FieldType.STRING;
-        }
-
-        if (field.getType().isAssignableFrom(Integer.TYPE)
-            || field.getType().isAssignableFrom(Integer.class)) {
-            return FieldType.INTEGER;
-        }
-
-        return FieldType.UNKNOWN;
-    }
-
-    /**
      * Try to set the arguments from main method on the fields loaded by loadOpts(Class<?> c).
      *
      * @param args - Arguments passed from main method.
@@ -281,8 +253,8 @@ public class Flags {
     /**
      * Print help ordered by class and command line option (case insensitive).
      */
-    public void printHelpSorted() {
-        // This code is truly ugly.
+    public void printHelpSorted(OutputStream out) {
+        PrintWriter w = new PrintWriter(out);
 
         Map<String, List<OptionHolder>> holdersByClass = new TreeMap<String, List<OptionHolder>>();
 
@@ -336,9 +308,9 @@ public class Flags {
                     .append("| " + holder.getFlag().description())
                     .append("\n");
             }
-            System.out.println(buff.toString());
+            w.println(buff.toString());
         }
-
+        w.flush();
     }
 
     /**
@@ -357,6 +329,35 @@ public class Flags {
                     +", description:"+holder.getFlag().description()+", type:"+holder.getType()
                     +", default:"+holder.getFlag().defaultValue());
         }
+    }
+
+    /**
+     * Get the field type of a Field instance.
+     *
+     * @param field the field instance we want the type for.
+     * @return the type of the {@code field} in question.
+     */
+    private static FieldType fieldTypeOf(Field field) {
+        if (field.getType().isAssignableFrom(Long.TYPE)
+            || field.getType().isAssignableFrom(Long.class)) {
+            return FieldType.LONG;
+        }
+
+        if (field.getType().isAssignableFrom(Boolean.TYPE)
+            || field.getType().isAssignableFrom(Boolean.class)) {
+            return FieldType.BOOLEAN;
+        }
+
+        if (field.getType().isAssignableFrom(String.class)) {
+            return FieldType.STRING;
+        }
+
+        if (field.getType().isAssignableFrom(Integer.TYPE)
+            || field.getType().isAssignableFrom(Integer.class)) {
+            return FieldType.INTEGER;
+        }
+
+        return FieldType.UNKNOWN;
     }
 
     /**
