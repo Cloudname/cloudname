@@ -1,14 +1,24 @@
 package org.cloudname.flags;
 
-import java.io.IOException;
-import java.lang.reflect.Field;
-import java.lang.reflect.Modifier;
-import java.util.ArrayList;
-import java.util.List;
-
 import joptsimple.OptionParser;
 import joptsimple.OptionSet;
 import joptsimple.OptionSpec;
+
+import java.lang.reflect.Field;
+import java.lang.reflect.Modifier;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.io.PrintWriter;
+
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.Collections;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
+
 
 /**
  * This class can load command line arguments based of Flag annotations.
@@ -36,33 +46,25 @@ import joptsimple.OptionSpec;
 public class Flags {
 
     /**
-     * The supported field types. Determined in determinType(Field field).
+     * The supported field types. Determined in fieldTypeOf(Field field).
      *
      * @author acidmoose
      *
      */
-    public enum FieldType {STRING, INTEGER, LONG, BOOLEAN, UNKNOWN}
+    private enum FieldType {STRING, INTEGER, LONG, BOOLEAN, UNKNOWN}
 
-    /**
-     * The option set builder.
-     */
+    //The option set builder.
     private final static OptionParser optionParser = new OptionParser();
 
-    /**
-     * The help option.
-     */
+    // Help option
     private final static OptionSpec<Void> HELP = optionParser
             .accepts("help", "Show this help");
 
-    /**
-     * Helper list for loaded options.
-     */
+    // Helper list for loaded options.
     private List<OptionHolder> options = new ArrayList<OptionHolder>();
 
-    /**
-     * Has help been called. If it has then parse() has not set any values.
-     */
-    private boolean helpCalled = false;
+    // OptionSet used by option parser implementation
+    private OptionSet optionSet;
 
     /**
      * Load a class that contains Flag annotations.
@@ -74,39 +76,40 @@ public class Flags {
         for (Field field : c.getFields()) {
             Flag flag = field.getAnnotation(Flag.class);
 
-            //check for flag
-            if (flag == null)
+            // Check if we found a flag annotation for this field.
+            if (null == flag) {
                 continue;
+            }
+
+            // Make sure the field is static.  If the field is
+            // nonstatic it makes no sense to use it for flags.
+            if (! Modifier.isStatic(field.getModifiers())) {
+                throw new IllegalArgumentException("Field "+field.toGenericString()+" is not static. Flag fields must be static");
+            }
 
             String name = flag.name();
-            //check to see that we can set the field's value
-            if (!Modifier.isStatic(field.getModifiers()))
-                throw new IllegalStateException("Field "+field.toGenericString()+" is not static and cannot be modified.");
-
             String description = flag.description();
 
-            //determine the type of field
-            FieldType type = determinType(field);
+            // Determine the type of field
+            FieldType type = fieldTypeOf(field);
+
 
             switch (type) {
-
-            case UNKNOWN:
-                throw new IllegalArgumentException("Field "+field.toGenericString()+" is not of a supported type.");
 
             case INTEGER:
                 OptionSpec<Integer> intOption;
                 if (flag.required()) {
                     intOption = optionParser
-                            .accepts(name, description)
-                            .withRequiredArg()
-                            .ofType(Integer.class);
+                        .accepts(name, description)
+                        .withRequiredArg()
+                        .ofType(Integer.class);
                 } else {
                     intOption = optionParser
-                            .accepts(name, description)
-                            .withOptionalArg()
-                            .ofType(Integer.class);
+                        .accepts(name, description)
+                        .withOptionalArg()
+                        .ofType(Integer.class);
                 }
-                options.add(new OptionHolder(type, flag, field, intOption));
+                options.add(new OptionHolder(type, flag, field, intOption, c));
                 break;
 
             case STRING:
@@ -122,7 +125,7 @@ public class Flags {
                             .withOptionalArg()
                             .ofType(String.class);
                 }
-                options.add(new OptionHolder(type, flag, field, stringOption));
+                options.add(new OptionHolder(type, flag, field, stringOption, c));
                 break;
 
             case BOOLEAN:
@@ -138,7 +141,7 @@ public class Flags {
                             .withOptionalArg()
                             .ofType(Boolean.class);
                 }
-                options.add(new OptionHolder(type, flag, field, booleanOption));
+                options.add(new OptionHolder(type, flag, field, booleanOption, c));
                 break;
 
             case LONG:
@@ -154,23 +157,176 @@ public class Flags {
                             .withOptionalArg()
                             .ofType(Long.class);
                 }
-                options.add(new OptionHolder(type, flag, field, longOption));
+                options.add(new OptionHolder(type, flag, field, longOption, c));
                 break;
 
+            case UNKNOWN:
             default:
-                break;
+                throw new IllegalArgumentException("Field "+field.toGenericString()+" is not of a supported type.");
             }
         }
         return this;
     }
 
     /**
-     * Determine the type of the field.
+     * Try to set the arguments from main method on the fields loaded by loadOpts(Class<?> c).
      *
-     * @param field
-     * @return
+     * @param args - Arguments passed from main method.
+     * @return this
      */
-    private FieldType determinType(Field field) {
+    public Flags parse(String[] args) {
+        optionSet = optionParser.parse(args);
+
+        for (OptionHolder holder : options) {
+            try {
+                OptionSpec<?> optionSpec = holder.getOptionSpec();
+
+                // Deal with the flags that were given on the command line.
+                if (optionSet.has(optionSpec)) {
+                    switch(holder.getType()) {
+                    case INTEGER:
+                        holder.getField().set(holder.getField().getClass(), (Integer) optionSet.valueOf(optionSpec));
+                        break;
+
+                    case LONG:
+                        holder.getField().set(holder.getField().getClass(), (Long) optionSet.valueOf(optionSpec));
+                        break;
+
+                    case STRING:
+                        holder.getField().set(holder.getField().getClass(), (String) optionSet.valueOf(optionSpec));
+                        break;
+
+                    case BOOLEAN:
+                        holder.getField().set(holder.getField().getClass(), (Boolean) optionSet.valueOf(optionSpec));
+                        break;
+                    }
+
+                    // No further action needed for this field.
+                    continue;
+                }
+
+                // Check if flag that does not occur in command line was required.
+                if (holder.getFlag().required()) {
+                    throw new IllegalArgumentException("Required argument missing: " + holder.getFlag().name());
+                }
+
+                // Flag was not specified on the command line.  Set the default value.
+                String defaultValue = holder.getFlag().defaultValue();
+                switch(holder.getType()) {
+                case INTEGER:
+                    holder.getField().set(holder.getField().getClass(), Integer.parseInt(defaultValue));
+                    break;
+
+                case LONG:
+                    holder.getField().set(holder.getField().getClass(), Long.parseLong(defaultValue));
+                    break;
+
+                case STRING:
+                    holder.getField().set(holder.getField().getClass(), defaultValue);
+                    break;
+
+                case BOOLEAN:
+                    holder.getField().set(holder.getField().getClass(), Boolean.getBoolean(defaultValue));
+                    break;
+                }
+            } catch (IllegalAccessException e) {
+                throw new RuntimeException("Programming error, illegal access for " + holder.getField().toGenericString());
+            }
+        }
+        return this;
+    }
+
+
+    /**
+     * Prints the help to the specified output stream.
+     *
+     * @param out the OutputStream we wish to print the help output to.
+     */
+    public void printHelp(OutputStream out) {
+        PrintWriter w = new PrintWriter(out);
+
+        Map<String, List<OptionHolder>> holdersByClass = new TreeMap<String, List<OptionHolder>>();
+
+        // Iterate over all the options we have gathered and stash them by class.
+        for (OptionHolder holder : options) {
+            // Fetch list corresponding to source class name
+            String className = holder.getSource().getName();
+            List holderList = holdersByClass.get(className);
+            if (null == holderList) {
+                // The list did not exist.  Create it.
+                holderList = new LinkedList<OptionHolder>();
+                holdersByClass.put(className, holderList);
+            }
+
+            holderList.add(holder);
+        }
+
+        // Output options by class
+        for (Map.Entry<String, List<OptionHolder>> ent : holdersByClass.entrySet()) {
+            String className = ent.getKey();
+            List<OptionHolder> holderList = ent.getValue();
+
+            // Sort the options. In Java, sorting collections is worse
+            // than watching Pandas fuck.
+            Collections.sort(holderList, new Comparator<OptionHolder>() {
+                    @Override
+                    public int compare(OptionHolder a, OptionHolder b) {
+                        return a.getFlag().name().toLowerCase().compareTo(b.getFlag().name().toLowerCase());
+                    }
+                });
+
+            StringBuffer buff = new StringBuffer();
+
+            buff.append("\n\n")
+                .append(className)
+                .append("\n")
+                .append("------------------------------------------------------------------------")
+                .append("\n");
+
+            for (OptionHolder holder : holderList) {
+                // Mark required flags with a "*"
+                buff.append(holder.getFlag().required() ? "* " : "  ");
+
+                String s = "  --" + holder.getFlag().name() + "=<" + holder.getType() + ">";
+
+                // Avert your eyes.
+                int spaces = 50 - s.length();
+                spaces = spaces < 0 ? 0 : spaces;
+                buff.append(s)
+                    .append("  . . . . . . . . . . . . . . . . . . . . . . . . ".substring(0, spaces))
+                    .append("| " + holder.getFlag().description())
+                    .append("\n");
+            }
+            w.println(buff.toString());
+        }
+        w.flush();
+    }
+
+    /**
+     * @return {@code true} if a "--help" flag was passed on the command line.
+     */
+    public boolean helpFlagged() {
+        return optionSet.has(HELP);
+    }
+
+    /**
+     * Debugging method. Prints the Flags found and the corresponding Fields.
+     */
+    public void printFlags() {
+        for (OptionHolder holder : options) {
+            System.out.println("Field: "+holder.getField().toGenericString()+"\nFlag: name:"+holder.getFlag().name()
+                    +", description:"+holder.getFlag().description()+", type:"+holder.getType()
+                    +", default:"+holder.getFlag().defaultValue());
+        }
+    }
+
+    /**
+     * Get the field type of a Field instance.
+     *
+     * @param field the field instance we want the type for.
+     * @return the type of the {@code field} in question.
+     */
+    private static FieldType fieldTypeOf(Field field) {
         if (field.getType().isAssignableFrom(Long.TYPE)
             || field.getType().isAssignableFrom(Long.class)) {
             return FieldType.LONG;
@@ -194,100 +350,6 @@ public class Flags {
     }
 
     /**
-     * Try to set the arguments from main method on the fields loaded by loadOpts(Class<?> c).
-     *
-     * @param args - Arguments passed from main method.
-     * @return this
-     */
-    public Flags parse(String[] args) {
-        final OptionSet optionSet = optionParser.parse(args);
-
-        if (optionSet.has(HELP)) {
-            printHelp();
-            helpCalled = true;
-            return this;
-        }
-
-        for (OptionHolder holder : options) {
-            OptionSpec<?> optionSpec = holder.getOptionSpec();
-            if (optionSet.has(optionSpec)) {
-                //set the option provided
-                try {
-                    if (holder.getType() == FieldType.INTEGER) {
-                        holder.getField().set(holder.getField().getClass(), (Integer) optionSet.valueOf(optionSpec));
-                    } else if (holder.getType() == FieldType.LONG) {
-                        holder.getField().set(holder.getField().getClass(), (Long) optionSet.valueOf(optionSpec));
-                    } else if (holder.getType() == FieldType.STRING) {
-                        holder.getField().set(holder.getField().getClass(), (String) optionSet.valueOf(optionSpec));
-                    } else if (holder.getType() == FieldType.BOOLEAN) {
-                        holder.getField().set(holder.getField().getClass(), (Boolean) optionSet.valueOf(optionSpec));
-                    }
-                } catch (IllegalArgumentException e) {
-                    throw new IllegalArgumentException("Unable to set the value for field: "+holder.getField().toGenericString(), e);
-                } catch (IllegalAccessException e) {
-                    throw new IllegalStateException("Unable to set the value for field: "+holder.getField().toGenericString(), e);
-                }
-            } else if (holder.getFlag().required()) {
-                //missing required parameter
-                printHelp();
-                throw new IllegalStateException("Required field missing: "+holder.getFlag().name());
-            } else {
-                //not provided, but optional... set the default value
-                String defaultValue = holder.getFlag().defaultValue();
-                try {
-                    if (holder.getType() == FieldType.INTEGER) {
-                        holder.getField().set(holder.getField().getClass(), Integer.parseInt(defaultValue));
-                    } else if (holder.getType() == FieldType.LONG) {
-                        holder.getField().set(holder.getField().getClass(), Long.parseLong(defaultValue));
-                    } else if (holder.getType() == FieldType.STRING) {
-                        holder.getField().set(holder.getField().getClass(), defaultValue);
-                    } else if (holder.getType() == FieldType.BOOLEAN) {
-                        holder.getField().set(holder.getField().getClass(), Boolean.getBoolean(defaultValue));
-                    }
-                } catch (IllegalArgumentException e) {
-                    throw e;
-                } catch (IllegalAccessException e) {
-                    throw new IllegalStateException("Unable to set the value for field: "+holder.getField().toGenericString(), e);
-                }
-            }
-        }
-
-        return this;
-    }
-
-    /**
-     * Prints the help.
-     */
-    public void printHelp() {
-        try {
-            optionParser.printHelpOn(System.out);
-        } catch (IOException e) {
-            throw new IllegalStateException("Unable to print help.", e);
-        }
-    }
-
-    /**
-     * Returns true if "--help" was one of the arguments.
-     * This means that no values has been set when calling parse().
-     *
-     * @return true if "help" was used, false if not.
-     */
-    public boolean helpCalled() {
-        return helpCalled ;
-    }
-
-    /**
-     * Debugging method. Prints the Flags found and the corresponding Fields.
-     */
-    public void printFlags() {
-        for (OptionHolder holder : options) {
-            System.out.println("Field: "+holder.getField().toGenericString()+"\nFlag: name:"+holder.getFlag().name()
-                    +", description:"+holder.getFlag().description()+", type:"+holder.getType()
-                    +", default:"+holder.getFlag().defaultValue());
-        }
-    }
-
-    /**
      * Internal class that holds an option's corresponding FieldType, Field, Flag and OptionSpec.
      *
      * @author acidmoose
@@ -298,12 +360,14 @@ public class Flags {
         private Field field;
         private OptionSpec<?> optionSpec;
         private final FieldType type;
+        private Class source;
 
-        public OptionHolder(FieldType type, Flag flag, Field field, OptionSpec<?> optionSpec) {
+        public OptionHolder(FieldType type, Flag flag, Field field, OptionSpec<?> optionSpec, Class source) {
             this.type = type;
             this.flag = flag;
             this.field = field;
             this.optionSpec = optionSpec;
+            this.source = source;
         }
 
         public Flag getFlag() {
@@ -320,6 +384,10 @@ public class Flags {
 
         public FieldType getType() {
             return type;
+        }
+
+        public Class getSource() {
+            return source;
         }
     }
 }
