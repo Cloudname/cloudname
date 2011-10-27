@@ -36,7 +36,7 @@ public class FlagsTest {
         Assert.assertEquals(new Integer(20), FlagsAllLegalFields.integer2);
         Assert.assertEquals(30, FlagsAllLegalFields.longNum);
         Assert.assertEquals(40, FlagsAllLegalFields.longNum2);
-        flags.printHelpSorted(System.out);
+        flags.printHelp(System.out);
     }
 
     /**

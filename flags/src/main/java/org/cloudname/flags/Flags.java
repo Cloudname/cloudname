@@ -243,17 +243,6 @@ public class Flags {
      * @param out the OutputStream we wish to print the help output to.
      */
     public void printHelp(OutputStream out) {
-        try {
-            optionParser.printHelpOn(out);
-        } catch (IOException e) {
-            throw new RuntimeException("Unable to print help.", e);
-        }
-    }
-
-    /**
-     * Print help ordered by class and command line option (case insensitive).
-     */
-    public void printHelpSorted(OutputStream out) {
         PrintWriter w = new PrintWriter(out);
 
         Map<String, List<OptionHolder>> holdersByClass = new TreeMap<String, List<OptionHolder>>();
