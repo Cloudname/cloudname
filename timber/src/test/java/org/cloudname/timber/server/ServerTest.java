@@ -1,31 +1,20 @@
 package org.cloudname.timber.server;
 
-import java.net.ServerSocket;
-import java.net.SocketException;
-import java.io.IOException;
+import org.cloudname.testtools.Net;
 
 import org.junit.*;
 import static org.junit.Assert.*;
 
+/**
+ * Unit tests for Server class.
+ *
+ * @author borud
+ */
 public class ServerTest {
-
-    public static int getFreePort() throws IOException {
-        ServerSocket ss = null;
-        try {
-            ss = new ServerSocket(0);
-            ss.setReuseAddress(true);
-            return ss.getLocalPort();
-        } finally {
-            if (null != ss) {
-                ss.close();
-            }
-        }
-    }
-
     @Test
     public void testServerSimple() throws Exception
     {
-        Server server = new Server(getFreePort());
+        Server server = new Server(Net.getFreePort());
         server.start();
         server.shutdown();
     }
