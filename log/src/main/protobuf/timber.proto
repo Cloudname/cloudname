@@ -5,6 +5,22 @@
 option java_package = "org.cloudname.log.pb";
 option optimize_for = SPEED;
 
+// Consistency levels indicating how we want the log message
+// to be handled by the logging infrastructure.
+enum ConsistencyLevel {
+  // Best effort.  Prioritize speed over consistency.
+  BESTEFFORT = 0;
+
+  // At least guarantee that the log message is synced to local disk
+  // before returning from calls or assuming responsibility for the
+  // log message.
+  SYNC = 1;
+
+  // Require that the log message is not only persisted locally, but
+  // also replicated so it exists in more than one place.
+  REPLICATED = 2;
+}
+
 // This message represents the envelope of a log message.  These are
 // the only fields that the core log server framework should deal with
 // minus the payload.  In the interest of simplicity and performance
@@ -15,35 +31,41 @@ option optimize_for = SPEED;
 message LogEvent {
   // Timestamp is in milliseconds since epoch
   required int64 timestamp = 1;
+
+  // The required consistency level of the log message
+  required ConsistencyLevel consistencyLevel = 2 [default = BESTEFFORT];
   
   // The level of this event.
-  required int32 level = 2;
+  required int32 level = 3;
 
   // Hostname of the machine where the log event originated.
-  required string host = 3;
+  required string host = 4;
 
   // The name of the service or the application that emitted the
   // event.  If used in conjunction with cloudname this is where
   // we put the primary service coordinate.
-  required string service_name = 4;
+  required string service_name = 5;
 
   // For Java programs the class and method where the log event
   // originated.
-  required string source = 5;
+  required string source = 6;
 
   // The type of log event.
-  required string type = 6;
+  required string type = 7;
 
   // Zero or more payloads associated with this log event.
-  repeated Payload payload = 7;
+  repeated Payload payload = 8;
 
   // The process id of the originating program.  If unknown this
   // defaults to zero.
-  optional int32 pid = 8 [default = 0];
+  optional int32 pid = 9 [default = 0];
 
   // The thread id of the originating program.  If unknown this
   // defaults to zero.
-  optional int32 tid = 9 [default = 0];
+  optional int32 tid = 10 [default = 0];
+
+  // Optional id of log message
+  optional string id = 11;
 }
 
 // This message represents the payload of a log message.

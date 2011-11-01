@@ -1,6 +1,7 @@
 package org.cloudname.log;
 
 import org.cloudname.log.pb.Timber;
+import static org.cloudname.log.pb.Timber.ConsistencyLevel;
 
 import java.net.InetAddress;
 import java.net.UnknownHostException;
@@ -41,6 +42,7 @@ public class LogUtil {
     {
         return Timber.LogEvent.newBuilder()
             .setTimestamp(System.currentTimeMillis())
+            .setConsistencyLevel(ConsistencyLevel.BESTEFFORT)
             .setLevel(level)
             .setHost(hostName)
             .setServiceName(service)

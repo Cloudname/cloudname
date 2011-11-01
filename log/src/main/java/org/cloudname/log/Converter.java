@@ -1,6 +1,7 @@
 package org.cloudname.log;
 
 import org.cloudname.log.pb.Timber;
+import static org.cloudname.log.pb.Timber.ConsistencyLevel;
 
 import com.google.protobuf.ByteString;
 
@@ -55,6 +56,7 @@ public class Converter {
     public Timber.LogEvent convertFrom(LogRecord rec) {
         Timber.LogEvent.Builder eventBuilder =  Timber.LogEvent.newBuilder()
             .setTimestamp(rec.getMillis())
+            .setConsistencyLevel(ConsistencyLevel.BESTEFFORT)
             .setLevel(rec.getLevel().intValue())
             .setHost(hostName)
             .setServiceName(serviceName)
