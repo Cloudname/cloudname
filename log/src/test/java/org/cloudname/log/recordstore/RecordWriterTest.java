@@ -1,6 +1,8 @@
 package org.cloudname.log.recordstore;
 
 import org.cloudname.log.pb.Timber;
+import static org.cloudname.log.pb.Timber.ConsistencyLevel;
+
 import com.google.protobuf.ByteString;
 import java.io.ByteArrayOutputStream;
 import java.io.ByteArrayInputStream;
@@ -24,6 +26,7 @@ public class RecordWriterTest {
     public static Timber.LogEvent createMessage(String message) {
         return Timber.LogEvent.newBuilder()
             .setTimestamp(1000000)
+            .setConsistencyLevel(ConsistencyLevel.BESTEFFORT)
             .setLevel(1)
             .setHost("example.com")
             .setServiceName("myservice")

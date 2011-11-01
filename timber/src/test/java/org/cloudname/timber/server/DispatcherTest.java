@@ -1,6 +1,7 @@
 package org.cloudname.timber.server;
 
 import org.cloudname.log.pb.Timber;
+import static org.cloudname.log.pb.Timber.ConsistencyLevel;
 
 import org.cloudname.timber.server.handler.LogEventHandler;
 import org.cloudname.timber.server.handler.LogEventHandlerException;
@@ -46,6 +47,7 @@ public class DispatcherTest {
     public static Timber.LogEvent createMessage(String message) {
         return Timber.LogEvent.newBuilder()
             .setTimestamp(System.currentTimeMillis())
+            .setConsistencyLevel(ConsistencyLevel.BESTEFFORT)
             .setLevel(1)
             .setHost("example.com")
             .setServiceName("myservice")

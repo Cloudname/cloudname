@@ -1,6 +1,7 @@
 package org.cloudname.log.archiver;
 
 import org.cloudname.log.pb.Timber;
+import static org.cloudname.log.pb.Timber.ConsistencyLevel;
 import org.cloudname.log.recordstore.RecordReader;
 
 import com.google.protobuf.ByteString;
@@ -31,6 +32,7 @@ public class SlotTest {
     {
         return Timber.LogEvent.newBuilder()
             .setTimestamp(time)
+            .setConsistencyLevel(ConsistencyLevel.BESTEFFORT)
             .setLevel(1)
             .setHost("example.com")
             .setServiceName("myservice")
