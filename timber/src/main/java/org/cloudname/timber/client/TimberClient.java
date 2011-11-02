@@ -66,8 +66,21 @@ public class TimberClient {
      * Shut down the client.
      */
     public void shutdown() {
-        // do nothing for now
-        // bootstrap.releaseExternalResources();
+        // The first step is always to get rid of any open channels.
+        // If we do not the releaseExternalResources() method is just
+        // going to hang until we do.
+        if ((channel != null) && channel.isOpen()) {
+            try {
+                ChannelFuture closeFuture = channel.getCloseFuture();
+                channel.close();
+                closeFuture.await();
+            } catch (InterruptedException e) {
+                // TODO(borud): is there anything else we can do at this point?
+                throw new RuntimeException(e);
+            }
+        }
+
+        bootstrap.releaseExternalResources();
     }
 
     /**

@@ -39,8 +39,16 @@ public class TimberClientHandler extends SimpleChannelUpstreamHandler {
     }
 
     @Override
-    public void messageReceived(ChannelHandlerContext ctx, final MessageEvent messageEvent) {
-        log.info(">>> Got message " + messageEvent.toString());
+    public void messageReceived(ChannelHandlerContext ctx, final MessageEvent event) {
+        Object obj = event.getMessage();
+
+        // Handle AckEvent
+        if (obj instanceof Timber.AckEvent) {
+            log.info(">>> Got ack event");
+            return;
+        }
+
+        log.info(">>> Got message " + event.toString());
     }
 
     @Override
