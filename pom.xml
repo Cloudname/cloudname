@@ -42,7 +42,7 @@
     <cn.joda-time.version>2.0</cn.joda-time.version>
 
     <!-- Internal dependency versions -->
-    <cn.version>2.1-SNAPSHOT</cn.version>
+    <cn.version>2.2.0</cn.version>
   </properties>
 
   <modules>
