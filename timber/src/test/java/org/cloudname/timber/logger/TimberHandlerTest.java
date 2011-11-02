@@ -6,6 +6,8 @@ import org.cloudname.timber.server.Server;
 import org.cloudname.timber.server.ServerTest;
 import org.cloudname.timber.server.handler.LogEventHandler;
 
+import org.cloudname.testtools.Net;
+
 import java.io.IOException;
 import java.util.List;
 import java.util.LinkedList;
@@ -61,7 +63,7 @@ public class TimberHandlerTest {
     @Before
     public void setup() throws IOException {
         listLogHandler = new ListLogHandler();
-        serverListenPort = ServerTest.getFreePort();
+        serverListenPort = Net.getFreePort();
         server = new Server(serverListenPort);
         server.addHandler(listLogHandler);
         server.start();

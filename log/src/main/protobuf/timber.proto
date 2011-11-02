@@ -64,7 +64,8 @@ message LogEvent {
   // defaults to zero.
   optional int32 tid = 10 [default = 0];
 
-  // Optional id of log message
+  // Optional id of log message.  Must be set for log messages that
+  // have ConsistencyLevel other than BESTEFFORT.
   optional string id = 11;
 }
 
@@ -79,4 +80,13 @@ message Payload {
   // The content type of the event payload.  Modeled after the MIME
   // types used in HTTP.
   optional string content_type = 3;
+}
+
+
+message AckEvent {
+  // Timestamp is in milliseconds since epoch.
+  required int64 timestamp = 1;
+
+  // The IDs we want to acknowledge reception of.
+  repeated string ids = 2;
 }
