@@ -20,7 +20,7 @@ public class RecordReaderTest {
     /**
      * Test reading log records.
      */
-    @Test (timeout=100)
+    @Test (timeout=200)
     public void testReader() throws Exception {
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         RecordWriter writer = new RecordWriter(out);
