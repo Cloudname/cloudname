@@ -40,18 +40,9 @@ public class JerseyRequestFilter implements ContainerRequestFilter {
     public ContainerRequest filter(final ContainerRequest request) {
         final User user = authenticate(request);
         if (user != null) {
-            request.setSecurityContext(new Authorizer(user));
+            request.setSecurityContext(new AuthenticatedAuthorizer(user));
         } else {
-            // This is a hack that, paradoxically, gives
-            // non-authenticated requests full power, while
-            // authenticated requests have restricted power. The
-            // hack will be removed once all our current clients
-            // authenticate properly.
-            request.setSecurityContext(new ChuckNorrisAuthorizer());
-            // FIXME(bakksjo): When we stop giving unlimited powers to
-            // unauthenticated requests, replace the line above with
-            // this instead:
-            // request.setSecurityContext(new UnauthenticatedAuthorizer());
+            request.setSecurityContext(new UnauthenticatedAuthorizer());
         }
         return request;
     }
@@ -63,7 +54,7 @@ public class JerseyRequestFilter implements ContainerRequestFilter {
         if (authenticationHeader == null) {
             // No authentication, no user.
             return null;
-            // Enable this if all clients are supposed to always authenticate.
+            // Enable this instead if all clients are supposed to always authenticate.
             // throw new MappableContainerException(
             //     new AuthenticationException(
             //         "Authentication required\r\n", REALM));
@@ -113,11 +104,11 @@ public class JerseyRequestFilter implements ContainerRequestFilter {
     }
 
     // Non-static because it needs access to the uriInfo field.
-    private class Authorizer implements SecurityContext {
+    private class AuthenticatedAuthorizer implements SecurityContext {
         private final User user;
         private final Principal principal;
 
-        public Authorizer(final User user) {
+        public AuthenticatedAuthorizer(final User user) {
             this.user = user;
             this.principal = new A3Principal(user);
         }
@@ -144,36 +135,6 @@ public class JerseyRequestFilter implements ContainerRequestFilter {
     }
 
     // Non-static because it needs access to the uriInfo field.
-    // Nothing can stop Chuck Norris; he can play any role.
-    private class ChuckNorrisAuthorizer implements SecurityContext {
-        private final Principal principal = new Principal() {
-                @Override
-                public String getName() { return "Chuck Norris"; }
-            };
-
-        @Override
-        public Principal getUserPrincipal() {
-            return principal;
-        }
-
-        @Override
-        public boolean isUserInRole(final String role) {
-            // Chuck Norris can play any role.
-            return true;
-        }
-
-        @Override
-        public boolean isSecure() {
-            return "https".equals(uriInfo.getRequestUri().getScheme());
-        }
-
-        @Override
-        public String getAuthenticationScheme() {
-            return null;
-        }
-    }
-
-    // Non-static because it needs access to the uriInfo field.
     private class UnauthenticatedAuthorizer implements SecurityContext {
         @Override
         public Principal getUserPrincipal() {
@@ -193,9 +154,7 @@ public class JerseyRequestFilter implements ContainerRequestFilter {
 
         @Override
         public String getAuthenticationScheme() {
-            // Request was not authenticated. (Hopefully, this will
-            // cause annotation-based access control such
-            // as @RolesAllowed to throw a 401 rather than 403.
+            // Request was not authenticated.
             return null;
         }
     }
