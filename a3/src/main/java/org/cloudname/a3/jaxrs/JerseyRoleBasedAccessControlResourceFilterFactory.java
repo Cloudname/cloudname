@@ -1,5 +1,6 @@
 package org.cloudname.a3.jaxrs;
 
+import com.sun.jersey.api.container.MappableContainerException;
 import com.sun.jersey.api.model.AbstractMethod;
 
 import com.sun.jersey.spi.container.ContainerRequest;
@@ -45,6 +46,7 @@ import javax.ws.rs.core.SecurityContext;
 public class JerseyRoleBasedAccessControlResourceFilterFactory
     implements ResourceFilterFactory
 {
+    private static final String REALM = "schmealm";
     private @Context SecurityContext sc;
 
     private class Filter implements ResourceFilter, ContainerRequestFilter {
@@ -89,7 +91,10 @@ public class JerseyRoleBasedAccessControlResourceFilterFactory
             // ---------------------------------------------------
             if (sc.getAuthenticationScheme() == null) {
                 // Authentication might help!
-                throw new WebApplicationException(Response.Status.UNAUTHORIZED);
+                throw new MappableContainerException(
+                        new AuthenticationException(
+                            "Needs authentication credentials\r\n",
+                            REALM));
             }
 
             // Request is authenticated, nothing to do but say no.
