@@ -45,6 +45,7 @@ public class Editor {
         "ls",
         "delete",
         "password",
+        "checkpassword",
         "adduser"
     };
 
@@ -94,6 +95,11 @@ public class Editor {
 
             if (line.startsWith("password")) {
                 cmdPassword(line);
+                continue;
+            }
+
+            if (line.startsWith("checkpassword")) {
+                cmdCheckPassword(line);
                 continue;
             }
 
@@ -162,6 +168,17 @@ public class Editor {
             System.out.println("*** Password string: " + Password.hashSecret(pass1));
         } else {
             System.out.println("*** Passwords did not match");
+        }
+    }
+
+    private void cmdCheckPassword(String line) throws IOException {
+        String pass = reader.readLine("  | Password : ", '*').trim();
+        String hash = reader.readLine("  |     Hash : ").trim();
+
+        if (Password.matchSecret(pass, hash)) {
+            System.out.println("*** Password ok");
+        } else {
+            System.out.println("*** Password does not validate");
         }
     }
 
@@ -259,12 +276,13 @@ public class Editor {
     private void cmdHelp(String line) {
         System.out.println(
             ""
-            + "  newdb - create new database/n"
+            + "  newdb - create new database\n"
             + "  load <service coordinate | file> - load database from coordinate or file\n"
             + "  save <service coordinate | file> - save database to coordinate or file\n"
             + "  ls - list current user database\n"
             + "  adduser - add a user\n"
             + "  password - convert password to bcrypt hash\n"
+            + "  checkpassword - check a password against a bcrypt hash\n"
             + "  delete <username>\n"
             + ""
         );
