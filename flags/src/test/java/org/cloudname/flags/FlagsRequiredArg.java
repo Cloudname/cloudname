@@ -8,7 +8,7 @@ package org.cloudname.flags;
  */
 public class FlagsRequiredArg {
     
-    @Flag(name="int", defaultValue="1", required=true)
+    @Flag(name="int", required=true)
     public static int integer;
     
 }

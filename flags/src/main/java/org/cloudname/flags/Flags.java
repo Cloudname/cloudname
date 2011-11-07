@@ -1,23 +1,20 @@
 package org.cloudname.flags;
 
-import joptsimple.OptionParser;
-import joptsimple.OptionSet;
-import joptsimple.OptionSpec;
-
-import java.lang.reflect.Field;
-import java.lang.reflect.Modifier;
-import java.io.IOException;
 import java.io.OutputStream;
 import java.io.PrintWriter;
-
+import java.lang.reflect.Field;
+import java.lang.reflect.Modifier;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.LinkedList;
-import java.util.List;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
+
+import joptsimple.OptionParser;
+import joptsimple.OptionSet;
+import joptsimple.OptionSpec;
 
 
 /**
@@ -28,8 +25,8 @@ import java.util.TreeMap;
  *
  * Typical use:
  *
- * @Flag(name="text", defaultValue="N/A", description="Output text")
- * public static String text;
+ * @Flag(name="text", description="Output text")
+ * public static String text = "DefaultString";
  *
  * Flags flags = new Flags()
  *              .loadOpts(MyClass.class)
@@ -93,21 +90,20 @@ public class Flags {
             // Determine the type of field
             FieldType type = fieldTypeOf(field);
 
-
             switch (type) {
 
             case INTEGER:
                 OptionSpec<Integer> intOption;
                 if (flag.required()) {
                     intOption = optionParser
-                        .accepts(name, description)
-                        .withRequiredArg()
-                        .ofType(Integer.class);
+                            .accepts(name, description)
+                            .withRequiredArg()
+                            .ofType(Integer.class);
                 } else {
                     intOption = optionParser
-                        .accepts(name, description)
-                        .withOptionalArg()
-                        .ofType(Integer.class);
+                            .accepts(name, description)
+                            .withOptionalArg()
+                            .ofType(Integer.class);
                 }
                 options.add(new OptionHolder(type, flag, field, intOption, c));
                 break;
@@ -209,26 +205,6 @@ public class Flags {
                 if (holder.getFlag().required()) {
                     throw new IllegalArgumentException("Required argument missing: " + holder.getFlag().name());
                 }
-
-                // Flag was not specified on the command line.  Set the default value.
-                String defaultValue = holder.getFlag().defaultValue();
-                switch(holder.getType()) {
-                case INTEGER:
-                    holder.getField().set(holder.getField().getClass(), Integer.parseInt(defaultValue));
-                    break;
-
-                case LONG:
-                    holder.getField().set(holder.getField().getClass(), Long.parseLong(defaultValue));
-                    break;
-
-                case STRING:
-                    holder.getField().set(holder.getField().getClass(), defaultValue);
-                    break;
-
-                case BOOLEAN:
-                    holder.getField().set(holder.getField().getClass(), Boolean.getBoolean(defaultValue));
-                    break;
-                }
             } catch (IllegalAccessException e) {
                 throw new RuntimeException("Programming error, illegal access for " + holder.getField().toGenericString());
             }
@@ -269,19 +245,19 @@ public class Flags {
             // Sort the options. In Java, sorting collections is worse
             // than watching Pandas fuck.
             Collections.sort(holderList, new Comparator<OptionHolder>() {
-                    @Override
-                    public int compare(OptionHolder a, OptionHolder b) {
-                        return a.getFlag().name().toLowerCase().compareTo(b.getFlag().name().toLowerCase());
-                    }
-                });
+                @Override
+                public int compare(OptionHolder a, OptionHolder b) {
+                    return a.getFlag().name().toLowerCase().compareTo(b.getFlag().name().toLowerCase());
+                }
+            });
 
             StringBuffer buff = new StringBuffer();
 
             buff.append("\n\n")
-                .append(className)
-                .append("\n")
-                .append("------------------------------------------------------------------------")
-                .append("\n");
+            .append(className)
+            .append("\n")
+            .append("------------------------------------------------------------------------")
+            .append("\n");
 
             for (OptionHolder holder : holderList) {
                 // Mark required flags with a "*"
@@ -293,9 +269,9 @@ public class Flags {
                 int spaces = 50 - s.length();
                 spaces = spaces < 0 ? 0 : spaces;
                 buff.append(s)
-                    .append("  . . . . . . . . . . . . . . . . . . . . . . . . ".substring(0, spaces))
-                    .append("| " + holder.getFlag().description())
-                    .append("\n");
+                .append("  . . . . . . . . . . . . . . . . . . . . . . . . ".substring(0, spaces))
+                .append("| " + holder.getFlag().description())
+                .append("\n");
             }
             w.println(buff.toString());
         }
@@ -311,12 +287,18 @@ public class Flags {
 
     /**
      * Debugging method. Prints the Flags found and the corresponding Fields.
+     * @throws IllegalAccessException 
+     * @throws IllegalArgumentException 
      */
     public void printFlags() {
-        for (OptionHolder holder : options) {
-            System.out.println("Field: "+holder.getField().toGenericString()+"\nFlag: name:"+holder.getFlag().name()
-                    +", description:"+holder.getFlag().description()+", type:"+holder.getType()
-                    +", default:"+holder.getFlag().defaultValue());
+        try {
+            for (OptionHolder holder : options) {
+                System.out.println("Field: "+holder.getField().toGenericString()+"\nFlag: name:"+holder.getFlag().name()
+                        +", description:"+holder.getFlag().description()+", type:"+holder.getType()
+                        +", default:"+holder.getField().get(holder.getSource()));
+            }
+        } catch (IllegalAccessException e) {
+            throw new RuntimeException(e);
         }
     }
 
@@ -328,12 +310,12 @@ public class Flags {
      */
     private static FieldType fieldTypeOf(Field field) {
         if (field.getType().isAssignableFrom(Long.TYPE)
-            || field.getType().isAssignableFrom(Long.class)) {
+                || field.getType().isAssignableFrom(Long.class)) {
             return FieldType.LONG;
         }
 
         if (field.getType().isAssignableFrom(Boolean.TYPE)
-            || field.getType().isAssignableFrom(Boolean.class)) {
+                || field.getType().isAssignableFrom(Boolean.class)) {
             return FieldType.BOOLEAN;
         }
 
@@ -342,7 +324,7 @@ public class Flags {
         }
 
         if (field.getType().isAssignableFrom(Integer.TYPE)
-            || field.getType().isAssignableFrom(Integer.class)) {
+                || field.getType().isAssignableFrom(Integer.class)) {
             return FieldType.INTEGER;
         }
 

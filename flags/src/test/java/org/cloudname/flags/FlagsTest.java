@@ -19,7 +19,20 @@ public class FlagsTest {
     public void testSimpleRun() {
         Flags flags = new Flags()
         .loadOpts(FlagsAllLegalFields.class)
-        .parse(new String[]{"--boolean", "true",
+        .parse(new String[]{});
+
+        Assert.assertFalse("Help seems to have been called. It should not have been.", flags.helpFlagged());
+
+        Assert.assertEquals(false, FlagsAllLegalFields.bool);
+        Assert.assertEquals(new Boolean(false), FlagsAllLegalFields.bool2);
+        Assert.assertEquals("NA", FlagsAllLegalFields.string);
+        Assert.assertEquals(1, FlagsAllLegalFields.integer);
+        Assert.assertEquals(new Integer(1), FlagsAllLegalFields.integer2);
+        Assert.assertEquals(1, FlagsAllLegalFields.longNum);
+        Assert.assertEquals(1, FlagsAllLegalFields.longNum2);
+        flags.printFlags();
+        
+        flags.parse(new String[]{"--boolean", "true",
                 "--Boolean", "true",
                 "--string", "stringtest",
                 "--int", "10",
@@ -37,26 +50,7 @@ public class FlagsTest {
         Assert.assertEquals(30, FlagsAllLegalFields.longNum);
         Assert.assertEquals(40, FlagsAllLegalFields.longNum2);
         flags.printHelp(System.out);
-    }
-
-    /**
-     * Test all supported field types with default value.
-     */
-    @Test
-    public void testDefaultValues() {
-        Flags flags = new Flags()
-        .loadOpts(FlagsAllLegalFields.class)
-        .parse(new String[]{});
-
-        Assert.assertFalse("Help seems to have been called. It should not have been.", flags.helpFlagged());
-
-        Assert.assertEquals(false, FlagsAllLegalFields.bool);
-        Assert.assertEquals(new Boolean(false), FlagsAllLegalFields.bool2);
-        Assert.assertEquals("NA", FlagsAllLegalFields.string);
-        Assert.assertEquals(1, FlagsAllLegalFields.integer);
-        Assert.assertEquals(new Integer(1), FlagsAllLegalFields.integer2);
-        Assert.assertEquals(1, FlagsAllLegalFields.longNum);
-        Assert.assertEquals(1, FlagsAllLegalFields.longNum2);
+        flags.printFlags();
     }
 
     /**

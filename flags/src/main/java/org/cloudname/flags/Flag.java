@@ -23,13 +23,6 @@ public @interface Flag {
     String name();
     
     /**
-     * The default value of the field, if it is not given as a command line argument.
-     * Overridden by required().
-     * @return
-     */
-    String defaultValue();
-    
-    /**
      * A description of the field. Visible when running "--help".
      * @return
      */
@@ -37,7 +30,7 @@ public @interface Flag {
     
     /**
      * Defines if a field is required to be present in the String[] or not.
-     * Overrides defaultValue.
+     * Overrides the default value.
      * @return
      */
     boolean required() default false;
