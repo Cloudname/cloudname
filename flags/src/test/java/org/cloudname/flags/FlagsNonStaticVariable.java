@@ -8,7 +8,7 @@ package org.cloudname.flags;
  */
 public class FlagsNonStaticVariable {
     
-    @Flag(name="string", defaultValue="NA", description="String test")
-    public String string;
+    @Flag(name="string", description="String test")
+    public String string = "NA";
     
 }
