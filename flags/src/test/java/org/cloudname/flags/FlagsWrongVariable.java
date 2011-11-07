@@ -8,7 +8,7 @@ package org.cloudname.flags;
  */
 public class FlagsWrongVariable {
 
-    @Flag(name="float", defaultValue="", description="Illegal argument matching")
-    public static float illegalArg;
+    @Flag(name="float", description="Illegal argument matching")
+    public static float illegalArg = 0;
     
 }

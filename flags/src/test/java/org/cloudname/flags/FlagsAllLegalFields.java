@@ -8,24 +8,24 @@ package org.cloudname.flags;
  */
 public class FlagsAllLegalFields {
 
-    @Flag(name="string", defaultValue="NA", description="String test")
-    public static String string;
+    @Flag(name="string", description="String test")
+    public static String string = "NA";
 
-    @Flag(name="int", defaultValue="1", description="Some int")
-    public static int integer;
+    @Flag(name="int", description="Some int")
+    public static int integer = 1;
 
-    @Flag(name="boolean", defaultValue="false")
-    public static boolean bool;
+    @Flag(name="boolean")
+    public static boolean bool = false;
 
-    @Flag(name="Integer", defaultValue="1")
-    public static Integer integer2;
+    @Flag(name="Integer")
+    public static Integer integer2 = new Integer(1);
 
-    @Flag(name="Boolean", defaultValue="false")
-    public static Boolean bool2;
+    @Flag(name="Boolean")
+    public static Boolean bool2 = false;
 
-    @Flag(name="long", defaultValue="1")
-    public static long longNum;
+    @Flag(name="long")
+    public static long longNum = 1L;
 
-    @Flag(name="Long", defaultValue="1")
-    public static long longNum2;
+    @Flag(name="Long")
+    public static long longNum2 = 1L;
 }
