@@ -96,14 +96,14 @@ public class Flags {
                 OptionSpec<Integer> intOption;
                 if (flag.required()) {
                     intOption = optionParser
-                        .accepts(name, description)
-                        .withRequiredArg()
-                        .ofType(Integer.class);
+                            .accepts(name, description)
+                            .withRequiredArg()
+                            .ofType(Integer.class);
                 } else {
                     intOption = optionParser
-                        .accepts(name, description)
-                        .withOptionalArg()
-                        .ofType(Integer.class);
+                            .accepts(name, description)
+                            .withOptionalArg()
+                            .ofType(Integer.class);
                 }
                 options.add(new OptionHolder(type, flag, field, intOption, c));
                 break;
@@ -245,19 +245,19 @@ public class Flags {
             // Sort the options. In Java, sorting collections is worse
             // than watching Pandas fuck.
             Collections.sort(holderList, new Comparator<OptionHolder>() {
-                    @Override
-                    public int compare(OptionHolder a, OptionHolder b) {
-                        return a.getFlag().name().toLowerCase().compareTo(b.getFlag().name().toLowerCase());
-                    }
-                });
+                @Override
+                public int compare(OptionHolder a, OptionHolder b) {
+                    return a.getFlag().name().toLowerCase().compareTo(b.getFlag().name().toLowerCase());
+                }
+            });
 
             StringBuffer buff = new StringBuffer();
 
             buff.append("\n\n")
-                .append(className)
-                .append("\n")
-                .append("------------------------------------------------------------------------")
-                .append("\n");
+            .append(className)
+            .append("\n")
+            .append("------------------------------------------------------------------------")
+            .append("\n");
 
             for (OptionHolder holder : holderList) {
                 // Mark required flags with a "*"
@@ -269,9 +269,9 @@ public class Flags {
                 int spaces = 50 - s.length();
                 spaces = spaces < 0 ? 0 : spaces;
                 buff.append(s)
-                    .append("  . . . . . . . . . . . . . . . . . . . . . . . . ".substring(0, spaces))
-                    .append("| " + holder.getFlag().description())
-                    .append("\n");
+                .append("  . . . . . . . . . . . . . . . . . . . . . . . . ".substring(0, spaces))
+                .append("| " + holder.getFlag().description())
+                .append("\n");
             }
             w.println(buff.toString());
         }
@@ -287,19 +287,18 @@ public class Flags {
 
     /**
      * Debugging method. Prints the Flags found and the corresponding Fields.
+     * @throws IllegalAccessException 
+     * @throws IllegalArgumentException 
      */
     public void printFlags() {
-        
-        for (OptionHolder holder : options) {
-            try {
+        try {
+            for (OptionHolder holder : options) {
                 System.out.println("Field: "+holder.getField().toGenericString()+"\nFlag: name:"+holder.getFlag().name()
                         +", description:"+holder.getFlag().description()+", type:"+holder.getType()
                         +", default:"+holder.getField().get(holder.getSource()));
-            } catch (IllegalArgumentException e) {
-                e.printStackTrace();
-            } catch (IllegalAccessException e) {
-                e.printStackTrace();
             }
+        } catch (IllegalAccessException e) {
+            throw new RuntimeException(e);
         }
     }
 
@@ -311,12 +310,12 @@ public class Flags {
      */
     private static FieldType fieldTypeOf(Field field) {
         if (field.getType().isAssignableFrom(Long.TYPE)
-            || field.getType().isAssignableFrom(Long.class)) {
+                || field.getType().isAssignableFrom(Long.class)) {
             return FieldType.LONG;
         }
 
         if (field.getType().isAssignableFrom(Boolean.TYPE)
-            || field.getType().isAssignableFrom(Boolean.class)) {
+                || field.getType().isAssignableFrom(Boolean.class)) {
             return FieldType.BOOLEAN;
         }
 
@@ -325,7 +324,7 @@ public class Flags {
         }
 
         if (field.getType().isAssignableFrom(Integer.TYPE)
-            || field.getType().isAssignableFrom(Integer.class)) {
+                || field.getType().isAssignableFrom(Integer.class)) {
             return FieldType.INTEGER;
         }
 
