@@ -172,7 +172,12 @@ public class Flags {
      */
     public Flags parse(String[] args) {
         optionSet = optionParser.parse(args);
-
+        
+        //do not parse options if "help" is a part of the arguments given
+        if (helpFlagged()) {
+            return this;
+        }
+        
         for (OptionHolder holder : options) {
             try {
                 OptionSpec<?> optionSpec = holder.getOptionSpec();
