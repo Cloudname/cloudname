@@ -12,8 +12,6 @@ import org.cloudname.flags.Flags;
  * @author borud
  */
 public class Main {
-    private static OptionParser parser = new OptionParser();
-
     @Flag (name="enable-archiver-plugin", description="Enable the archiver")
     public static boolean enableArchiver = true;
 
