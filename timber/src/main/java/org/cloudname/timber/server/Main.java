@@ -3,11 +3,8 @@ package org.cloudname.timber.server;
 import org.cloudname.timber.server.handler.archiver.SimpleArchiver;
 import org.cloudname.timber.common.Constants;
 
-import joptsimple.OptionException;
-import joptsimple.OptionParser;
-import joptsimple.OptionSet;
-import joptsimple.OptionSpec;
-
+import org.cloudname.flags.Flag;
+import org.cloudname.flags.Flags;
 
 /**
  * Main entry point for Timber server.
@@ -17,45 +14,42 @@ import joptsimple.OptionSpec;
 public class Main {
     private static OptionParser parser = new OptionParser();
 
-    private static OptionSpec<Void> help
-        = parser.accepts("help", "this help text");
+    @Flag (name="enable-archiver-plugin", description="Enable the archiver")
+    public static boolean enableArchiver = true;
 
-    private static OptionSpec<String> logdir
-        = parser.accepts("logdir", "the root log directory for SimpleArchiver")
-        .withRequiredArg().ofType(String.class);
+    @Flag (name="logdir", description="the log directory", required=false)
+    public static String logdir = "logs";
 
-    private static OptionSpec<Integer> maxSlotSize
-        = parser.accepts("maxslotsize", "max file size for SimpleArchiver files")
-        .withRequiredArg().ofType(Integer.class)
-        .defaultsTo(Constants.DEFAULT_MAX_ARCHIVER_FILESIZE);
+    @Flag (name="max-slot-size", description = "The max size of individual slot files", required=false)
+    public static int maxSlotSize = Constants.DEFAULT_MAX_ARCHIVER_FILESIZE;
 
-    private static OptionSpec<Integer> port
-        = parser.accepts("port", "listen port for log server")
-        .withRequiredArg().ofType(Integer.class)
-        .describedAs("1-65535")
-        .defaultsTo(Constants.DEFAULT_TIMBER_PORT);
+    @Flag (name="port", description="The port the logserver listens to", required=false)
+    public static int port = Constants.DEFAULT_TIMBER_PORT;
 
+    /**
+     * Start the timber server.
+     */
     public static void main(String[] args)
         throws Exception
     {
-        // Parse command line options
-        OptionSet optionSet = parser.parse(args);
+        // Parse the flags.
+        Flags flags = new Flags()
+            .loadOpts(Main.class)
+            .parse(args);
 
         // Check if we wish to print out help text
-        if (optionSet.has(help)) {
-            parser.printHelpOn(System.out);
+        if (flags.helpFlagged()) {
+            flags.printHelp(System.out);
             return;
         }
 
         // Create a server instance
-        Server server = new Server(port.value(optionSet));
+        Server server = new Server(port);
 
         // Figure out what built-in handlers to populate it with
         // Do we have options for the Archiver plugin?
-        if (optionSet.has(logdir)) {
-            SimpleArchiver simpleArchiver
-                = new SimpleArchiver(logdir.value(optionSet),
-                                     maxSlotSize.value(optionSet));
+        if (enableArchiver) {
+            SimpleArchiver simpleArchiver = new SimpleArchiver(logdir, maxSlotSize);
             simpleArchiver.init();
             server.addHandler(simpleArchiver);
         }
