@@ -13,6 +13,9 @@ public interface LogEventHandler
      * This method is used for delivering a log event to the handler.
      * This method should return as quickly as possible.
      *
+     * Implementations are expected to document whether or not they
+     * honor the ConsistencyLevel given in the log message.
+     *
      * @param logEvent an incoming log event.
      */
     public void handle(Timber.LogEvent logEvent)

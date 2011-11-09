@@ -1,8 +1,9 @@
 package org.cloudname.flags;
 
-import junit.framework.Assert;
+import java.io.ByteArrayOutputStream;
 
-import org.junit.Test;
+import org.junit.*;
+import static org.junit.Assert.*;
 
 /**
  * Test class for Flags.
@@ -21,17 +22,17 @@ public class FlagsTest {
         .loadOpts(FlagsAllLegalFields.class)
         .parse(new String[]{});
 
-        Assert.assertFalse("Help seems to have been called. It should not have been.", flags.helpFlagged());
+        assertFalse("Help seems to have been called. It should not have been.", flags.helpFlagged());
 
-        Assert.assertEquals(false, FlagsAllLegalFields.bool);
-        Assert.assertEquals(new Boolean(false), FlagsAllLegalFields.bool2);
-        Assert.assertEquals("NA", FlagsAllLegalFields.string);
-        Assert.assertEquals(1, FlagsAllLegalFields.integer);
-        Assert.assertEquals(new Integer(1), FlagsAllLegalFields.integer2);
-        Assert.assertEquals(1, FlagsAllLegalFields.longNum);
-        Assert.assertEquals(1, FlagsAllLegalFields.longNum2);
+        assertEquals(false, FlagsAllLegalFields.bool);
+        assertEquals(new Boolean(false), FlagsAllLegalFields.bool2);
+        assertEquals("NA", FlagsAllLegalFields.string);
+        assertEquals(1, FlagsAllLegalFields.integer);
+        assertEquals(new Integer(1), FlagsAllLegalFields.integer2);
+        assertEquals(1, FlagsAllLegalFields.longNum);
+        assertEquals(1, FlagsAllLegalFields.longNum2);
         flags.printFlags();
-        
+
         flags.parse(new String[]{"--boolean", "true",
                 "--Boolean", "true",
                 "--string", "stringtest",
@@ -40,17 +41,22 @@ public class FlagsTest {
                 "--long", "30",
                 "--Long", "40"});
 
-        Assert.assertFalse("Help seems to have been called. It should not have been.", flags.helpFlagged());
+        assertFalse("Help seems to have been called. It should not have been.", flags.helpFlagged());
 
-        Assert.assertEquals(true, FlagsAllLegalFields.bool);
-        Assert.assertEquals(new Boolean(true), FlagsAllLegalFields.bool2);
-        Assert.assertEquals("stringtest", FlagsAllLegalFields.string);
-        Assert.assertEquals(10, FlagsAllLegalFields.integer);
-        Assert.assertEquals(new Integer(20), FlagsAllLegalFields.integer2);
-        Assert.assertEquals(30, FlagsAllLegalFields.longNum);
-        Assert.assertEquals(40, FlagsAllLegalFields.longNum2);
-        flags.printHelp(System.out);
-        flags.printFlags();
+        assertEquals(true, FlagsAllLegalFields.bool);
+        assertEquals(new Boolean(true), FlagsAllLegalFields.bool2);
+        assertEquals("stringtest", FlagsAllLegalFields.string);
+        assertEquals(10, FlagsAllLegalFields.integer);
+        assertEquals(new Integer(20), FlagsAllLegalFields.integer2);
+        assertEquals(30, FlagsAllLegalFields.longNum);
+        assertEquals(40, FlagsAllLegalFields.longNum2);
+
+        // Just make sure that printHelp() produces something.  Since
+        // the format should change to something more sensible we do
+        // not do any checks on content just yet.
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        flags.printHelp(baos);
+        assertTrue(baos.size() > 0);
     }
 
     /**

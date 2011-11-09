@@ -11,6 +11,8 @@ import java.util.logging.LogRecord;
 /**
  * A log handler for use with the java.util.logging package.
  *
+ * TODO(borud): decide if this is obsolete and possibly remove it.
+ *
  * @author borud
  */
 public class TimberHandler extends Handler {
