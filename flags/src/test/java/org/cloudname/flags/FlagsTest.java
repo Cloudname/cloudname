@@ -58,6 +58,20 @@ public class FlagsTest {
         flags.printHelp(baos);
         assertTrue(baos.size() > 0);
     }
+    
+    /**
+     * Test that printing help does not crash on various cases.
+     */
+    @Test
+    public void testPrintHelp() {
+        try {
+            Flags flags = new Flags()
+            .loadOpts(FlagsHelpTest.class);
+            flags.printHelp(System.out);
+        } catch (Exception e) {
+            assertFalse("Cought exception.", true);
+        }
+    }
 
     /**
      * Test the fail event when a required parameter is not supplied.
