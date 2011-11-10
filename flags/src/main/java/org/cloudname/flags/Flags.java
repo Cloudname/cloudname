@@ -172,7 +172,12 @@ public class Flags {
      */
     public Flags parse(String[] args) {
         optionSet = optionParser.parse(args);
-
+        
+        //do not parse options if "help" is a part of the arguments given
+        if (helpFlagged()) {
+            return this;
+        }
+        
         for (OptionHolder holder : options) {
             try {
                 OptionSpec<?> optionSpec = holder.getOptionSpec();
@@ -263,7 +268,13 @@ public class Flags {
                 // Mark required flags with a "*"
                 buff.append(holder.getFlag().required() ? "* " : "  ");
 
-                String s = "  --" + holder.getFlag().name() + "=<" + holder.getType() + ">";
+                String s;
+                try {
+                    s = "  --" + holder.getFlag().name() + " <" + holder.getType() + "> default: "
+                            +holder.getField().get(holder.getSource());
+                } catch (IllegalAccessException e) {
+                    throw new RuntimeException(e);
+                }
 
                 // Avert your eyes.
                 int spaces = 50 - s.length();
