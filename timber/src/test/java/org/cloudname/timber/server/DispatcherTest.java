@@ -39,7 +39,6 @@ public class DispatcherTest {
         }
     }
 
-
     /**
      * Utility method for creating a log message.
      * @return a Timber.LogEvent with a given text message.
@@ -66,9 +65,9 @@ public class DispatcherTest {
      * Trivial test with one slow handler.
      */
     @Test
-    public void testDispatcherSimple()
-    {
+    public void testDispatcherSimple() throws Exception {
         Dispatcher disp = new Dispatcher(10);
+        MockChannel channel = new MockChannel();
         DummyHandler handler1 = new DummyHandler("DummyHandler 1");
         SlowHandler handler2 = new SlowHandler("DummyHandler 2");
         disp.addHandler(handler1);
@@ -77,7 +76,7 @@ public class DispatcherTest {
 
         for (int i = 0; i < 50; i++) {
             Timber.LogEvent event = createMessage("This is log message " + i);
-            disp.dispatch(event);
+            disp.dispatch(event, channel);
         }
 
         disp.shutdown();
@@ -87,5 +86,71 @@ public class DispatcherTest {
         assertEquals(50, handler2.getHandleCalled());
         assertEquals(1, handler1.getCloseCalled());
         assertEquals(1, handler2.getCloseCalled());
+    }
+
+    /**
+     * Verify that acknowledgements get written back on the channel.
+     */
+    @Test
+    public void testAcknowledge() throws Exception {
+        MockChannel channel = new MockChannel();
+        assertNull(channel.getWriteObject());
+        assertEquals(0, channel.getWriteCount());
+
+        DummyHandler handler1 = new DummyHandler("dummy handler 1");
+        DummyHandler handler2 = new DummyHandler("dummy handler 2");
+        Dispatcher disp = new Dispatcher(10);
+        disp.addHandler(handler1);
+        disp.addHandler(handler2);
+        disp.init();
+
+        Timber.LogEvent eventWithConsistencySync = Timber.LogEvent.newBuilder(createMessage("meh"))
+            .setConsistencyLevel(ConsistencyLevel.SYNC)
+            .setId("abc123")
+            .build();
+
+        // Since the dispatcher is asynchronous we have to shut it
+        // down to speed up proceedings a bit.  This is not elegant
+        // but somewhat better than complicating the dispatcher with
+        // synchronois queue draining.
+        disp.dispatch(eventWithConsistencySync, channel);
+        disp.shutdown();
+
+        // Make sure we get exactly one ack.
+        assertEquals(1, channel.getWriteCount());
+
+        // Should throw a class cast exception if we get the wrong
+        // type of object back.
+        Timber.AckEvent ackEvent = (Timber.AckEvent) channel.getWriteObject();
+        assertNotNull(ackEvent);
+        assertEquals("abc123", ackEvent.getId(0));
+        assertTrue(ackEvent.getTimestamp() > 0);
+    }
+
+    /**
+     * Just test a bunch of events that have elevated consistencylevel.
+     */
+    @Test
+    public void testMultipleAcknowledges() throws Exception {
+        MockChannel channel = new MockChannel();
+        assertNull(channel.getWriteObject());
+
+        Dispatcher disp = new Dispatcher(10);
+        disp.init();
+
+        int numEvents = 1000;
+        for (int i = 0; i < numEvents; i++) {
+            Timber.LogEvent event = Timber.LogEvent.newBuilder(createMessage("meh " + i))
+                .setConsistencyLevel(ConsistencyLevel.REPLICATED)
+                .setId("x" + i)
+                .build();
+            disp.dispatch(event, channel);
+        }
+        disp.shutdown();
+        assertEquals(numEvents, channel.getWriteCount());
+
+        // Look at the last ack
+        Timber.AckEvent ackEvent = (Timber.AckEvent) channel.getWriteObject();
+        assertEquals("x"+ (numEvents - 1), ackEvent.getId(0));
     }
 }
