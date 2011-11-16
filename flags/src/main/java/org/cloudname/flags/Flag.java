@@ -18,6 +18,8 @@ public @interface Flag {
     
     /**
      * The name used in command line argument. e.g. "bar" in "java Foo --bar 1".
+     * In this example, "bar" can not be defined twice as this could make
+     * "--bar 1" set the wrong value.
      * @return
      */
     String name();

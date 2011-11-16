@@ -73,6 +73,13 @@ public class FlagsTest {
         }
     }
 
+    @Test (expected = IllegalArgumentException.class)
+    public void testMultipleFlagsWithSameName() {
+        Flags flags = new Flags()
+        .loadOpts(FlagsAllLegalFields.class)
+        .loadOpts(FlagsDoubleName.class);
+    }
+
     /**
      * Test the fail event when a required parameter is not supplied.
      */
