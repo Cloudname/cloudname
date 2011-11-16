@@ -174,6 +174,9 @@ public class Slot {
         }
     }
 
+    public long getNumBytesInFile() {
+        return numBytesInFile;
+    }
 
     /**
      * Close the current writer and ditch the currentWriter and
