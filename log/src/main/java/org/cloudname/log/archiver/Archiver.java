@@ -41,7 +41,8 @@ public class Archiver {
     }
 
     /**
-     * Initialize the archiver.
+     * Initialize the archiver.  If the logging directory specified in
+     * the constructor does not exist it will be created.
      */
     public void init() {
         logDir = new File(logPath);
@@ -52,6 +53,16 @@ public class Archiver {
         }
     }
 
+    /**
+     * Append log event to the appropriate slot file given the
+     * timestamp of the LogEvent.
+     *
+     * @param logEvent the LogEvent we wish to log.
+     * @throws IllegalStateException if the archiver was closed.
+     * @throws ArchiverException if an io error occurred when trying
+     *   to write a log event.  The original IO exception causing the
+     *   problem will be chained.
+     */
     public void handle(Timber.LogEvent logEvent) {
         if (closed) {
             throw new IllegalStateException("Archiver was closed");
@@ -64,6 +75,15 @@ public class Archiver {
         }
     }
 
+    /**
+     * Ensure that all currently opened slot files are flushed to
+     * disk.
+     *
+     * @throws ArchiverException if an io error occurred when trying
+     *   to flush the slot files.  The original IO exception causing
+     *   the problem will be chained.
+     *
+     */
     public void flush() {
         for (Slot slot : slotLruCache.values()) {
             try {
@@ -74,6 +94,16 @@ public class Archiver {
         }
     }
 
+    /**
+     * Close the archiver.  Closes all the currently open slot files.
+     * After an Archiver has been closed it cannot be re-opened.  Any
+     * attempt at logging messages to a closed Archiver will result in
+     * an IllegalStateException.
+     *
+     * @throws ArchiverException if an io error occurred when trying
+     *   to flush the slot files.  The original IO exception causing
+     *   the problem will be chained.
+     */
     public void close() {
         for (Slot slot : slotLruCache.values()) {
             try {
@@ -85,6 +115,14 @@ public class Archiver {
         closed = true;
     }
 
+    /**
+     * Return the name of the Archiver.  Currently just returns the class name.
+     *
+     * TODO(borud): This is a leftover from when this was a plugin in
+     *   Timber.  We should probably remove this method.
+     *
+     * @return the name of the archiver.
+     */
     public String getName() {
         return Archiver.class.getName();
     }

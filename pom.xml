@@ -32,7 +32,7 @@
     <cn.zookeeper.version>3.3.3</cn.zookeeper.version>
     <cn.jackson.version>1.8.1</cn.jackson.version>
     <cn.junit.version>4.8.1</cn.junit.version>
-    <cn.netty.version>3.2.3.Final</cn.netty.version>
+    <cn.netty.version>3.2.6.Final</cn.netty.version>
     <cn.protobuf.version>2.3.0</cn.protobuf.version>
     <cn.jline.version>0.9.94</cn.jline.version>
     <cn.jmxri.version>1.2.1</cn.jmxri.version>

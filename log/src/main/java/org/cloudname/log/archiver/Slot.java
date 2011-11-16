@@ -174,6 +174,14 @@ public class Slot {
         }
     }
 
+    /**
+     * Get the number of bytes written to the current slot file.
+     *
+     * @return number of bytes written to current slot file so far.
+     */
+    public long getNumBytesInFile() {
+        return numBytesInFile;
+    }
 
     /**
      * Close the current writer and ditch the currentWriter and
@@ -198,7 +206,6 @@ public class Slot {
 
         return currentFile.getAbsolutePath();
     }
-
 
     /**
      * Flush output to file.

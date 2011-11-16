@@ -9,6 +9,8 @@ import com.google.protobuf.ByteString;
 import java.io.File;
 import java.io.FileInputStream;
 
+import java.util.logging.Logger;
+
 import org.junit.*;
 import static org.junit.Assert.*;
 import org.junit.rules.TemporaryFolder;
@@ -19,8 +21,13 @@ import org.junit.rules.TemporaryFolder;
  * @author borud
  */
 public class SlotTest {
+    private static final Logger log = Logger.getLogger(SlotTest.class.getName());
+
     @Rule
     public TemporaryFolder temp = new TemporaryFolder();
+
+    // Just a point in time that we use in our tests
+    private static final long pointInTime = 1321390697L;
 
 
     /**
@@ -47,6 +54,9 @@ public class SlotTest {
             .build();
     }
 
+    /**
+     * Simple test to just make sure that things work without blowing up.
+     */
     @Test
     public void simpleTest()
         throws Exception
@@ -54,7 +64,6 @@ public class SlotTest {
          String prefix = temp.newFolder("test1").getAbsolutePath();
          Slot slot = new Slot(prefix, (10 * 1024 * 1024));
          slot.write(makeLogEvent(0));
-         System.out.println(slot.toString());
     }
 
     @Test
@@ -68,7 +77,7 @@ public class SlotTest {
             + File.separator + "slot"
             ;
 
-        // Make slot with room for 200k
+        // Make slot with room for 50k
         long slotSize = 50 * 1024;
         Slot slot = new Slot(prefix, slotSize);
 
@@ -120,9 +129,7 @@ public class SlotTest {
          slot.write(makeLogEvent(System.currentTimeMillis()));
          slot.close();
          slot.write(makeLogEvent(System.currentTimeMillis()));
-         System.out.println(slot.toString());
     }
-
 
     /**
      * Make sure that When we resume writing to a partially filled
@@ -167,6 +174,11 @@ public class SlotTest {
 
     /**
      * A microbenchmark to ensure that the performance isn't crap.
+     *
+     * My workstation runs this test in about 300ms so we have added
+     * 10x headroom since the CI server is really, really slow.  This
+     * should trigger a breakage if the performance worsens by an
+     * order of magnitude.
      */
     @Test (timeout = 3000)
     public void microBenchmark()
@@ -184,7 +196,72 @@ public class SlotTest {
         long duration = System.currentTimeMillis() - start;
         long rate = (numMessages * 1000) / duration;
 
-        System.out.println("Slot microbenchmark: "+ numMessages + " in " + duration + " ms,"
-                           + " rate = " + rate + " msg/sec");
+        log.info("Slot microbenchmark: "+ numMessages + " in " + duration + " ms,"
+                 + " rate = " + rate + " msg/sec");
+    }
+
+    /**
+     * This test is an experimental unit test to figure out if we can
+     * reliably determine the slot file size without stat()'ing the
+     * file via the File.length() method. (Was used while fixing the
+     * RecordWriter class, but we leave it in here to ensure that this
+     * property will hold.
+     */
+    @Test
+    public void testSlotFileSize() throws Exception {
+        String prefix = temp.newFolder("test-slot-file-size").getAbsolutePath();
+        Slot slot = new Slot(prefix, (20 * 1024 * 1024));
+
+        for (int i = 0; i < 1000; i++) {
+            Timber.LogEvent event = makeLogEvent(pointInTime + i);
+            slot.write(event);
+
+            if ((i % 100) == 0) {
+                slot.flush();
+
+                // Make sure the lengths are in sync
+                long internalLength = slot.getNumBytesInFile();
+                long fileLength = new File(slot.getCurrentSlotFileName()).length();
+                assertEquals(fileLength, internalLength);
+            }
+        }
+
+        // Close and reopen slot to ensure that the counts are correct
+        // when write resumes.  This should re-open the same slot as
+        // before (we verify this a bit further down).
+        String filename = slot.getCurrentSlotFileName();
+        slot.close();
+        slot = new Slot(prefix, (20 * 1024 * 1024));
+
+        // Now close the slot, re-open it and run again
+        for (int i = 0; i < 1000; i++) {
+            Timber.LogEvent event = makeLogEvent(pointInTime + 1000 + i);
+            slot.write(event);
+
+            if ((i % 100) == 0) {
+                slot.flush();
+
+                // Make sure the lengths are in sync
+                long internalLength = slot.getNumBytesInFile();
+                long fileLength = new File(slot.getCurrentSlotFileName()).length();
+                assertEquals(fileLength, internalLength);
+            }
+        }
+
+        // Make sure it was the same slot file as before.  We have to
+        // do this here because the files are opened lazily.
+        assertEquals(filename, slot.getCurrentSlotFileName());
+        slot.close();
+
+        // Now read the logevents back and make sure they check out
+        RecordReader reader = new RecordReader(new FileInputStream(filename));
+        for (int i = 0; i < 2000; i++) {
+            Timber.LogEvent event = reader.read();
+            assertEquals((pointInTime + i), event.getTimestamp());
+        }
+
+        // Ensure that we have reached EOF
+        assertNull(reader.read());
+        reader.close();
     }
 }
