@@ -4,9 +4,9 @@ import java.io.OutputStream;
 import java.io.PrintWriter;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -20,7 +20,7 @@ import joptsimple.OptionSpec;
 /**
  * This class can load command line arguments based of Flag annotations.
  *
- * Fields must be static, and defined as a String, Long, long, Integer,
+ * Fields must be static, and public, and defined as a String, Long, long, Integer,
  * int, Boolean or boolean.
  *
  * Typical use:
@@ -58,7 +58,7 @@ public class Flags {
             .accepts("help", "Show this help");
 
     // Helper list for loaded options.
-    private List<OptionHolder> options = new ArrayList<OptionHolder>();
+    private Map<String, OptionHolder> options = new HashMap<String, OptionHolder>();
 
     // OptionSet used by option parser implementation
     private OptionSet optionSet;
@@ -105,7 +105,7 @@ public class Flags {
                             .withOptionalArg()
                             .ofType(Integer.class);
                 }
-                options.add(new OptionHolder(type, flag, field, intOption, c));
+                addOption(type, flag, field, intOption, c);
                 break;
 
             case STRING:
@@ -121,7 +121,7 @@ public class Flags {
                             .withOptionalArg()
                             .ofType(String.class);
                 }
-                options.add(new OptionHolder(type, flag, field, stringOption, c));
+                addOption(type, flag, field, stringOption, c);
                 break;
 
             case BOOLEAN:
@@ -137,7 +137,7 @@ public class Flags {
                             .withOptionalArg()
                             .ofType(Boolean.class);
                 }
-                options.add(new OptionHolder(type, flag, field, booleanOption, c));
+                addOption(type, flag, field, booleanOption, c);
                 break;
 
             case LONG:
@@ -153,7 +153,7 @@ public class Flags {
                             .withOptionalArg()
                             .ofType(Long.class);
                 }
-                options.add(new OptionHolder(type, flag, field, longOption, c));
+                addOption(type, flag, field, longOption, c);
                 break;
 
             case UNKNOWN:
@@ -162,6 +162,25 @@ public class Flags {
             }
         }
         return this;
+    }
+
+    /**
+     * Private helper method to add an option. Will check that an option
+     * with the same name has not previously been added.
+     *
+     * @param type
+     * @param flag
+     * @param field
+     * @param option
+     * @param c
+     * @throws IllegalArgumentException
+     */
+    private void addOption(FieldType type, Flag flag, Field field, OptionSpec<?> option, Class<?> c)
+        throws IllegalArgumentException {
+        if (options.containsKey(flag.name())) {
+            throw new IllegalArgumentException("Flag named "+flag.name()+" is defined more than once.");
+        }
+        options.put(flag.name(), new OptionHolder(type, flag, field, option, c));
     }
 
     /**
@@ -178,7 +197,7 @@ public class Flags {
             return this;
         }
         
-        for (OptionHolder holder : options) {
+        for (OptionHolder holder : options.values()) {
             try {
                 OptionSpec<?> optionSpec = holder.getOptionSpec();
 
@@ -229,10 +248,10 @@ public class Flags {
         Map<String, List<OptionHolder>> holdersByClass = new TreeMap<String, List<OptionHolder>>();
 
         // Iterate over all the options we have gathered and stash them by class.
-        for (OptionHolder holder : options) {
+        for (OptionHolder holder : options.values()) {
             // Fetch list corresponding to source class name
             String className = holder.getSource().getName();
-            List holderList = holdersByClass.get(className);
+            List<OptionHolder> holderList = holdersByClass.get(className);
             if (null == holderList) {
                 // The list did not exist.  Create it.
                 holderList = new LinkedList<OptionHolder>();
@@ -303,7 +322,7 @@ public class Flags {
      */
     public void printFlags() {
         try {
-            for (OptionHolder holder : options) {
+            for (OptionHolder holder : options.values()) {
                 System.out.println("Field: "+holder.getField().toGenericString()+"\nFlag: name:"+holder.getFlag().name()
                         +", description:"+holder.getFlag().description()+", type:"+holder.getType()
                         +", default:"+holder.getField().get(holder.getSource()));
@@ -353,9 +372,9 @@ public class Flags {
         private Field field;
         private OptionSpec<?> optionSpec;
         private final FieldType type;
-        private Class source;
+        private Class<?> source;
 
-        public OptionHolder(FieldType type, Flag flag, Field field, OptionSpec<?> optionSpec, Class source) {
+        public OptionHolder(FieldType type, Flag flag, Field field, OptionSpec<?> optionSpec, Class<?> source) {
             this.type = type;
             this.flag = flag;
             this.field = field;
@@ -379,7 +398,7 @@ public class Flags {
             return type;
         }
 
-        public Class getSource() {
+        public Class<?> getSource() {
             return source;
         }
     }
