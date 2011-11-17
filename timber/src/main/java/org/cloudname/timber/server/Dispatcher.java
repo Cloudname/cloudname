@@ -51,7 +51,7 @@ public class Dispatcher {
 
     private int incomingQueueLength;
 
-    // Queue for incoming log events and
+    // Queue for incoming log events and channels
     private final BlockingQueue<LogEventQueueEntry> incomingQueue;
 
     private final List<LogEventHandler> handlers;
