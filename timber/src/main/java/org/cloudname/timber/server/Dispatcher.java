@@ -118,70 +118,90 @@ public class Dispatcher {
     private void consumerLoop()
     {
         while (true) {
+            LogEventQueueEntry entry = null;
             try {
                 // Get next event off the queue.  Time out
                 // after POLL_TIME milliseconds
-                LogEventQueueEntry entry = incomingQueue.poll(POLL_TIME, TimeUnit.MILLISECONDS);
-
-                // Check if we got an event or if we timed out
-                if (null != entry) {
-                    // Loop through the registered handlers and offer
-                    // the event to them.
-                    Timber.LogEvent event = entry.getLogEvent();
-                    for (LogEventHandler handler : handlers) {
-                        handler.handle(event);
-
-                        // Anything other than consistency level means
-                        // we are at a higher consistency level so we
-                        // have to flush.
-                        if (event.getConsistencyLevel() != Timber.ConsistencyLevel.BESTEFFORT) {
-                            handler.flush();
-                        }
-                    }
-
-                    // TODO(borud): if an exception gets thrown during
-                    //   the log event dispatching we might have to skip
-                    //   acknowledging the event.
-
-                    // If we have come thus far we can acknowledge the event if applicable.
-                    maybeAcknowledgeEvent(entry);
-
-                } else {
-                    // If we end up here it was because the queue was
-                    // empty.  This is a good time to check if we have
-                    // been shut down.
-                    if (isShutdown.get()) {
-                        // It is still possible that we were not shut
-                        // down when we called poll, and thus there
-                        // could be elements on the queue.  If this is
-                        // the case we have to drain the queue by
-                        // re-doing the loop until we are drained.
-                        if (! incomingQueue.isEmpty()) {
-                            log.info("Shutdown called but queue was not empty");
-                            continue;
-                        }
-
-                        log.fine("Shutdown called and queue verified to be empty");
-                        // If we are here we know we have been shut
-                        // down and that the queue has been
-                        // drained. It is now safe to shut down the
-                        // handlers and exit.
-                        assert incomingQueue.isEmpty();
-                        for (LogEventHandler handler : handlers) {
-                            log.info("Closing handler " + handler.getName());
-                            handler.close();
-                        }
-                        log.info("exiting consumer loop");
-                        return;
-                    }
-                }
+                entry = incomingQueue.poll(POLL_TIME, TimeUnit.MILLISECONDS);
             } catch (InterruptedException e) {
                 // If we are interrupted that probably means we
                 // need to shut down?
                 Thread.currentThread().interrupt();
+                return;
+            }
+
+            // Process the event
+            if (null != entry) {
+                processEvent(entry);
+                continue;
+            }
+
+            // Invariant: If we end up here it was because the queue
+            //   was empty.  This is a good time to check if we have
+            //   been shut down.
+            if (isShutdown.get()) {
+                // It is still possible that we were not shut down
+                // when we called poll, and thus there could be
+                // elements on the queue.  If this is the case we have
+                // to drain the queue by re-doing the loop until we
+                // are drained.
+                if (! incomingQueue.isEmpty()) {
+                    log.info("Shutdown called but queue was not empty");
+                    continue;
+                }
+
+                log.fine("Shutdown called and queue verified to be empty");
+                // If we are here we know we have been shut down and
+                // that the queue has been drained. It is now safe to
+                // shut down the handlers and exit.
+                assert incomingQueue.isEmpty();
+                for (LogEventHandler handler : handlers) {
+                    log.info("Closing handler " + handler.getName());
+                    handler.close();
+                }
+                log.info("exiting consumer loop");
+                return;
             }
         }
     }
+
+
+    /**
+     * Take care of the actual dispatching of an event to the
+     * registered handlers.  Will also determine if we can send back
+     * an ACK to the client.
+     *
+     * The exception handling is a bit naive.  More thought needs to
+     * go into what to do.  I guess we need some practical examples
+     * first though.  For instance we might want to disable
+     * misbehaving handlers after one or more errors.
+     */
+    private void processEvent(LogEventQueueEntry entry) {
+        // Loop through the registered handlers and offer the event to them.
+        Timber.LogEvent event = entry.getLogEvent();
+        boolean wasFlushed = false;
+        for (LogEventHandler handler : handlers) {
+            try {
+                handler.handle(event);
+
+                // Anything other than consistency level BESTEFFORT
+                // means we are at a higher consistency level so we
+                // have to flush.
+                if (event.getConsistencyLevel() != Timber.ConsistencyLevel.BESTEFFORT) {
+                    handler.flush();
+                    wasFlushed = true;
+                }
+            } catch (Exception e) {
+                log.log(Level.WARNING, "Got exception while dispatching to " + handler.getName(), e);
+            }
+        }
+
+        // If we have come thus far we can acknowledge the event if applicable.
+        if (wasFlushed) {
+            maybeAcknowledgeEvent(entry);
+        }
+    }
+
 
     /**
      * Acknowledge the log event to the originator.  If the id of the
@@ -195,20 +215,13 @@ public class Dispatcher {
     private void maybeAcknowledgeEvent(LogEventQueueEntry entry) {
         Timber.LogEvent event = entry.getLogEvent();
 
-        // If the consistency level is BESTEFFORT we do not need to
-        // acknowledge the log event.
-        if (event.getConsistencyLevel() == Timber.ConsistencyLevel.BESTEFFORT) {
-            return;
-        }
-
         // If the log event has no id we cannot acknowledge it.
         if (! event.hasId()) {
             return;
         }
 
-        Channel channel = entry.getChannel();
-
         // If we have no channel we can't send an ack
+        Channel channel = entry.getChannel();
         if (null == channel) {
             return;
         }
