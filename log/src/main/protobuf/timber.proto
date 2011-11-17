@@ -88,5 +88,5 @@ message AckEvent {
   required int64 timestamp = 1;
 
   // The IDs we want to acknowledge reception of.
-  repeated string ids = 2;
+  repeated string id = 2;
 }

@@ -42,7 +42,7 @@ public class TimberServerHandler
     public void messageReceived(ChannelHandlerContext ctx, MessageEvent event)
     {
         Timber.LogEvent logEvent = (Timber.LogEvent) event.getMessage();
-        dispatcher.dispatch(logEvent);
+        dispatcher.dispatch(logEvent, ctx.getChannel());
     }
 
     @Override
