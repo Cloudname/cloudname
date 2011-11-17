@@ -136,6 +136,8 @@ public class DispatcherTest {
         assertNull(channel.getWriteObject());
 
         Dispatcher disp = new Dispatcher(10);
+        DummyHandler handler = new DummyHandler("dummy handler");
+        disp.addHandler(handler);
         disp.init();
 
         int numEvents = 1000;
@@ -151,6 +153,7 @@ public class DispatcherTest {
 
         // Look at the last ack
         Timber.AckEvent ackEvent = (Timber.AckEvent) channel.getWriteObject();
+        assertNotNull(ackEvent);
         assertEquals("x"+ (numEvents - 1), ackEvent.getId(0));
     }
 }
