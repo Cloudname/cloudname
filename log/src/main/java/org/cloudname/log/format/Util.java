@@ -3,6 +3,9 @@ package org.cloudname.log.format;
 import java.util.TreeMap;
 import java.util.logging.Level;
 
+import org.joda.time.DateTimeZone;
+import org.joda.time.format.DateTimeFormatter;
+import org.joda.time.format.ISODateTimeFormat;
 
 /**
  * Utilities used by formatting implementations.
@@ -10,6 +13,10 @@ import java.util.logging.Level;
  * @author borud
  */
 public class Util {
+    // Format: yyyy-MM-dd'T'HH:mm:ss.SSS in UTC
+    private static final DateTimeFormatter isoTimeFormatter = ISODateTimeFormat
+        .dateHourMinuteSecondMillis()
+        .withZone(DateTimeZone.UTC);
 
     // There is no convenient way to map numeric values of log levels
     // to names, so we use the log levels defined in java.util.logging
@@ -66,6 +73,16 @@ public class Util {
         sbuffer.append(timeString.substring(0, len - 3));
         sbuffer.append('.');
         sbuffer.append(timeString.substring(len - 3));
+    }
+
+    /**
+     * Format timestamp as ISO8601 formatted date in UTC timezone.
+     *
+     * @param time the time as milliseconds since epoch
+     * @param sbuffer a StringBuilder used to put the formatted timestamp into
+     */
+    public static void formatTimeISO(long time, StringBuilder sbuffer) {
+        sbuffer.append(isoTimeFormatter.print(time));
     }
 
     /**

@@ -13,23 +13,25 @@ import java.util.logging.Logger;
 import java.util.logging.Level;
 
 /**
- * Unit test for SingleLineFormatter.
+ * Unit tests for CompactFormatter.
  *
  * @author borud
  */
-public class SingleLineFormatterTest {
-    private static final Logger log = Logger.getLogger(SingleLineFormatterTest.class.getName());
+public class CompactFormatterTest {
+    private static final Logger log = Logger.getLogger(CompactFormatterTest.class.getName());
 
     private static final String eventString
-        = "1000.000\texample.com\t0/1\tmyservice\torg.cloudname.log.format.SingleLineFormatter\tT\tINFO\tBESTEFFORT\tmsg: this is a test";
+        = "2011-11-28T16:46:22.123\texample.com\tmyservice\tSingleLineFormatter\tT\tINFO\tBE\tmsg: this is a test";
 
     private static Timber.LogEvent event;
     private static Timber.LogEvent eventWithException;
 
+    private static long instant = 1322498782123L;
+
     @BeforeClass
     public static void setUp() {
         event = Timber.LogEvent.newBuilder()
-            .setTimestamp(1000000)
+            .setTimestamp(instant)
             .setConsistencyLevel(Timber.ConsistencyLevel.BESTEFFORT)
             .setLevel(Level.INFO.intValue())
             .setHost("example.com")
@@ -48,7 +50,7 @@ public class SingleLineFormatterTest {
         new RuntimeException("Testing").printStackTrace(new PrintStream(os));
 
         eventWithException = Timber.LogEvent.newBuilder()
-            .setTimestamp(1000000)
+            .setTimestamp(instant)
             .setConsistencyLevel(Timber.ConsistencyLevel.BESTEFFORT)
             .setLevel(Level.WARNING.intValue())
             .setHost("example.com")
@@ -69,14 +71,10 @@ public class SingleLineFormatterTest {
             .build();
     }
 
-    /**
-     * Just a straight forward conversion test.
-     */
     @Test
     public void simpleTest() throws Exception {
-        LogEventFormatter form = new SingleLineFormatter();
+        CompactFormatter form = new CompactFormatter();
         assertEquals(eventString, form.format(event));
-        assertNotNull(form.format(eventWithException));
     }
 
     /**
@@ -84,7 +82,7 @@ public class SingleLineFormatterTest {
      */
     @Test (timeout = 1000)
     public void microBenchmarkTest() {
-        LogEventFormatter form = new SingleLineFormatter();
+        CompactFormatter form = new CompactFormatter();
         int numIterations = 1000;
 
         long start = System.currentTimeMillis();
@@ -100,7 +98,7 @@ public class SingleLineFormatterTest {
 
     @Test (timeout = 1000)
     public void microBenchmarkWithExceptionTest() {
-        LogEventFormatter form = new SingleLineFormatter();
+        CompactFormatter form = new CompactFormatter();
         int numIterations = 1000;
 
         long start = System.currentTimeMillis();

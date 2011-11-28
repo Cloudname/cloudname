@@ -72,7 +72,13 @@
     </plugins>
   </build>
 
-  <dependencies>      
+  <dependencies>
+
+    <dependency>
+      <groupId>joda-time</groupId>
+      <artifactId>joda-time</artifactId>
+    </dependency>
+
     <dependency>
       <groupId>com.google.protobuf</groupId>
       <artifactId>protobuf-java</artifactId>
