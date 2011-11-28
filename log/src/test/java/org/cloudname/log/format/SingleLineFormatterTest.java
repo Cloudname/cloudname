@@ -81,25 +81,14 @@ public class SingleLineFormatterTest {
 
     /**
      * A micro benchmark.
-     *
-     * OBSERVATIONS: the bottleneck is the escape() method, however,
-     * on runs with larger number of iterations the speed increases
-     * dramatically, so it would appear that the hotspot kicks in and
-     * optimizes the code path.  If the formatter needs to gain
-     * significant speed it would pay off to replace the regexp
-     * machinery with something that just iterates over the characters
-     * and replaces newline with space, tab with space etc.
-     *
-     * (The bottleneck was observed by increasing numIterations to a
-     * large number and profiling the test under jvisualvm)
      */
     @Test (timeout = 1000)
     public void microBenchmarkTest() {
+        LogEventFormatter form = new SingleLineFormatter();
         int numIterations = 1000;
 
         long start = System.currentTimeMillis();
         for (int i = 0; i < numIterations; i++) {
-            LogEventFormatter form = new SingleLineFormatter();
             form.format(event);
         }
         long duration = System.currentTimeMillis() - start;
@@ -110,17 +99,14 @@ public class SingleLineFormatterTest {
     }
 
     /**
-     * OBSERVATIONS: with multiple payloads it seems the formatter
-     * performs atrociously bad.  Again the escape() method is to
-     * blame.
      */
     @Test (timeout = 1000)
     public void microBenchmarkWithExceptionTest() {
+        LogEventFormatter form = new SingleLineFormatter();
         int numIterations = 1000;
 
         long start = System.currentTimeMillis();
         for (int i = 0; i < numIterations; i++) {
-            LogEventFormatter form = new SingleLineFormatter();
             form.format(eventWithException);
         }
         long duration = System.currentTimeMillis() - start;

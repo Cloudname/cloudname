@@ -62,7 +62,7 @@ public class SingleLineFormatter implements LogEventFormatter {
         // Add the payloads
         boolean first = true;
         for (Timber.Payload payload : logEvent.getPayloadList()) {
-            buff.append((first?"":", "))
+            buff.append((first?"":" | "))
                 .append(payload.getName())
                 .append(": ")
                 .append(Util.escape(payload.getPayload().toStringUtf8()));
