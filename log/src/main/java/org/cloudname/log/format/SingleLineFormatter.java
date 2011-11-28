@@ -51,7 +51,7 @@ public class SingleLineFormatter implements LogEventFormatter {
 
     @Override
     public String format(Timber.LogEvent logEvent) {
-        StringBuffer buff = new StringBuffer(200);
+        StringBuilder buff = new StringBuilder(200);
 
         // Format the timestamp and append it to the buffer
         formatTimeSecondsSinceEpoch(logEvent.getTimestamp(), buff);
@@ -107,9 +107,9 @@ public class SingleLineFormatter implements LogEventFormatter {
      * Convert timestamp to seconds since epoch with 3 decimal places.
      *
      * @param time the time as milliseconds since epoch
-     * @param sbuffer a StringBuffer used to put the formatted number into
+     * @param sbuffer a StringBuilder used to put the formatted number into
      */
-    private static void formatTimeSecondsSinceEpoch (long time, StringBuffer sbuffer) {
+    private static void formatTimeSecondsSinceEpoch (long time, StringBuilder sbuffer) {
         String timeString = Long.toString(time);
         int len = timeString.length();
 
@@ -177,6 +177,10 @@ public class SingleLineFormatter implements LogEventFormatter {
 
         return s;
     }
+
+
+
+
 
     /**
      *
