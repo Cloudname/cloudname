@@ -56,10 +56,20 @@ public class CompactFormatter implements LogEventFormatter {
         // Add the payloads
         boolean first = true;
         for (Timber.Payload payload : logEvent.getPayloadList()) {
+            String s = payload.getPayload().toStringUtf8();
+
+            // Truncate exceptions
+            if ("application/java-exception".equals(payload.getContentType())) {
+                int offset = s.indexOf('\n');
+                if (offset > 0) {
+                    s = s.substring(0, offset);
+                }
+            }
+
             buff.append((first?"":" | "))
                 .append(payload.getName())
                 .append(": ")
-                .append(Util.escape(payload.getPayload().toStringUtf8()));
+                .append(Util.escape(s));
 
             first = false;
         }
