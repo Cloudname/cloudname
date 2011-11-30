@@ -64,7 +64,7 @@ public class Flags {
     // OptionSet used by option parser implementation
     private OptionSet optionSet;
 
-    private List<String> nonOption;
+    private List<String> nonOptionArguments;
 
     /**
      * Load a class that contains Flag annotations.
@@ -172,7 +172,7 @@ public class Flags {
      * @return List<String> - list of all arguments given to parse() that are not Flagged arguments.
      */
     public List<String> getNonOptionArguments() {
-        return nonOption;
+        return nonOptionArguments;
     }
 
     /**
@@ -204,9 +204,9 @@ public class Flags {
         optionSet = optionParser.parse(args);
 
         //Store non option arguments
-        nonOption = optionSet.nonOptionArguments();
-        if (nonOption == null) {
-            nonOption = new ArrayList<String>();
+        nonOptionArguments = optionSet.nonOptionArguments();
+        if (nonOptionArguments == null) {
+            nonOptionArguments = new ArrayList<String>();
         }
         
         //do not parse options if "help" is a part of the arguments given
