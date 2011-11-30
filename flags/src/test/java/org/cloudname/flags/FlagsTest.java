@@ -31,7 +31,9 @@ public class FlagsTest {
         assertEquals(new Integer(1), FlagsAllLegalFields.integer2);
         assertEquals(1, FlagsAllLegalFields.longNum);
         assertEquals(1, FlagsAllLegalFields.longNum2);
+        assertEquals(FlagsAllLegalFields.SimpleEnum.OPTION1, FlagsAllLegalFields.option);
         flags.printFlags();
+        flags.printHelp(System.out);
 
         flags.parse(new String[]{"--boolean", "true",
                 "--Boolean", "true",
@@ -39,7 +41,8 @@ public class FlagsTest {
                 "--int", "10",
                 "--Integer", "20",
                 "--long", "30",
-                "--Long", "40"});
+                "--Long", "40",
+                "--option", "OPTION2"});
 
         assertFalse("Help seems to have been called. It should not have been.", flags.helpFlagged());
 
@@ -50,6 +53,7 @@ public class FlagsTest {
         assertEquals(new Integer(20), FlagsAllLegalFields.integer2);
         assertEquals(30, FlagsAllLegalFields.longNum);
         assertEquals(40, FlagsAllLegalFields.longNum2);
+        assertEquals(FlagsAllLegalFields.SimpleEnum.OPTION2, FlagsAllLegalFields.option);
 
         // Just make sure that printHelp() produces something.  Since
         // the format should change to something more sensible we do
@@ -73,6 +77,19 @@ public class FlagsTest {
         }
     }
 
+    /**
+     * Flagged enum option should not work with wrong case.
+     */
+    @Test (expected = IllegalArgumentException.class)
+    public void testEnumFlagWithWrongCase() {
+        Flags flags = new Flags()
+        .loadOpts(FlagsAllLegalFields.class)
+        .parse(new String[]{"--option", "option2"});
+    }
+
+    /**
+     * Two flags with the same name should not work.
+     */
     @Test (expected = IllegalArgumentException.class)
     public void testMultipleFlagsWithSameName() {
         Flags flags = new Flags()

@@ -36,4 +36,17 @@ public @interface Flag {
      * @return
      */
     boolean required() default false;
+
+    /**
+     * Optional field that supports the use of enum.
+     * Example using enum:
+     *
+     * public enum SimpleEnum {OPTION1, OPTION2};
+     *
+     * @Flag(name="option", options=SimpleEnum.class)
+     * public static SimpleEnum option = SimpleEnum.OPTION1;
+     *
+     * @return
+     */
+    Class<?> options() default NoOption.class;
 }

@@ -28,4 +28,9 @@ public class FlagsAllLegalFields {
 
     @Flag(name="Long")
     public static long longNum2 = 1L;
+
+    public enum SimpleEnum {OPTION1, OPTION2};
+
+    @Flag(name="option", options=SimpleEnum.class)
+    public static SimpleEnum option = SimpleEnum.OPTION1;
 }

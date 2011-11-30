@@ -13,6 +13,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 
+import org.cloudname.flags.FlagsAllLegalFields.SimpleEnum;
+
 import joptsimple.OptionParser;
 import joptsimple.OptionSet;
 import joptsimple.OptionSpec;
@@ -49,7 +51,7 @@ public class Flags {
      * @author acidmoose
      *
      */
-    private enum FieldType {STRING, INTEGER, LONG, BOOLEAN, UNKNOWN}
+    private enum FieldType {ENUM, STRING, INTEGER, LONG, BOOLEAN, UNKNOWN}
 
     //The option set builder.
     private final static OptionParser optionParser = new OptionParser();
@@ -65,6 +67,9 @@ public class Flags {
     private OptionSet optionSet;
 
     private List<String> nonOptionArguments;
+
+    // Helper map to store enum options.
+    private Map<Class<?>, List<String>> enumOptions = new HashMap<Class<?>, List<String>>();
 
     /**
      * Load a class that contains Flag annotations.
@@ -91,7 +96,7 @@ public class Flags {
             String description = flag.description();
 
             // Determine the type of field
-            FieldType type = fieldTypeOf(field);
+            FieldType type = fieldTypeOf(field, flag);
 
             switch (type) {
 
@@ -159,6 +164,30 @@ public class Flags {
                 addOption(type, flag, field, longOption, c);
                 break;
 
+            case ENUM:
+                Class<?> enumClass = flag.options();
+                Object[] enumConstants = enumClass.getEnumConstants();
+                if (enumConstants == null) {
+                    throw new IllegalArgumentException("Field "+field.toGenericString()+" is not an enum type.");
+                }
+                for (Object object : enumConstants) {
+                    addEnumOption(enumClass, object.toString());
+                }
+                OptionSpec<?> enumOption;
+                if (flag.required()) {
+                    enumOption = optionParser
+                            .accepts(name, description)
+                            .withRequiredArg()
+                            .ofType(enumClass);
+                } else {
+                    enumOption = optionParser
+                            .accepts(name, description)
+                            .withOptionalArg()
+                            .ofType(enumClass);
+                }
+                addOption(type, flag, field, enumOption, c);
+                break;
+
             case UNKNOWN:
             default:
                 throw new IllegalArgumentException("Field "+field.toGenericString()+" is not of a supported type.");
@@ -173,6 +202,21 @@ public class Flags {
      */
     public List<String> getNonOptionArguments() {
         return nonOptionArguments;
+    }
+
+    /**
+     * If a field is found to be of type ENUM, this method is used to store
+     * valid input for that specific flagged option.
+     * @param enumClass
+     * @param validOption
+     */
+    private void addEnumOption(Class<?> enumClass, String validOption) {
+        List<String> optionsForClass = enumOptions.get(enumClass);
+        if (optionsForClass == null) {
+            optionsForClass = new ArrayList<String>();
+        }
+        optionsForClass.add(validOption);
+        enumOptions.put(enumClass, optionsForClass);
     }
 
     /**
@@ -236,6 +280,14 @@ public class Flags {
                     case BOOLEAN:
                         holder.getField().set(holder.getField().getClass(), (Boolean) optionSet.valueOf(optionSpec));
                         break;
+
+                    case ENUM:
+                        try {
+                            holder.getField().set(holder.getField().getClass(), optionSet.valueOf(optionSpec));
+                        } catch (Exception e) {
+                            throw new IllegalArgumentException("Option given is not a valid option. Valid options are: "+enumOptions.get(holder.flag.options()).toString()+".");
+                        }
+                        break;
                     }
 
                     // No further action needed for this field.
@@ -252,7 +304,6 @@ public class Flags {
         }
         return this;
     }
-
 
     /**
      * Prints the help to the specified output stream.
@@ -312,6 +363,11 @@ public class Flags {
                     throw new RuntimeException(e);
                 }
 
+                //TODO: handle enum options
+                if (holder.getFlag().options() != NoOption.class) {
+                    s = s + " options: "+enumOptions.get(holder.getFlag().options()).toString();
+                }
+
                 // Avert your eyes.
                 int spaces = 50 - s.length();
                 spaces = spaces < 0 ? 0 : spaces;
@@ -355,7 +411,7 @@ public class Flags {
      * @param field the field instance we want the type for.
      * @return the type of the {@code field} in question.
      */
-    private static FieldType fieldTypeOf(Field field) {
+    private static FieldType fieldTypeOf(Field field, Flag flag) {
         if (field.getType().isAssignableFrom(Long.TYPE)
                 || field.getType().isAssignableFrom(Long.class)) {
             return FieldType.LONG;
@@ -373,6 +429,11 @@ public class Flags {
         if (field.getType().isAssignableFrom(Integer.TYPE)
                 || field.getType().isAssignableFrom(Integer.class)) {
             return FieldType.INTEGER;
+        }
+
+        if (flag.options() != NoOption.class
+                && field.getType().isAssignableFrom(flag.options())) {
+            return FieldType.ENUM;
         }
 
         return FieldType.UNKNOWN;
