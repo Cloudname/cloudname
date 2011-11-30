@@ -1,9 +1,12 @@
 package org.cloudname.flags;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+
 import java.io.ByteArrayOutputStream;
 
-import org.junit.*;
-import static org.junit.Assert.*;
+import org.junit.Test;
 
 /**
  * Test class for Flags.

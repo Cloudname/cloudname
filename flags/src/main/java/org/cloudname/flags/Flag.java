@@ -48,5 +48,5 @@ public @interface Flag {
      *
      * @return
      */
-    Class<?> options() default NoOption.class;
+    Class<? extends Enum<?>> options() default NoOption.class;
 }

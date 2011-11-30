@@ -13,8 +13,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 
-import org.cloudname.flags.FlagsAllLegalFields.SimpleEnum;
-
 import joptsimple.OptionParser;
 import joptsimple.OptionSet;
 import joptsimple.OptionSpec;
@@ -69,7 +67,7 @@ public class Flags {
     private List<String> nonOptionArguments;
 
     // Helper map to store enum options.
-    private Map<Class<?>, List<String>> enumOptions = new HashMap<Class<?>, List<String>>();
+    private Map<Class<? extends Enum<?>>, List<String>> enumOptions = new HashMap<Class<? extends Enum<?>>, List<String>>();
 
     /**
      * Load a class that contains Flag annotations.
@@ -165,7 +163,7 @@ public class Flags {
                 break;
 
             case ENUM:
-                Class<?> enumClass = flag.options();
+                Class<? extends Enum<?>> enumClass = flag.options();
                 Object[] enumConstants = enumClass.getEnumConstants();
                 if (enumConstants == null) {
                     throw new IllegalArgumentException("Field "+field.toGenericString()+" is not an enum type.");
@@ -210,7 +208,7 @@ public class Flags {
      * @param enumClass
      * @param validOption
      */
-    private void addEnumOption(Class<?> enumClass, String validOption) {
+    private void addEnumOption(Class<? extends Enum<?>> enumClass, String validOption) {
         List<String> optionsForClass = enumOptions.get(enumClass);
         if (optionsForClass == null) {
             optionsForClass = new ArrayList<String>();

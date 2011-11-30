@@ -5,4 +5,4 @@ package org.cloudname.flags;
  * @author acidmoose
  *
  */
-public class NoOption {}
+public enum NoOption {}
