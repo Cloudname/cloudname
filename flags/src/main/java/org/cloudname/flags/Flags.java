@@ -4,6 +4,7 @@ import java.io.OutputStream;
 import java.io.PrintWriter;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -62,6 +63,8 @@ public class Flags {
 
     // OptionSet used by option parser implementation
     private OptionSet optionSet;
+
+    private List<String> nonOptionArguments;
 
     /**
      * Load a class that contains Flag annotations.
@@ -165,6 +168,14 @@ public class Flags {
     }
 
     /**
+     * Returns all arguments given to parse() that are not Flagged arguments.
+     * @return List<String> - list of all arguments given to parse() that are not Flagged arguments.
+     */
+    public List<String> getNonOptionArguments() {
+        return nonOptionArguments;
+    }
+
+    /**
      * Private helper method to add an option. Will check that an option
      * with the same name has not previously been added.
      *
@@ -191,6 +202,12 @@ public class Flags {
      */
     public Flags parse(String[] args) {
         optionSet = optionParser.parse(args);
+
+        //Store non option arguments
+        nonOptionArguments = optionSet.nonOptionArguments();
+        if (nonOptionArguments == null) {
+            nonOptionArguments = new ArrayList<String>();
+        }
         
         //do not parse options if "help" is a part of the arguments given
         if (helpFlagged()) {
