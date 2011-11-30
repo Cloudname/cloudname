@@ -73,6 +73,18 @@ public class FlagsTest {
         }
     }
 
+    @Test
+    public void testNonOptionArgs() {
+        Flags flags = new Flags()
+        .loadOpts(FlagsAllLegalFields.class)
+        .parse(new String[]{"--int", "10",
+                "--Integer", "20",
+                "nonoptionarg1",
+                "nonoptionarg2"});
+        assertEquals(true, flags.getNonOptionArguments().contains("nonoptionarg1"));
+        assertEquals(true, flags.getNonOptionArguments().contains("nonoptionarg2"));
+    }
+
     @Test (expected = IllegalArgumentException.class)
     public void testMultipleFlagsWithSameName() {
         Flags flags = new Flags()
