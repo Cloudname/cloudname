@@ -18,32 +18,23 @@
 
   <build>
     <plugins>
-      <!-- Create an assembly that contains all the deps -->
-      <plugin> 
-	<artifactId>maven-assembly-plugin</artifactId> 
-	<executions> 
-	  <execution> 
-	    <id>bundle-project-sources</id> 
-	    <phase>package</phase> 
-	    <goals> 
-	      <goal>single</goal> 
-	    </goals>
-	    <configuration> 
-	      <finalName>timber-server</finalName>
-	      <archive>
-		<manifest>
-		  <mainClass>org.cloudname.timber.server.Main</mainClass>
-		</manifest>
-	      </archive>
-	      <descriptorRefs> 
-		<descriptorRef>jar-with-dependencies</descriptorRef> 
-	      </descriptorRefs> 
-	    </configuration> 
-	    
-	  </execution> 
-	</executions> 
-      </plugin> 
-      
+      <plugin>
+        <groupId>org.dstovall</groupId>
+        <artifactId>onejar-maven-plugin</artifactId>
+        <version>1.4.4</version>
+        <executions>
+          <execution>
+            <configuration>
+              <!-- Optional, default is false -->
+              <attachToBuild>true</attachToBuild>
+	      <mainClass>org.cloudname.timber.server.Main</mainClass>
+            </configuration>
+            <goals>
+              <goal>one-jar</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
     </plugins>
   </build>
   

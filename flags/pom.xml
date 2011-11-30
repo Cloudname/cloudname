@@ -14,19 +14,19 @@
   <name>Cloudname Flags</name>
   <description>Utility for handling command line arguments based on Flag annotations.</description>
   <url>https://github.com/Cloudname/cloudname</url>
-
+  
   <dependencies>
-	<!-- JOpt Simple -->
-	<dependency>
-	    <groupId>net.sf.jopt-simple</groupId>
-	    <artifactId>jopt-simple</artifactId>
-	</dependency>
+    <!-- JOpt Simple -->
+    <dependency>
+      <groupId>net.sf.jopt-simple</groupId>
+      <artifactId>jopt-simple</artifactId>
+    </dependency>
+
     <!-- Testing artifacts -->
     <dependency>
       <groupId>junit</groupId>
       <artifactId>junit</artifactId>
       <scope>test</scope>
     </dependency>
-
   </dependencies>
 </project>

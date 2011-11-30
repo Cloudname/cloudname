@@ -69,10 +69,33 @@
 	  </execution>
 	</executions>
       </plugin>
+
+      <plugin>
+        <groupId>org.dstovall</groupId>
+        <artifactId>onejar-maven-plugin</artifactId>
+        <version>1.4.4</version>
+        <executions>
+          <execution>
+            <configuration>
+              <!-- Optional, default is false -->
+              <attachToBuild>true</attachToBuild>
+	      <mainClass>org.cloudname.log.logcat.Main</mainClass>
+            </configuration>
+            <goals>
+              <goal>one-jar</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
     </plugins>
   </build>
 
-  <dependencies>      
+  <dependencies>
+    <dependency>
+      <groupId>joda-time</groupId>
+      <artifactId>joda-time</artifactId>
+    </dependency>
+
     <dependency>
       <groupId>com.google.protobuf</groupId>
       <artifactId>protobuf-java</artifactId>
