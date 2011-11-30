@@ -69,27 +69,21 @@
 	  </execution>
 	</executions>
       </plugin>
-      
+
       <plugin>
-        <artifactId>maven-assembly-plugin</artifactId>
+        <groupId>org.dstovall</groupId>
+        <artifactId>onejar-maven-plugin</artifactId>
+        <version>1.4.4</version>
         <executions>
           <execution>
-            <id>bundle-project-sources</id>
-            <phase>package</phase>
-            <goals>
-              <goal>single</goal>
-            </goals>
             <configuration>
-              <finalName>logcat</finalName>
-              <archive>
-                <manifest>
-                  <mainClass>org.cloudname.log.logcat.Main</mainClass>
-                </manifest>
-              </archive>
-              <descriptorRefs>
-                <descriptorRef>jar-with-dependencies</descriptorRef>
-              </descriptorRefs>
+              <!-- Optional, default is false -->
+              <attachToBuild>true</attachToBuild>
+	      <mainClass>org.cloudname.log.logcat.Main</mainClass>
             </configuration>
+            <goals>
+              <goal>one-jar</goal>
+            </goals>
           </execution>
         </executions>
       </plugin>
