@@ -39,4 +39,3 @@ public class RecordReader {
         in.close();
     }
 }
-

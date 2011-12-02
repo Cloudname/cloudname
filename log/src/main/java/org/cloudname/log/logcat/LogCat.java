@@ -43,15 +43,13 @@ public class LogCat {
      */
     public void catStream(InputStream input) throws Exception {
         RecordReader reader = new RecordReader(input);
-        while (true) {
+        try {
             Timber.LogEvent logEvent = reader.read();
-
-            if (null == logEvent) {
-                input.close();
-                return;
+            while ((logEvent = reader.read()) != null) {
+                System.out.println(formatter.format(logEvent));
             }
-
-            System.out.println(formatter.format(logEvent));
+        } finally {
+            reader.close();
         }
     }
 }
