@@ -1,6 +1,7 @@
 package org.cloudname.log.format;
 
 import java.util.TreeMap;
+import java.util.NavigableMap;
 import java.util.logging.Level;
 
 import org.joda.time.DateTimeZone;
@@ -23,7 +24,7 @@ public class Util {
     // and we add them to the map.  Since we use the TreeMap to look
     // up the ceiling of each value we have added a bogus log level
     // called "NUCLEAR".
-    private static final TreeMap<Integer,String> logLevelByValue = new TreeMap<Integer,String>();
+    private static final NavigableMap<Integer,String> logLevelByValue = new TreeMap<Integer,String>();
     static {
         logLevelByValue.put(Level.CONFIG.intValue(), Level.CONFIG.getName());
         logLevelByValue.put(Level.FINE.intValue(), Level.FINE.getName());
@@ -58,14 +59,14 @@ public class Util {
      * @param time the time as milliseconds since epoch
      * @param sbuffer a StringBuilder used to put the formatted number into
      */
-    public static void formatTimeSecondsSinceEpoch (long time, StringBuilder sbuffer) {
+    public static void formatTimeSecondsSinceEpoch(final long time, StringBuilder sbuffer) {
         String timeString = Long.toString(time);
         int len = timeString.length();
 
-        // something wrong.  handle it by just returning the input
-        // long as a string.  we prefer this to just crashing in
-        // the substring handling.
         if (len < 3) {
+            // Something wrong.  Handle it by just returning the input
+            // long as a string.  We prefer this to just crashing in the
+            // substring handling.
             sbuffer.append(timeString);
             return;
         }
