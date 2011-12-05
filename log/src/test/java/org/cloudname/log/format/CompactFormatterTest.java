@@ -15,6 +15,8 @@ import java.util.logging.Level;
 /**
  * Unit tests for CompactFormatter.
  *
+ * TODO(borud): add format test for eventWithException
+ *
  * @author borud
  */
 public class CompactFormatterTest {
