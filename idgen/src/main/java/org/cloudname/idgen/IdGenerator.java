@@ -1,0 +1,129 @@
+package org.cloudname.idgen;
+
+import java.util.logging.Logger;
+
+/**
+ * Simple ID generator that will produce unique IDs given that no ID
+ * generator instances with the same worker ID exist at the same time.
+ *
+ * This ID generator uses a fixed number of bits for timestamp (40
+ * bits), worker ID (12 bits) and sequence (12 bits).
+ *
+ * @author borud
+ */
+public class IdGenerator {
+    private static final Logger log = Logger.getLogger(IdGenerator.class.getName());
+
+    // How many bits for each
+    private static final int NUM_BITS_TIMESTAMP = 40;
+    private static final int NUM_BITS_WORKER_ID = 12;
+    private static final int NUM_BITS_SEQUENCE  = 12;
+
+    // Calculate the bitmasks
+    private static final long timestampBitMask = makeLongBitMask(NUM_BITS_TIMESTAMP);
+    private static final long workerIdBitMask  = makeLongBitMask(NUM_BITS_WORKER_ID);
+    private static final long sequenceBitMask  = makeLongBitMask(NUM_BITS_SEQUENCE);
+
+    // Calculate shift lengths
+    private static final int timestampLeftShiftBy = NUM_BITS_WORKER_ID + NUM_BITS_SEQUENCE;
+    private static final int workerLeftShiftBy    = NUM_BITS_SEQUENCE;
+
+    // State variables
+    private long workerId = 0L;
+    private long lastTimestamp = Long.MIN_VALUE;
+    private long sequence = 0L;
+
+    // Sync object
+    private Object syncObject = new Object();
+
+    // Set the default time provider -- ie. the system clock.
+    private TimeProvider timeProvider = new TimeProvider() {
+            @Override
+            public long getTimeInMillis() {
+                return System.currentTimeMillis();
+            }
+        };
+
+    /**
+     * Create new IdGenerator.  To ensure that this ID generator
+     * generates unique IDs there has to be some guarantee that the
+     * worker ID can only be used by one ID-generator at any given
+     * time.
+     *
+     * @param workerId the worker id of the id generator.
+     */
+    public IdGenerator(long workerId) {
+        this.workerId = workerId;
+    }
+
+    /**
+     * Generate next unique ID.
+     *
+     * @return the next unique ID as a long value.
+     */
+    public long getNextId() {
+        long timestamp = timeProvider.getTimeInMillis();
+
+        synchronized(syncObject) {
+
+            // Check that we have not jumped backwards in time.
+            if (lastTimestamp > timestamp) {
+                throw new IllegalStateException("Time is going backwards: " + (lastTimestamp - timestamp) + "ms");
+            }
+
+            // If the last timestamp is different from the last time we
+            // generated an ID we do not need a sequence number so we can
+            // reset the sequence and generate a new ID.
+            if (lastTimestamp < timestamp) {
+                sequence = 0L;
+                lastTimestamp = timestamp;
+                return buildKey(timestamp, workerId, sequence);
+            }
+
+            // Invariants:
+            //  - lastTimestamp == timestamp.
+            //  - we have handed out an ID for this timestamp
+
+            // Increment and wrap
+            sequence = ((sequence + 1) & sequenceBitMask);
+            if (0L == sequence) {
+                log.info("Requesting unique IDs faster than we can make them; pausing. workerId = " + workerId);
+                // busy-wait until clock has progressed by one millisecond
+                while (lastTimestamp >= timestamp) {
+                    timestamp = timeProvider.getTimeInMillis();
+                }
+            }
+
+            // Invariant: The clock has progressed
+            lastTimestamp = timestamp;
+            return buildKey(timestamp, workerId, sequence);
+        }
+    }
+
+    /**
+     * Construct a long key from the values. The values are masked and
+     * OR'ed together into a long value according to the bit layout of
+     * the generator.
+     *
+     * @param timestamp Timestamp to use
+     * @param workerId Worker ID to use
+     * @param sequence Sequence counter
+     */
+    private long buildKey(long timestamp, long workerId, long sequence) {
+        return
+            ((timestamp & timestampBitMask) << (long) timestampLeftShiftBy)
+            | ((workerId & workerIdBitMask) << (long) workerLeftShiftBy)
+            | (sequence & sequenceBitMask);
+    }
+
+    /**
+     * Make a bit mask with the specified number of bits set.
+     * The rightmost (LSB) bits are set; {@code makeLongBitMask(1)}
+     * returns {@code 1L}
+     *
+     * @param bitsToSet
+     */
+    private static long makeLongBitMask(int bitsToSet) {
+        return (long) (0xFFFFFFFFFFFFFFFFL >>> (64 - bitsToSet));
+    }
+}
