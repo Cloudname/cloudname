@@ -116,8 +116,8 @@ public class IdGenerator {
             // Increment and wrap
             sequence = ((sequence + 1) & sequenceBitMask);
             if (0L == sequence) {
-                log.info("Requesting unique IDs faster than we can make them; pausing. workerId = " + workerId);
-                // busy-wait until clock has progressed by one millisecond
+                log.info("Requesting unique IDs faster than we can make them; busy-waiting. workerId = " + workerId);
+                // Busy-wait until clock has progressed by one millisecond.
                 while (lastTimestamp >= timestamp) {
                     timestamp = timeProvider.getTimeInMillis();
 
