@@ -101,14 +101,13 @@ public class IdGenerator {
                 return buildKey(timestamp, workerId, sequence);
             }
 
-            // Trick: If the clock has gone backwards we can still use
+            // TRICK: If the clock has gone backwards we can still use
             // the sequence counter to generate unique IDs, so we
-            // reset the timestamp to the last timestamp since
+            // reset the timestamp to lastTimestamp and try our luck
+            // with the sequence counter
             timestamp = lastTimestamp;
 
-            // Invariants:
-            //  - lastTimestamp == timestamp.
-            //  - we have handed out an ID for this timestamp
+            // Invariant: we have handed out an ID for this timestamp
 
             // Increment and wrap
             sequence = ((sequence + 1) & sequenceBitMask);
