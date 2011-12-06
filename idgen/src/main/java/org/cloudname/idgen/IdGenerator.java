@@ -14,7 +14,24 @@ import java.util.logging.Logger;
 public class IdGenerator {
     private static final Logger log = Logger.getLogger(IdGenerator.class.getName());
 
-    // How many bits for each
+    // Create a singleton default time provider.
+    private static final TimeProvider defaultTimeProvider = new TimeProvider() {
+            @Override
+            public long getTimeInMillis() {
+                return System.currentTimeMillis();
+            }
+        };
+
+    /**
+     * If the clock goes backwards, and it will from time to time, how
+     * long should we wait before we give up and throw an exception?
+     * In Amazon EC2 we have experienced clocks that jump back by as
+     * much as 700ms.  There is really no correct answer to this, so
+     * have picked a value that appears reasonable to us.
+     */
+    public static final int maxWaitForClockCatchupInMilliseconds = 2000;
+
+    // Set how many bits we use for each field.
     private static final int NUM_BITS_TIMESTAMP = 40;
     private static final int NUM_BITS_WORKER_ID = 12;
     private static final int NUM_BITS_SEQUENCE  = 12;
@@ -28,6 +45,9 @@ public class IdGenerator {
     private static final int timestampLeftShiftBy = NUM_BITS_WORKER_ID + NUM_BITS_SEQUENCE;
     private static final int workerLeftShiftBy    = NUM_BITS_SEQUENCE;
 
+    // Set the default time provider -- ie. the system clock.
+    private TimeProvider timeProvider;
+
     // State variables
     private long workerId = 0L;
     private long lastTimestamp = Long.MIN_VALUE;
@@ -35,14 +55,6 @@ public class IdGenerator {
 
     // Sync object
     private Object syncObject = new Object();
-
-    // Set the default time provider -- ie. the system clock.
-    private TimeProvider timeProvider = new TimeProvider() {
-            @Override
-            public long getTimeInMillis() {
-                return System.currentTimeMillis();
-            }
-        };
 
     /**
      * Create new IdGenerator.  To ensure that this ID generator
@@ -53,32 +65,46 @@ public class IdGenerator {
      * @param workerId the worker id of the id generator.
      */
     public IdGenerator(long workerId) {
-        this.workerId = workerId;
+        this(workerId, defaultTimeProvider);
     }
+
+    /**
+     * Create new IdGenerator.  To ensure that this ID generator
+     * generates unique IDs there has to be some guarantee that the
+     * worker ID can only be used by one ID-generator at any given
+     * time.
+     *
+     * @param workerId the worker id of the id generator.
+     * @param timeProvider override default time provider.
+     */
+    public IdGenerator(long workerId, TimeProvider timeProvider) {
+        this.workerId = workerId;
+        this.timeProvider = timeProvider;
+    }
+
 
     /**
      * Generate next unique ID.
      *
+     * @throws IllegalStateException if the clock has gone backwards
+     *   by more than {@code maxWaitForClockCatchupInMilliseconds}
      * @return the next unique ID as a long value.
      */
     public long getNextId() {
         long timestamp = timeProvider.getTimeInMillis();
 
         synchronized(syncObject) {
-
-            // Check that we have not jumped backwards in time.
-            if (lastTimestamp > timestamp) {
-                throw new IllegalStateException("Time is going backwards: " + (lastTimestamp - timestamp) + "ms");
-            }
-
-            // If the last timestamp is different from the last time we
-            // generated an ID we do not need a sequence number so we can
-            // reset the sequence and generate a new ID.
+            // Deal with the simple case first.
             if (lastTimestamp < timestamp) {
                 sequence = 0L;
                 lastTimestamp = timestamp;
                 return buildKey(timestamp, workerId, sequence);
             }
+
+            // Trick: If the clock has gone backwards we can still use
+            // the sequence counter to generate unique IDs, so we
+            // reset the timestamp to the last timestamp since
+            timestamp = lastTimestamp;
 
             // Invariants:
             //  - lastTimestamp == timestamp.
@@ -91,13 +117,24 @@ public class IdGenerator {
                 // busy-wait until clock has progressed by one millisecond
                 while (lastTimestamp >= timestamp) {
                     timestamp = timeProvider.getTimeInMillis();
+
+                    // If the clock skew is unacceptably bad it is
+                    // better to give up and throw an exception.
+                    if ((lastTimestamp - timestamp) > maxWaitForClockCatchupInMilliseconds) {
+                        throw new IllegalStateException("Clock too far behind, not bothering to catch up "
+                                                        + (lastTimestamp - timestamp)
+                                                        + "ms");
+                    }
                 }
+                lastTimestamp = timestamp;
             }
 
-            // Invariant: The clock has progressed
-            lastTimestamp = timestamp;
             return buildKey(timestamp, workerId, sequence);
         }
+    }
+
+    public String getNextIdHex() {
+        return Long.toString(getNextId(), 16);
     }
 
     /**
