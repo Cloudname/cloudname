@@ -9,6 +9,10 @@ import java.util.logging.Logger;
  * This ID generator uses a fixed number of bits for timestamp (40
  * bits), worker ID (12 bits) and sequence (12 bits).
  *
+ * TODO(borud): In order to ensure that no two IdGenerator instances
+ *   share the same worker-id we need to add a factory/manager for the
+ *   IdGenerator which takes care of allocating the worker-id.
+ *
  * @author borud
  */
 public class IdGenerator {
