@@ -6,8 +6,8 @@ import org.jboss.netty.channel.Channel;
 
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
@@ -21,10 +21,8 @@ import java.util.logging.Logger;
  * acknowledgements back to the logging client.
  *
  * We usually do not send back acknowledgements right away, we allow
- * them to accumulate and then either send them back after
- * ACKNOWLEDGE_PERIOD milliseconds have passed or a channel has
- * reached ACKNOWLEDGE_AFTER.  This way we can bunch together
- * acknowledgements for multiple incoming messages into fewer packets.
+ * them to accumulate and then either send them back after some delay
+ * (usually in the range 100-200ms).
  *
  * This class has not been optimized yet.  There are lots of ways to
  * optimize this class.
@@ -74,16 +72,17 @@ public class AckManager {
     }
 
     /**
-     * Initialize the AckManager.
+     * Initialize the AckManager.  Fires off a thread that deals with
+     * the consumer loop.
      */
     public void init() {
         new Thread(new Runnable() {
                 @Override
                 public void run() {
-                    log.info("Starting consumer for AckManager");
+                    log.info("Starting AckManager");
                     consumerLoop();
+                    log.info("Shutting down AckManager...");
                     shutdownComplete.countDown();
-                    log.info("Consumer for AckManager shut down");
                 }
             }).start();
     }
@@ -94,7 +93,6 @@ public class AckManager {
     public void shutdown() {
         isShutdown.set(true);
         try {
-            log.info("Waiting for incoming queue to drain");
             shutdownComplete.await();
             log.info("Shutdown of AckManager complete");
         } catch (InterruptedException e) {
@@ -168,7 +166,6 @@ public class AckManager {
                     }
                     rest.clear();
                 }
-                continue;
             }
 
             // Invariant: If we end up here it was because the queue
@@ -181,17 +178,19 @@ public class AckManager {
                 // to drain the queue by re-doing the loop until we
                 // are drained.
                 if (! incomingQueue.isEmpty()) {
-                    log.info("Shutdown called but queue was not empty");
                     continue;
                 }
 
-                log.fine("Shutdown called and incoming queue verified to be empty");
                 assert incomingQueue.isEmpty();
 
-                // push pending acks and wait for writes to complete
+                // Push pending acks and wait for writes to complete.
+                // I know this is a weird place to do the final
+                // flushing, but we do it here to avoid having to do
+                // any locking (ie. we do it in the thread that deals
+                // with all the queues).
                 flush();
 
-                log.info("exiting consumer loop");
+                // Bail out.
                 return;
             }
         }
@@ -204,7 +203,7 @@ public class AckManager {
      * queue is not full we wait until the periodic draining takes
      * place.
      *
-     * Should only be called from consumerLoop().
+     * <b>Should only be called from consumerLoop().</b>
      *
      */
     private void processIncoming(AckEntry entry) {
@@ -220,10 +219,9 @@ public class AckManager {
 
     /**
      * Iterate over all channelQueueMap to remove channels that have
-     * been closed, and to perform writes on channels where the
-     * RESPONSE_DELAY_TIME has been reached.
+     * been closed, and to perform writes on channels.
      *
-     * Should only be called from consumerLoop().
+     * <b>Should only be called from consumerLoop().</b>
      */
     private void processQueues() {
         List<Channel> disposableChannels = new LinkedList<Channel>();
@@ -240,7 +238,6 @@ public class AckManager {
 
             // Drain queues that have data in them
             if (queue.size() > 0) {
-                log.info("Write initiated for " + channel.toString());
                 queue.writeAckEvents();
             }
         }
@@ -264,6 +261,8 @@ public class AckManager {
     /**
      * Flush all the channels.  Blocks until all network writes have
      * finished.
+     *
+     * <b>Should only be called from consumerLoop().</b>
      *
      */
     public void flush() {

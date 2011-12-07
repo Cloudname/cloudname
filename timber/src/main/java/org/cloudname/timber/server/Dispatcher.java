@@ -6,16 +6,16 @@ import org.cloudname.timber.server.handler.LogEventHandler;
 
 import org.jboss.netty.channel.Channel;
 
+import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
-
-import java.util.logging.Logger;
 import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * This class implements the main dispatcher for LogEvents.
@@ -117,16 +117,16 @@ public class Dispatcher {
      * This method implements the consumer loop.  Poll the incoming
      * queue for events.  If the queue is empty.
      *
-     * TODO(borud): this method is getting a bit long and should
-     * probably be broken up a bit.
      */
     private void consumerLoop()
     {
+        List<LogEventQueueEntry> rest = new ArrayList<LogEventQueueEntry>(incomingQueueLength);
+
         while (true) {
             LogEventQueueEntry entry = null;
             try {
-                // Get next event off the queue.  Time out
-                // after POLL_TIME milliseconds
+                // Get next event off the queue.  Time out after
+                // POLL_TIME milliseconds
                 entry = incomingQueue.poll(POLL_TIME, TimeUnit.MILLISECONDS);
             } catch (InterruptedException e) {
                 // TODO(borud): Not sure what to do when we are
@@ -137,7 +137,20 @@ public class Dispatcher {
             // Process the event
             if (null != entry) {
                 processEvent(entry);
-                continue;
+
+                // If there is one event there is likely to be more,
+                // so while we let the poll() operation take care of
+                // the pacing we can opportunistically try to just
+                // fetch the rest of the entries available to lower
+                // contention.
+                if (incomingQueue.size() > 0) {
+                    incomingQueue.drainTo(rest);
+                    for (LogEventQueueEntry ent : rest) {
+                        processEvent(ent);
+                    }
+                    rest.clear();
+                }
+
             }
 
             // Invariant: If we end up here it was because the queue
@@ -168,7 +181,6 @@ public class Dispatcher {
             }
         }
     }
-
 
     /**
      * Take care of the actual dispatching of an event to the

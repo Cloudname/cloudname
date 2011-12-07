@@ -25,9 +25,9 @@ public class AckManagerTest {
         manager.shutdown();
     }
 
-    @Test
+    @Test (timeout = 1000)
     public void testFeedingAcks() throws Exception {
-        int numIterations = 1000000;
+        int numIterations = 10000;
         AckManager manager = new AckManager();
         Channel channel = new MockChannel();
 
@@ -37,14 +37,9 @@ public class AckManagerTest {
         for (int i = 0; i < numIterations; i++) {
             manager.ack(channel, "id" + i);
         }
-        long duration1 = System.currentTimeMillis() - start;
+        long duration = System.currentTimeMillis() - start;
+        log.info("Processed " + numIterations + " acknowledgements in "+ duration + "ms (" + (numIterations / ( (double)duration / 1000)) + " per sec)");
         manager.shutdown();
-        long duration2 = System.currentTimeMillis() - start;
 
-        log.info("### numIterations = " + numIterations);
-        log.info("###     duration1 = " + duration1);
-        log.info("###     duration1 = " + duration2);
-
-        manager.shutdown();
     }
 }
