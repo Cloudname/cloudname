@@ -7,7 +7,20 @@ import java.util.logging.Logger;
  * generator instances with the same worker ID exist at the same time.
  *
  * This ID generator uses a fixed number of bits for timestamp (40
- * bits), worker ID (12 bits) and sequence (12 bits).
+ * bits), worker ID (12 bits) and sequence (12 bits).  These numbers
+ * translate to the following limitations:
+ *
+ * <ul>
+ *   <li> the timer will wrap every 34.87 years, meaning that after
+ *        that after 2045 the IdGenerator will produce IDs that are
+ *        no longer unique.
+ *
+ *   <li> there can at most be 4096 workers active at any given time.
+ *
+ *   <li> if more than 4096 IDs are generated per millisecond the time
+ *        component of the ID will be pushed up by 1ms for every 4096
+ *        IDs generated.  In extreme cases this might be a problem.
+ * </ul>
  *
  * TODO(borud): In order to ensure that no two IdGenerator instances
  *   share the same worker-id we need to add a factory/manager for the
@@ -25,15 +38,6 @@ public class IdGenerator {
                 return System.currentTimeMillis();
             }
         };
-
-    /**
-     * If the clock goes backwards, and it will from time to time, how
-     * long should we wait before we give up and throw an exception?
-     * In Amazon EC2 we have experienced clocks that jump back by as
-     * much as 700ms.  There is really no correct answer to this, so
-     * have picked a value that appears reasonable to us.
-     */
-    public static final int maxWaitForClockCatchupInMilliseconds = 2000;
 
     // Set how many bits we use for each field.
     private static final int NUM_BITS_TIMESTAMP = 40;
@@ -54,7 +58,7 @@ public class IdGenerator {
 
     // State variables
     private long workerId = 0L;
-    private long lastTimestamp = Long.MIN_VALUE;
+    private long prevTimestamp = Long.MIN_VALUE;
     private long sequence = 0L;
 
     // Sync object
@@ -99,37 +103,28 @@ public class IdGenerator {
 
         synchronized(syncObject) {
             // Deal with the simple case first.
-            if (lastTimestamp < timestamp) {
+            if (prevTimestamp < timestamp) {
                 sequence = 0L;
-                lastTimestamp = timestamp;
+                prevTimestamp = timestamp;
                 return buildKey(timestamp, workerId, sequence);
             }
 
             // TRICK: If the clock has gone backwards we can still use
             // the sequence counter to generate unique IDs, so we
-            // reset the timestamp to lastTimestamp and try our luck
+            // reset the timestamp to prevTimestamp and try our luck
             // with the sequence counter
-            timestamp = lastTimestamp;
+            timestamp = prevTimestamp;
 
             // Invariant: we have handed out an ID for this timestamp
 
             // Increment and wrap
             sequence = ((sequence + 1) & sequenceBitMask);
             if (0L == sequence) {
-                log.info("Requesting unique IDs faster than we can make them; busy-waiting. workerId = " + workerId);
-                // Busy-wait until clock has progressed by one millisecond.
-                while (lastTimestamp >= timestamp) {
-                    timestamp = timeProvider.getTimeInMillis();
-
-                    // If the clock skew is unacceptably bad it is
-                    // better to give up and throw an exception.
-                    if ((lastTimestamp - timestamp) > maxWaitForClockCatchupInMilliseconds) {
-                        throw new IllegalStateException("Clock too far behind, not bothering to catch up "
-                                                        + (lastTimestamp - timestamp)
-                                                        + "ms");
-                    }
-                }
-                lastTimestamp = timestamp;
+                // The sequence has wrapped so we cheat and advance
+                // the timestamp by 1ms
+                timestamp++;
+                log.info("Cheating, advancing timestamp by 1ms. workerId = " + workerId);
+                prevTimestamp = timestamp;
             }
 
             return buildKey(timestamp, workerId, sequence);
