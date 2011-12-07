@@ -59,34 +59,14 @@ public class Dispatcher {
     private Thread consumerThread;
     private final CountDownLatch shutdownComplete = new CountDownLatch(1);
 
-    /**
-     * Value class for transporting log events and the channel they
-     * came from to the handler.
-     */
-    private static class LogEventQueueEntry {
-        private Timber.LogEvent event;
-        private Channel channel;
-
-        public LogEventQueueEntry(Timber.LogEvent event, Channel channel) {
-            this.event = event;
-            this.channel = channel;
-        }
-
-        public Timber.LogEvent getLogEvent() {
-            return event;
-        }
-
-        public Channel getChannel() {
-            return channel;
-        }
-    }
+    // The acknowledgement manager
+    private final AckManager ackManager = new AckManager();
 
 
     /**
      * @param incomingQueueLength the length of the input queue to the dispatcher.
      */
-    public Dispatcher(int incomingQueueLength)
-    {
+    public Dispatcher(int incomingQueueLength) {
         this.incomingQueueLength = incomingQueueLength;
         incomingQueue = new ArrayBlockingQueue<LogEventQueueEntry>(incomingQueueLength, true);
         handlers = new CopyOnWriteArrayList<LogEventHandler>();

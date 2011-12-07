@@ -83,6 +83,15 @@ public class TimberClient {
         bootstrap.releaseExternalResources();
     }
 
+    public void receptionAcknowledge(Timber.AckEvent ack) {
+        StringBuilder buff = new StringBuilder();
+        for (String s : ack.getIdList()) {
+            buff.append(s)
+                .append(' ');
+        }
+        log.info("ACK ids: " + buff.toString());
+    }
+
     /**
      * Submit a Timber.LogEvent to the server.
      *
