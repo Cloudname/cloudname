@@ -85,6 +85,9 @@ public class AckQueue {
             builder.addId(id);
         }
 
+        // Important, clear out the id queue.
+        ids.clear();
+
         ChannelFuture future = channel.write(builder.build());
 
         // Add the future to the set of pending writes.
@@ -110,9 +113,6 @@ public class AckQueue {
                     }
                 }
             });
-
-        // Important, clear out the id queue.
-        ids.clear();
     }
 
     /**
