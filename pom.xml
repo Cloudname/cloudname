@@ -52,6 +52,7 @@
     <module>log</module>
     <module>timber</module>
     <module>flags</module>
+    <module>idgen</module>
   </modules>
 
   <build>
