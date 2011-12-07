@@ -16,4 +16,3 @@ public class LogEventHandlerException extends RuntimeException {
         super(msg, cause);
     }
 }
-

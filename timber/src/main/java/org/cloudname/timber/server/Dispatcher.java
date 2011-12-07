@@ -24,23 +24,6 @@ import java.util.logging.Logger;
  * much in terms of performance or safety features.  The dispatcher
  * has an incoming queue of a fixed size.
  *
- * TODO(borud): acknowledgement of log events with elevated
- *   consistency level is very rudimentary and probably inefficient at
- *   the moment.  Each logevent is ack'ed separately and we make no
- *   use of the underlying protocol's ability to batch several
- *   acknowledgements into one response.
- *
- *   There is also a corner case for dispatchers that have no
- *   handlers: if a dispatcher has no handlers the message has not
- *   been persisted.  We probably need to extend the EventHandler
- *   interface so that the handle() method can return something that
- *   says if the handler persisted the message or not.  If at least
- *   one handler says it has persisted the message then we can
- *   consider it persisted.  If no handlers persisted the message, we
- *   should perhaps send back some kind of negative acknowledgement
- *   indicating this.
- *
- *
  * @author borud
  */
 public class Dispatcher {
