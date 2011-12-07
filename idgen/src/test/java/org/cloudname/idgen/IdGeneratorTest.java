@@ -82,33 +82,4 @@ public class IdGeneratorTest {
         }
         assertEquals(numIterations, idSet.size());
     }
-
-    /**
-     * Test what happens if the clock goes backwards so far we don't
-     * want to wait for it.
-     */
-    @Test (expected = IllegalStateException.class)
-    public void testBackwardsClockTooFar() {
-        int numIterations = 1000000;
-
-        // Time provider which jumps 5000ms back in time roughly every
-        // 1000 calls.
-        TimeProvider tp = new TimeProvider() {
-                // Use a seed that is known to trigger this test at
-                // least once on the JVM we use.
-                Random random = new Random(1);
-                @Override
-                public long getTimeInMillis() {
-                    if (random.nextInt(10) == 1) {
-                        return System.currentTimeMillis() - IdGenerator.maxWaitForClockCatchupInMilliseconds - 10;
-                    }
-                    return System.currentTimeMillis();
-                }
-            };
-
-        IdGenerator idgen = new IdGenerator(0L, tp);
-        for (int i = 0; i < numIterations; ++i) {
-            idgen.getNextId();
-        }
-    }
 }
