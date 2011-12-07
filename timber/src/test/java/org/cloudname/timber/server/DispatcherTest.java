@@ -6,6 +6,7 @@ import static org.cloudname.log.pb.Timber.ConsistencyLevel;
 import org.cloudname.timber.server.handler.LogEventHandler;
 import org.cloudname.timber.server.handler.LogEventHandlerException;
 
+import java.util.BitSet;
 import com.google.protobuf.ByteString;
 
 import org.junit.*;
@@ -144,16 +145,23 @@ public class DispatcherTest {
         for (int i = 0; i < numEvents; i++) {
             Timber.LogEvent event = Timber.LogEvent.newBuilder(createMessage("meh " + i))
                 .setConsistencyLevel(ConsistencyLevel.REPLICATED)
-                .setId("x" + i)
+                .setId("" + i)
                 .build();
             disp.dispatch(event, channel);
         }
         disp.shutdown();
-        assertEquals(numEvents, channel.getWriteCount());
 
-        // Look at the last ack
-        Timber.AckEvent ackEvent = (Timber.AckEvent) channel.getWriteObject();
-        assertNotNull(ackEvent);
-        assertEquals("x"+ (numEvents - 1), ackEvent.getId(0));
+        // Ensure the acks are there
+        BitSet bits = new BitSet(1000);
+        for (Object obj : channel.getObjects()) {
+            Timber.AckEvent ackEvent = (Timber.AckEvent) obj;
+            for (String id : ackEvent.getIdList()) {
+                bits.set(Integer.parseInt(id));
+            }
+        }
+
+        BitSet truth = new BitSet(1000);
+        truth.set(0,1000);
+        assertEquals(truth, bits);
     }
 }

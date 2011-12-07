@@ -40,7 +40,7 @@ public class AckManager {
 
     // The number of queued acknowledgements to keep for a channel
     // before we flush acknowledgements for that channel.
-    private static final int ACKNOWLEDGE_QUEUE_SIZE = 50;
+    private static final int ACKNOWLEDGE_QUEUE_SIZE = 30;
 
     // Indicate whether we wish to shut down.
     private final AtomicBoolean isShutdown = new AtomicBoolean(false);
@@ -146,15 +146,12 @@ public class AckManager {
                 lastPeriodicProcess = now;
             }
 
-
             AckEntry entry = null;
             try {
                 entry = incomingQueue.poll(QUEUE_POLL_TIME, TimeUnit.MILLISECONDS);
             } catch (InterruptedException e) {
-                // If we are interrupted that probably means we
-                // need to shut down?
-                Thread.currentThread().interrupt();
-                return;
+                // Ignore and try again.
+                continue;
             }
 
             // Got an event, process it
@@ -191,9 +188,8 @@ public class AckManager {
                 log.fine("Shutdown called and incoming queue verified to be empty");
                 assert incomingQueue.isEmpty();
 
-                // TODO(borud): At this point we should drain the
-                //   acknowledgement queues as well, but this requires
-                //   a bit of re-thinking so we will fix this later.
+                // push pending acks and wait for writes to complete
+                flush();
 
                 log.info("exiting consumer loop");
                 return;
@@ -251,8 +247,36 @@ public class AckManager {
 
         // Dispose the queues that are associated to closed channels.
         for (Channel channel : disposableChannels) {
-            AckQueue queue = channelQueueMap.remove(channel);
-            log.info("Disposed channels " + channel.toString() + " with " + queue.size() + " ids still in it");
+            removeChannel(channel);
+        }
+    }
+
+    /**
+     * Explicitly remove a channel from the AckManager.
+     *
+     * @param channel the channel we wish to remove.
+     */
+    public void removeChannel(Channel channel) {
+        AckQueue queue = channelQueueMap.remove(channel);
+        log.info("Disposed channels " + channel.toString() + " with " + queue.size() + " ids still in it");
+    }
+
+    /**
+     * Flush all the channels.  Blocks until all network writes have
+     * finished.
+     *
+     */
+    public void flush() {
+        for (AckQueue queue : channelQueueMap.values()) {
+            labelwhile:
+            while(true) {
+                try {
+                    queue.flush();
+                    break labelwhile;
+                } catch(InterruptedException e) {
+                    // Ignore
+                }
+            }
         }
     }
 }

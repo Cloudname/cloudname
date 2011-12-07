@@ -62,7 +62,6 @@ public class Dispatcher {
     // The acknowledgement manager
     private final AckManager ackManager = new AckManager();
 
-
     /**
      * @param incomingQueueLength the length of the input queue to the dispatcher.
      */
@@ -76,6 +75,10 @@ public class Dispatcher {
      * Initialize the dispatcher.  Creates a consumer thread.
      */
     public void init() {
+        // Fire up the ackManager
+        ackManager.init();
+
+        // Fire up the consumer thread
         consumerThread = new Thread(new Runnable() {
                 public void run() {
                     log.fine("Starting consumer");
@@ -87,6 +90,28 @@ public class Dispatcher {
         consumerThread.start();
     }
 
+    /**
+     * Shut down the dispatcher.  Waits for the queue to be drained
+     * and all the handlers to be closed before returning.
+     */
+    public void shutdown()
+    {
+        if (isShutdown.get()) {
+            throw new IllegalStateException("Already called shutdown for dispatcher");
+        }
+
+        isShutdown.set(true);
+        try {
+            log.info("Waiting for queue to drain");
+            shutdownComplete.await();
+            log.info("Shutdown complete");
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+
+        // Shut down the ackManager.
+        ackManager.shutdown();
+    }
 
     /**
      * This method implements the consumer loop.  Poll the incoming
@@ -104,10 +129,9 @@ public class Dispatcher {
                 // after POLL_TIME milliseconds
                 entry = incomingQueue.poll(POLL_TIME, TimeUnit.MILLISECONDS);
             } catch (InterruptedException e) {
-                // If we are interrupted that probably means we
-                // need to shut down?
-                Thread.currentThread().interrupt();
-                return;
+                // TODO(borud): Not sure what to do when we are
+                //   interrupted. Restarting the loop should be safe.
+                continue;
             }
 
             // Process the event
@@ -159,7 +183,6 @@ public class Dispatcher {
     private void processEvent(LogEventQueueEntry entry) {
         // Loop through the registered handlers and offer the event to them.
         Timber.LogEvent event = entry.getLogEvent();
-        boolean wasFlushed = false;
         for (LogEventHandler handler : handlers) {
             try {
                 handler.handle(event);
@@ -169,49 +192,16 @@ public class Dispatcher {
                 // have to flush.
                 if (event.getConsistencyLevel() != Timber.ConsistencyLevel.BESTEFFORT) {
                     handler.flush();
-                    wasFlushed = true;
                 }
             } catch (Exception e) {
                 log.log(Level.WARNING, "Got exception while dispatching to " + handler.getName(), e);
             }
         }
 
-        // If we have come thus far we can acknowledge the event if applicable.
-        if (wasFlushed) {
-            maybeAcknowledgeEvent(entry);
+        // Enqueue ack message if the message had an id
+        if (event.hasId()) {
+            ackManager.ack(entry.getChannel(), event.getId());
         }
-    }
-
-
-    /**
-     * Acknowledge the log event to the originator.  If the id of the
-     * message is not set, no acknowledgement will be sent.  Likewise,
-     * if there is not originating channel, no acknowledgement can be
-     * sent.
-     *
-     * @param entry the LogEventQueueEntry for which we wish to return
-     *   an acknowledgement.
-     */
-    private void maybeAcknowledgeEvent(LogEventQueueEntry entry) {
-        Timber.LogEvent event = entry.getLogEvent();
-
-        // If the log event has no id we cannot acknowledge it.
-        if (! event.hasId()) {
-            return;
-        }
-
-        // If we have no channel we can't send an ack
-        Channel channel = entry.getChannel();
-        if (null == channel) {
-            return;
-        }
-
-        Timber.AckEvent ack = Timber.AckEvent.newBuilder()
-            .setTimestamp(System.currentTimeMillis())
-            .addId(event.getId())
-            .build();
-
-        channel.write(ack);
     }
 
 
@@ -258,21 +248,4 @@ public class Dispatcher {
             throw new RuntimeException(e);
         }
     }
-
-    /**
-     * Shut down the dispatcher.  Waits for the queue to be drained
-     * and all the handlers to be closed before returning.
-     */
-    public void shutdown()
-    {
-        isShutdown.set(true);
-        try {
-            log.info("Waiting for queue to drain");
-            shutdownComplete.await();
-            log.info("Shutdown complete");
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-        }
-    }
-
 }
