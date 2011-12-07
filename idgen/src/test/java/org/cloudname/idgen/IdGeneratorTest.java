@@ -1,7 +1,6 @@
 package org.cloudname.idgen;
 
 import java.util.logging.Logger;
-import java.util.Random;
 import java.util.Set;
 import java.util.HashSet;
 
@@ -63,13 +62,12 @@ public class IdGeneratorTest {
         int numIterations = 10000;
         Set<Long> idSet = new HashSet<Long>(numIterations);
 
-        // Time provider which jumps 5ms back in time roughly every
-        // 1000 calls.
+        // Time provider which jumps 5ms back in time every 109 calls.
         TimeProvider tp = new TimeProvider() {
-                Random random = new Random(1);
+                private int counter = 0;
                 @Override
                 public long getTimeInMillis() {
-                    if (random.nextInt(1000) == 1) {
+                    if ((counter++ % 109) == 0) {
                         return System.currentTimeMillis() - 5;
                     }
                     return System.currentTimeMillis();
