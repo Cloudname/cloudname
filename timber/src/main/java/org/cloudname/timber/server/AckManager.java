@@ -22,7 +22,8 @@ import java.util.logging.Logger;
  *
  * We usually do not send back acknowledgements right away, we allow
  * them to accumulate and then either send them back after some delay
- * (usually in the range 100-200ms).
+ * (usually in the range 100-200ms) or when the outbound queue reaches
+ * its max size.
  *
  * This class has not been optimized yet.  There are lots of ways to
  * optimize this class.
@@ -244,18 +245,9 @@ public class AckManager {
 
         // Dispose the queues that are associated to closed channels.
         for (Channel channel : disposableChannels) {
-            removeChannel(channel);
+            AckQueue queue = channelQueueMap.remove(channel);
+            log.info("Disposed channels " + channel.toString() + " with " + queue.size() + " ids still in it");
         }
-    }
-
-    /**
-     * Explicitly remove a channel from the AckManager.
-     *
-     * @param channel the channel we wish to remove.
-     */
-    public void removeChannel(Channel channel) {
-        AckQueue queue = channelQueueMap.remove(channel);
-        log.info("Disposed channels " + channel.toString() + " with " + queue.size() + " ids still in it");
     }
 
     /**
@@ -265,7 +257,7 @@ public class AckManager {
      * <b>Should only be called from consumerLoop().</b>
      *
      */
-    public void flush() {
+    private void flush() {
         for (AckQueue queue : channelQueueMap.values()) {
             labelwhile:
             while(true) {
