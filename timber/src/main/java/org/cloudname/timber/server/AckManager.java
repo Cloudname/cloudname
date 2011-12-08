@@ -11,7 +11,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Logger;
@@ -44,21 +43,20 @@ public class AckManager {
     // Indicate whether we wish to shut down.
     private final AtomicBoolean isShutdown = new AtomicBoolean(false);
 
-    // When the consumer thread exits it will count down this latch.
-    private final CountDownLatch shutdownComplete = new CountDownLatch(1);
-
     // The incoming queue for acknowledgements
     private final BlockingQueue<AckEntry> incomingQueue = new ArrayBlockingQueue<AckEntry>(INCOMING_QUEUE_LENGTH);
 
     // Map from channel to AckQueue
     private Map<Channel, AckQueue> channelQueueMap = new HashMap<Channel, AckQueue>();
 
+    private Thread consumerThread;
+
     // Acknowledgement queue entry.
     private static class AckEntry {
-        private Channel channel;
-        private String id;
+        private final Channel channel;
+        private final String id;
 
-        public AckEntry(Channel channel, String id) {
+        public AckEntry(final Channel channel, final String id) {
             this.channel = channel;
             this.id = id;
         }
@@ -77,15 +75,15 @@ public class AckManager {
      * the consumer loop.
      */
     public void init() {
-        new Thread(new Runnable() {
+        consumerThread = new Thread(new Runnable() {
                 @Override
                 public void run() {
                     log.info("Starting AckManager");
                     consumerLoop();
                     log.info("Shutting down AckManager...");
-                    shutdownComplete.countDown();
                 }
-            }).start();
+            });
+        consumerThread.start();
     }
 
     /**
@@ -94,7 +92,7 @@ public class AckManager {
     public void shutdown() {
         isShutdown.set(true);
         try {
-            shutdownComplete.await();
+            consumerThread.join();
             log.info("Shutdown of AckManager complete");
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
@@ -128,6 +126,9 @@ public class AckManager {
      * Consume incoming acknowledgements and stash them into a per
      * channel queue so that we can bunch together acknowledgements
      * into fewer packets.
+     *
+     * TODO(borud): the timing of processQueues() needs to be
+     *   tightened up.
      */
     private void consumerLoop() {
         long lastPeriodicProcess = System.currentTimeMillis();
@@ -139,13 +140,13 @@ public class AckManager {
         while (true) {
             // We want the periodic processing to take place at most
             // every QUEUE_POLL_TIME milliseconds.
-            long now = System.currentTimeMillis();
+            final long now = System.currentTimeMillis();
             if ((now - lastPeriodicProcess) > QUEUE_POLL_TIME) {
                 processQueues();
                 lastPeriodicProcess = now;
             }
 
-            AckEntry entry = null;
+            final AckEntry entry;
             try {
                 entry = incomingQueue.poll(QUEUE_POLL_TIME, TimeUnit.MILLISECONDS);
             } catch (InterruptedException e) {
@@ -153,8 +154,8 @@ public class AckManager {
                 continue;
             }
 
-            // Got an event, process it
             if (null != entry) {
+                // Got an event, process it
                 processIncoming(entry);
 
                 // If there is more, drain the rest of the

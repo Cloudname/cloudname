@@ -26,8 +26,9 @@ public class CoordinateTest {
 
     @Test
     public void testEquals() throws Exception {
-        assertTrue(
-            new Coordinate(1,"foo", "bar", "baz").equals(new Coordinate(1, "foo", "bar", "baz"))
+        assertEquals(
+            new Coordinate(1,"foo", "bar", "baz"),
+            new Coordinate(1, "foo", "bar", "baz")
         );
     }
 

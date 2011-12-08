@@ -11,8 +11,8 @@ import org.jboss.netty.channel.Channel;
  * @author borud
  */
 public class LogEventQueueEntry {
-    private Timber.LogEvent event;
-    private Channel channel;
+    private final Timber.LogEvent event;
+    private final Channel channel;
 
     /**
      * Create LogEventQueueEntry.
@@ -20,7 +20,7 @@ public class LogEventQueueEntry {
      * @param event the logevent
      * @param channel the channel the logevent came from
      */
-    public LogEventQueueEntry(Timber.LogEvent event, Channel channel) {
+    public LogEventQueueEntry(final Timber.LogEvent event, final Channel channel) {
         if (null == event) {
             throw new NullPointerException("event cannot be null");
         }

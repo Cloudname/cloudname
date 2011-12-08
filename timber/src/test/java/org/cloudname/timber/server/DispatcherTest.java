@@ -160,8 +160,8 @@ public class DispatcherTest {
             }
         }
 
-        BitSet truth = new BitSet(1000);
-        truth.set(0,1000);
-        assertEquals(truth, bits);
+        BitSet expected = new BitSet(1000);
+        expected.set(0,1000);
+        assertEquals(expected, bits);
     }
 }
