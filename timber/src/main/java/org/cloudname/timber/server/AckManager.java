@@ -170,9 +170,6 @@ public class AckManager {
                 }
             }
 
-            // Invariant: If we end up here it was because the queue
-            //   was empty.  This is a good time to check if we have
-            //   been shut down.
             if (isShutdown.get()) {
                 // It is still possible that we were not shut down
                 // when we called poll, and thus there could be
