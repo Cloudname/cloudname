@@ -10,6 +10,9 @@ import org.jboss.netty.channel.Channel;
 import org.jboss.netty.channel.ChannelFuture;
 import org.jboss.netty.channel.socket.nio.NioClientSocketChannelFactory;
 
+import java.util.Set;
+import java.util.HashSet;
+
 import java.util.logging.Logger;
 import java.util.logging.Level;
 
@@ -28,7 +31,24 @@ public class TimberClient {
     private ClientBootstrap bootstrap;
     private Channel channel;
 
-    private TimberClient() {}
+    private Set<AckEventListener> ackEventListeners = new HashSet<AckEventListener>();
+
+    /**
+     * Listens to Timber.AckEvent instances coming asynchronously from
+     * the log server.  Note that this is called by a thread belonging
+     * to the underlying IO machinery so AckEventListener
+     * implementations have to be quick and they have to be thread
+     * safe.
+     *
+     * @author borud
+     */
+    public static interface AckEventListener {
+        /**
+         * @param ackEvent a Timber.AckEvent.
+         */
+        public void ackEventReceived(Timber.AckEvent ackEvent);
+    }
+
 
     public TimberClient(String host, int port) {
         this.host = host;
@@ -46,7 +66,7 @@ public class TimberClient {
         );
 
         // Configure the pipeline factory
-        bootstrap.setPipelineFactory(new TimberClientPipelineFactory());
+        bootstrap.setPipelineFactory(new TimberClientPipelineFactory(this));
 
         // Make a new connection
         log.info("Client connecting to " + host + ":" + port + "...");
@@ -56,10 +76,6 @@ public class TimberClient {
         // Wait for connection to succeed
         channel = connectFuture.awaitUninterruptibly().getChannel();
         log.info("Client connected to " + host + ":" + port);
-
-        // Get the TimberClientHandler so we can use it to submit log
-        // messages.
-        handler = channel.getPipeline().get(TimberClientHandler.class);
     }
 
     /**
@@ -83,13 +99,19 @@ public class TimberClient {
         bootstrap.releaseExternalResources();
     }
 
-    public void receptionAcknowledge(Timber.AckEvent ack) {
-        StringBuilder buff = new StringBuilder();
-        for (String s : ack.getIdList()) {
-            buff.append(s)
-                .append(' ');
+    /**
+     * This method is called by the TimberClient
+     */
+    public void onAckEvent(Timber.AckEvent ack) {
+        synchronized(ackEventListeners) {
+            for (AckEventListener listener : ackEventListeners) {
+                try {
+                    listener.ackEventReceived(ack);
+                } catch (Exception e) {
+                    log.log(Level.WARNING, "AckEventListener " + listener + " threw an exception", e);
+                }
+            }
         }
-        log.info("ACK ids: " + buff.toString());
     }
 
     /**
@@ -98,6 +120,39 @@ public class TimberClient {
      * @param logEvent the Timber.LogEvent we wish to send to the server.
      */
     public void submitLogEvent(Timber.LogEvent logEvent) {
-        handler.submitLogEvent(logEvent);
+        channel.write(logEvent);
+    }
+
+    /**
+     * Add an AckEventListener to this TimberClient.
+     *
+     * @param listener the AckEventListener we wish to register.
+     * @return a {@code this} reference for method chaining.
+     * @throws IllegalArgumentException if the listener has already been registered.
+     */
+    public TimberClient addAckEventListener(AckEventListener listener) {
+        synchronized(ackEventListeners) {
+            if (! ackEventListeners.add(listener)) {
+                throw new IllegalArgumentException(
+                    "This AckEventListener was already registered: " + listener.toString()
+                );
+            }
+        }
+        return this;
+    }
+
+    /**
+     * Removes an AckEventListener from this TimberClient.  If the
+     * AckEventListener was never registered we ignore this fact and
+     * trundle on happily.
+     *
+     * @param listener the AckEventListener we wish to remove.
+     * @return a {@code this} reference for method chaining.
+     */
+    public TimberClient removeAckEventListener(AckEventListener listener) {
+        synchronized(ackEventListeners) {
+            ackEventListeners.remove(listener);
+        }
+        return this;
     }
 }
