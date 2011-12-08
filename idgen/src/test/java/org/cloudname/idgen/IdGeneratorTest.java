@@ -40,7 +40,7 @@ public class IdGeneratorTest {
         assertNotNull(idgen.getNextIdHex());
     }
 
-    @Test (timeout=50)
+    @Test (timeout=500)
     public void testMicroBenchmark() {
         IdGenerator idgen = new IdGenerator(0L);
         int numIterations = 10000;
