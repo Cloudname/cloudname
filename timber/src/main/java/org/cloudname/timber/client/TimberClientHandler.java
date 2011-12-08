@@ -23,6 +23,19 @@ public class TimberClientHandler extends SimpleChannelUpstreamHandler {
     private static final Logger log = Logger.getLogger(TimberClientHandler.class.getName());
 
     private volatile Channel channel;
+    private TimberClient client;
+
+    /**
+     * Create a Timber client handler.
+     *
+     * @param client the timber client.
+     */
+    public TimberClientHandler(TimberClient client) {
+        // Do we need to call super()?  Since we extend SimpleChannelUpstreamHandler
+        // it is likely the answer is yes.
+        super();
+        this.client = client;
+    }
 
     @Override
     public void handleUpstream(ChannelHandlerContext ctx, ChannelEvent event) throws Exception {
@@ -42,13 +55,15 @@ public class TimberClientHandler extends SimpleChannelUpstreamHandler {
     public void messageReceived(ChannelHandlerContext ctx, final MessageEvent event) {
         Object obj = event.getMessage();
 
-        // Handle AckEvent
+        // When we get an AckEvent we dispatch it back to the TimberClient.
         if (obj instanceof Timber.AckEvent) {
-            log.info(">>> Got ack event");
+            Timber.AckEvent ackEvent = (Timber.AckEvent) obj;
+            client.onAckEvent(ackEvent);
             return;
         }
 
-        log.info(">>> Got message " + event.toString());
+        // If we get something else we log it.
+        log.info("Got unknown response from log server " + event.toString());
     }
 
     @Override
@@ -59,6 +74,15 @@ public class TimberClientHandler extends SimpleChannelUpstreamHandler {
         exceptionEvent.getChannel().close();
     }
 
+    /**
+     * Submit log event to the log server.  This happens
+     * asynchronously so this method will return immediately.
+     *
+     * @param logEvent the log event we wish to send to the log
+     *   server.
+     *
+     * @return a ChannelFuture for the write operation.
+     */
     public ChannelFuture submitLogEvent(Timber.LogEvent logEvent) {
         return channel.write(logEvent);
     }
