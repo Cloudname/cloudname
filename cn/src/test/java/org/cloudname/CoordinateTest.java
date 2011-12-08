@@ -19,6 +19,18 @@ public class CoordinateTest {
         assertEquals("cell", c.getCell());
     }
 
+    @Test (expected = IllegalArgumentException.class)
+    public void testInvalidInstanceNumber() throws Exception {
+        new Coordinate(-1, "service", "user", "cell");
+    }
+
+    @Test
+    public void testEquals() throws Exception {
+        assertTrue(
+            new Coordinate(1,"foo", "bar", "baz").equals(new Coordinate(1, "foo", "bar", "baz"))
+        );
+    }
+
     @Test
     public void testSymmetry() throws Exception {
         String s = "0.fooservice.baruser.bazcell";

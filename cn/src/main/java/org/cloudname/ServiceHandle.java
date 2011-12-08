@@ -35,6 +35,11 @@ public interface ServiceHandle {
     /**
      * Register a ConfigListener which will be called whenever there
      * is a configuration change.
+     *
+     * There may have been configuration pushed to the backing storage
+     * already by the time a ConfigListener is registered.  In that
+     * case the ConfigListener will see these configuration items as
+     * being created.
      */
     public void registerConfigListener(ConfigListener listener);
 
