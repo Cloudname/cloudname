@@ -73,17 +73,4 @@ public class TimberClientHandler extends SimpleChannelUpstreamHandler {
                 exceptionEvent.getCause());
         exceptionEvent.getChannel().close();
     }
-
-    /**
-     * Submit log event to the log server.  This happens
-     * asynchronously so this method will return immediately.
-     *
-     * @param logEvent the log event we wish to send to the log
-     *   server.
-     *
-     * @return a ChannelFuture for the write operation.
-     */
-    public ChannelFuture submitLogEvent(Timber.LogEvent logEvent) {
-        return channel.write(logEvent);
-    }
 }

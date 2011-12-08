@@ -76,10 +76,6 @@ public class TimberClient {
         // Wait for connection to succeed
         channel = connectFuture.awaitUninterruptibly().getChannel();
         log.info("Client connected to " + host + ":" + port);
-
-        // Get the TimberClientHandler so we can use it to submit log
-        // messages.
-        handler = channel.getPipeline().get(TimberClientHandler.class);
     }
 
     /**
@@ -124,7 +120,7 @@ public class TimberClient {
      * @param logEvent the Timber.LogEvent we wish to send to the server.
      */
     public void submitLogEvent(Timber.LogEvent logEvent) {
-        handler.submitLogEvent(logEvent);
+        channel.write(logEvent);
     }
 
     /**
@@ -144,7 +140,6 @@ public class TimberClient {
         }
         return this;
     }
-
 
     /**
      * Removes an AckEventListener from this TimberClient.  If the

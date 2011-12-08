@@ -35,7 +35,7 @@ public class TimberClientPipelineFactory  implements ChannelPipelineFactory {
         ChannelPipeline p = Channels.pipeline();
 
         p.addLast("frameDecoder", new ProtobufVarint32FrameDecoder());
-        p.addLast("protobufDecoder", new ProtobufDecoder(Timber.LogEvent.getDefaultInstance()));
+        p.addLast("protobufDecoder", new ProtobufDecoder(Timber.AckEvent.getDefaultInstance()));
 
         p.addLast("frameEncoder", new ProtobufVarint32LengthFieldPrepender());
         p.addLast("protobufEncoder", new ProtobufEncoder());
