@@ -82,7 +82,6 @@ message Payload {
   optional string content_type = 3;
 }
 
-
 message AckEvent {
   // Timestamp is in milliseconds since epoch.
   required int64 timestamp = 1;
