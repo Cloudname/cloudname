@@ -120,7 +120,7 @@ public class TimberClient {
      * @param logEvent the Timber.LogEvent we wish to send to the server.
      */
     public void submitLogEvent(Timber.LogEvent logEvent) {
-        channel.write(logEvent);
+            channel.write(logEvent);
     }
 
     /**
