@@ -26,10 +26,13 @@ public class TimberClient {
 
     private String host;
     private int port;
-
     private TimberClientHandler handler;
     private ClientBootstrap bootstrap;
     private Channel channel;
+    private volatile boolean wantShutdown = false;
+
+    // Used to synchronize access on channel so that channel
+    private Object channelSync = new Object();
 
     private Set<AckEventListener> ackEventListeners = new HashSet<AckEventListener>();
 
@@ -49,7 +52,12 @@ public class TimberClient {
         public void ackEventReceived(Timber.AckEvent ackEvent);
     }
 
-
+    /**
+     * Create a Timber client.
+     *
+     * @param host the host where the log server runs.
+     * @param port the port the log server listens to.
+     */
     public TimberClient(String host, int port) {
         this.host = host;
         this.port = port;
@@ -65,16 +73,14 @@ public class TimberClient {
                 Executors.newCachedThreadPool())
         );
 
-        // Configure the pipeline factory
-        bootstrap.setPipelineFactory(new TimberClientPipelineFactory(this));
+        // Configure the bootstrap
+        bootstrap.setPipelineFactory(new TimberClientPipelineFactory(this, bootstrap));
+        bootstrap.setOption("tcpNoDelay", true);
+        bootstrap.setOption("remoteAddress", new InetSocketAddress(host, port));
 
         // Make a new connection
         log.info("Client connecting to " + host + ":" + port + "...");
-        ChannelFuture connectFuture =
-            bootstrap.connect(new InetSocketAddress(host, port));
-
-        // Wait for connection to succeed
-        channel = connectFuture.awaitUninterruptibly().getChannel();
+        ChannelFuture connectFuture = bootstrap.connect().awaitUninterruptibly();
         log.info("Client connected to " + host + ":" + port);
     }
 
@@ -82,10 +88,12 @@ public class TimberClient {
      * Shut down the client.
      */
     public void shutdown() {
+        wantShutdown = true;
+
         // The first step is always to get rid of any open channels.
         // If we do not the releaseExternalResources() method is just
         // going to hang until we do.
-        if ((channel != null) && channel.isOpen()) {
+        if ((channel != null) && channel.isConnected()) {
             try {
                 ChannelFuture closeFuture = channel.getCloseFuture();
                 channel.close();
@@ -115,12 +123,61 @@ public class TimberClient {
     }
 
     /**
-     * Submit a Timber.LogEvent to the server.
+     * Callback method called by TimberClientHandler when the
+     * connection has been made.  This can be the result of a connect
+     * or a reconnect on connection loss.
+     *
+     * @param channel the newly connected channel.
+     */
+    public void onConnect(Channel channel) {
+        log.info("CONNECTED to " + host + ":" + port);
+        synchronized(channelSync) {
+            this.channel = channel;
+        }
+    }
+
+    /**
+     * Callback method called by TimberClientHandler when the
+     * connection has been lost.
+     */
+    public void onDisconnect() {
+        log.info("DISCONNECTED from " + host + ":" + port);
+        synchronized(channelSync) {
+            channel = null;
+        }
+    }
+
+    /**
+     * Submit a Timber.LogEvent to the server.  If the underlying
+     * connection to the log server is gone, this method will just
+     * drop the LogEvent on the floor.
      *
      * @param logEvent the Timber.LogEvent we wish to send to the server.
+     *
+     * @return returns {@code true} if an attempt was made to write
+     *   the log event. Returns {@code false} if there was no
+     *   connection to the log server.
      */
-    public void submitLogEvent(Timber.LogEvent logEvent) {
+    public boolean submitLogEvent(Timber.LogEvent logEvent) {
+        // Note that the synchronization is necessary to make sure
+        // that the channel does not disappear under our feet after
+        // the conditional.
+        synchronized(channelSync) {
+            if (null == channel) {
+                return false;
+            }
+
+            if (! channel.isConnected()) {
+                return false;
+            }
+
+            if (wantShutdown) {
+                return false;
+            }
+
             channel.write(logEvent);
+            return true;
+        }
     }
 
     /**
@@ -154,5 +211,12 @@ public class TimberClient {
             ackEventListeners.remove(listener);
         }
         return this;
+    }
+
+    /**
+     * @return {@code true} if shutdown() has been called.
+     */
+    public boolean isShutdown() {
+        return wantShutdown;
     }
 }

@@ -41,6 +41,7 @@ public class TimberClientTest {
     }
 
     @Test
+    @Ignore
     public void testSimple() throws Exception {
         int port = Net.getFreePort();
         Server server = new Server(port);
@@ -72,7 +73,7 @@ public class TimberClientTest {
         server.shutdown();
     }
 
-    @Test
+    @Test (timeout=3000)
     public void testServerShutdown() throws Exception {
         int port = Net.getFreePort();
         Server server = new Server(port);
@@ -91,5 +92,11 @@ public class TimberClientTest {
         // Send the log message again, this time with the server down.
         client.submitLogEvent(logEvent);
 
+        // Fire up log server again
+        server = new Server(port);
+        server.start();
+
+        // Loop until submitting log message succeeds.
+        while (! client.submitLogEvent(logEvent)) {}
     }
 }
