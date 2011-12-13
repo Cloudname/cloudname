@@ -76,7 +76,7 @@ public class ZkCloudname
      *   exception.
      *
      * @param connectString the connect string of the ZooKeeper server
-     *   (host:port).
+     *   List of (host:port).
      */
     public ZkCloudname connect(String connectString) {
         this.connectString = connectString;
@@ -121,7 +121,9 @@ public class ZkCloudname
         // blindly, meaning that if the path already exists, then
         // that's ok -- so a more correct name for this method would
         // be ensureCoordinate(), but that might confuse developers.
-        String root = Util.CN_PATH_PREFIX + "/" + Util.coordinateAsPath(coordinate);
+        ZkCoordinatePath path = new ZkCoordinatePath(coordinate);
+        System.err.println("BBBBBBBBBBBBBB" + path.getRoot());
+        String root = path.getRoot();
         try {
             Util.mkdir(zk, root, Ids.OPEN_ACL_UNSAFE);
         } catch (KeeperException e) {
@@ -129,8 +131,8 @@ public class ZkCloudname
         }
 
         // Create the nodes that represent subdirectories.
-        String endpointsPath = root + "/" + Util.CN_ENDPOINTS_NAME;
-        String configPath = root + "/" + Util.CN_CONFIG_NAME;
+        String endpointsPath = path.getEndpointPath(null);
+        String configPath = path.getConfigPath(null);
         try {
             log.info("Creating endpoints node " + endpointsPath);
             zk.create(endpointsPath, null, Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
@@ -152,22 +154,23 @@ public class ZkCloudname
      */
     @Override
     public ServiceHandle claim(Coordinate coordinate) {
-        String path = Util.CN_PATH_PREFIX + "/" + Util.coordinateAsPath(coordinate) + "/" + Util.CN_STATUS_NAME;
-        log.info("Claiming " + coordinate.asString() + " (" + path + ")");
+        ZkCoordinatePath path = new ZkCoordinatePath(coordinate);
+        String configPath = path.getStatusPath();
+        log.info("Claiming " + coordinate.asString() + " (" + configPath + ")");
 
         // Default service status
         ServiceStatus status = new ServiceStatus(ServiceState.UNASSIGNED,
                                                  "No service state has been assigned");
         try {
-            zk.create(path,
+            zk.create(configPath,
                       status.toJson().getBytes(Util.CHARSET_NAME),
                       Ids.OPEN_ACL_UNSAFE,
                       CreateMode.EPHEMERAL);
         } catch (KeeperException.NodeExistsException e) {
-            log.info("Coordinate already claimed " + coordinate.asString() + " (" + path + ")");
+            log.info("Coordinate already claimed " + coordinate.asString() + " (" + configPath + ")");
             throw new CloudnameException.AlreadyClaimed(e);
         } catch (KeeperException.NoNodeException e) {
-            log.info("Coordinate does not exist " + coordinate.asString() + " (" + path + ")");
+            log.info("Coordinate does not exist " + coordinate.asString() + " (" + configPath + ")");
             throw new CloudnameException.CoordinateNotFound(e);
         } catch (KeeperException e) {
             throw new CloudnameException(e);
@@ -193,9 +196,8 @@ public class ZkCloudname
 
     @Override
     public ServiceStatus getStatus(Coordinate coordinate) {
-        String statusPath = Util.CN_PATH_PREFIX
-            + "/" + Util.coordinateAsPath(coordinate)
-            + "/" + Util.CN_STATUS_NAME;
+        ZkCoordinatePath path = new ZkCoordinatePath(coordinate);
+        String statusPath = path.getStatusPath();
 
         try {
             Stat stat = new Stat();

@@ -20,10 +20,6 @@ public class ZkServiceHandle implements ServiceHandle {
     private Coordinate coordinate;
     private volatile boolean open = true;
     private int lastStatusVersion = -1;
-    private String prefix;
-    private String statusPath;
-    private String endpointsPath;
-    private String configPath;
 
     private ZooKeeper zk;
 
@@ -46,11 +42,7 @@ public class ZkServiceHandle implements ServiceHandle {
 
         this.coordinate = coordinate;
         this.zk = zk;
-        // Just set some paths for convenience
-        prefix = prefix = Util.CN_PATH_PREFIX + "/" + Util.coordinateAsPath(coordinate);
-        statusPath = prefix + "/" + Util.CN_STATUS_NAME;
-        endpointsPath = prefix + "/" + Util.CN_ENDPOINTS_NAME;
-        configPath = prefix + "/" + Util.CN_CONFIG_NAME;
+        ZkCoordinatePath path = new ZkCoordinatePath(coordinate);
 
         // Stat the status node so we have the version.  If later
         // we try to operate on the status node and we do not have
@@ -58,7 +50,7 @@ public class ZkServiceHandle implements ServiceHandle {
         // been meddling with the status node.  In which case we
         // must complain loudly.
         try {
-            Stat stat = zk.exists(statusPath, false);
+            Stat stat = zk.exists(path.getStatusPath(), false);
             lastStatusVersion = stat.getVersion();
         } catch (KeeperException e) {
             throw new CloudnameException(e);
@@ -74,7 +66,8 @@ public class ZkServiceHandle implements ServiceHandle {
         }
 
         try {
-            Stat stat = zk.setData(statusPath,
+            ZkCoordinatePath path = new ZkCoordinatePath(coordinate);
+            Stat stat = zk.setData(path.getStatusPath(),
                     status.toJson().getBytes(Util.CHARSET_NAME),
                     lastStatusVersion);
             lastStatusVersion = stat.getVersion();
@@ -100,10 +93,9 @@ public class ZkServiceHandle implements ServiceHandle {
             throw new IllegalStateException("Service handle was closed.");
         }
 
-        String endpointPath = Util.CN_PATH_PREFIX
-                + "/" + Util.coordinateAsPath(coordinate)
-                + "/" + Util.CN_ENDPOINTS_NAME
-                + "/" + name;
+        ZkCoordinatePath path = new  ZkCoordinatePath(coordinate);
+        String endpointPath = path.getEndpointPath(name);
+
 
         log.info("Publishing endpoint for " + coordinate.asString() + ": " + endpoint.toJson()
                 + " [" + endpointPath + "]"
@@ -131,10 +123,8 @@ public class ZkServiceHandle implements ServiceHandle {
             throw new IllegalStateException("Service handle was closed.");
         }
 
-        String endpointPath = Util.CN_PATH_PREFIX
-                + "/" + Util.coordinateAsPath(coordinate)
-                + "/" + Util.CN_ENDPOINTS_NAME
-                + "/" + name;
+        ZkCoordinatePath path = new ZkCoordinatePath(coordinate);
+        String endpointPath = path.getEndpointPath(name);
 
         try {
             zk.delete(endpointPath, -1);
@@ -158,23 +148,23 @@ public class ZkServiceHandle implements ServiceHandle {
             throw new IllegalStateException("Service handle was closed.");
         }
         open = false;
-
+        ZkCoordinatePath path = new ZkCoordinatePath(coordinate);
         // The nodes that are removed here are ephemeral nodes and
         // we could just let zk remove them, but on the off chance
         // that a single process would try to claim more than one
         // coordinate we provide more explicit cleanup.
         try {
             // Remove endpoints
-            for (String s : zk.getChildren(endpointsPath, false)) {
-                String endpointPath = endpointsPath + "/" + s;
+            for (String s : zk.getChildren(path.getEndpointPath(null), false)) {
+                String endpointPath = path.getEndpointPath(s);
                 zk.delete(endpointPath, -1);
             }
 
             // Remove status node.  Doing this last is probably
             // the right thing since when we have removed this, we
             // have relinquished ownership of the coordinate.
-            log.info("Removing status node " + statusPath);
-            zk.delete(statusPath, lastStatusVersion);
+            log.info("Removing status node " + path.getStatusPath());
+            zk.delete(path.getStatusPath(), lastStatusVersion);
 
         } catch (KeeperException e) {
             throw new CloudnameException(e);
@@ -185,8 +175,9 @@ public class ZkServiceHandle implements ServiceHandle {
 
     @Override
     public String toString() {
+        ZkCoordinatePath path = new ZkCoordinatePath(coordinate);
         return coordinate.asString()
-                + "[" + prefix + "]"
+                + "[" + path.getRoot() + "]"
                 ;
     }
 
