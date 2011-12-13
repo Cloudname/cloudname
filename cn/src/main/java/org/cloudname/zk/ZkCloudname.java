@@ -60,17 +60,12 @@ public class ZkCloudname
 {
     private static final Logger log = Logger.getLogger(ZkCloudname.class.getName());
 
-
-
-
     // Instance variables
     private ZooKeeper zk;
     private String connectString;
 
     // Latches that count down when ZooKeeper is connected
     private final CountDownLatch connectedSignal = new CountDownLatch(1);
-
-
 
 
     /**

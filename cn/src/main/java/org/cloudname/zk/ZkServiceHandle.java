@@ -47,7 +47,7 @@ public class ZkServiceHandle implements ServiceHandle {
         this.coordinate = coordinate;
         this.zk = zk;
         // Just set some paths for convenience
-        prefix = Util.coordinateAsPath(coordinate);
+        prefix = prefix = Util.CN_PATH_PREFIX + "/" + Util.coordinateAsPath(coordinate);
         statusPath = prefix + "/" + Util.CN_STATUS_NAME;
         endpointsPath = prefix + "/" + Util.CN_ENDPOINTS_NAME;
         configPath = prefix + "/" + Util.CN_CONFIG_NAME;
