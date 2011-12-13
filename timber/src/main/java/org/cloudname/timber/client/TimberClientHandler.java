@@ -29,6 +29,9 @@ import java.util.logging.Level;
 public class TimberClientHandler extends SimpleChannelUpstreamHandler {
     private static final Logger log = Logger.getLogger(TimberClientHandler.class.getName());
 
+    // Use common ReconnectDelayManager across all TimberClientHandler instances.
+    private static final ReconnectDelayManager reconnectDelayManager  = new ReconnectDelayManager();
+
     // Initial delay before reconnect.  This is the delay used on the
     // first reconnect.  On successive reconnect attempts this value
     // is doubled up to RECONNECT_MAX_DELAY.
@@ -106,10 +109,11 @@ public class TimberClientHandler extends SimpleChannelUpstreamHandler {
 
     @Override
     public void channelClosed(ChannelHandlerContext ctx, ChannelStateEvent e) {
+        // Figure out how long we should delay the next reconnect attempt
+        InetSocketAddress address = (InetSocketAddress) bootstrap.getOption("remoteAddress");
+        int delay = reconnectDelayManager.getReconnectDelayForSocketAddress(address);
+
         // Set a timer that tries to reconnect.
-        //
-        // TODO(borud): this is somewhat stupid and brutal since it
-        //   has no exponential backoff.  Add exponential backoff.
         timer.newTimeout(new TimerTask() {
                 public void run(Timeout timeout) throws Exception {
                     // There is no use in reconnecting if shutdown()
@@ -118,7 +122,7 @@ public class TimberClientHandler extends SimpleChannelUpstreamHandler {
                         bootstrap.connect();
                     }
                 }
-            }, getReconnectDelay(), TimeUnit.MILLISECONDS);
+            }, delay, TimeUnit.MILLISECONDS);
 
         // Alert the client that we have disconnected
         client.onDisconnect();
