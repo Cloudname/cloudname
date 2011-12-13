@@ -3,10 +3,12 @@ package org.cloudname.zk;
 import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.ZooDefs;
+import org.apache.zookeeper.ZooKeeper;
 import org.apache.zookeeper.data.Stat;
 import org.cloudname.*;
 
 import java.io.UnsupportedEncodingException;
+import java.util.logging.Logger;
 
 
 /**
@@ -23,6 +25,11 @@ public class ZkServiceHandle implements ServiceHandle {
     private String endpointsPath;
     private String configPath;
 
+    private ZooKeeper zk;
+
+    private static final Logger log = Logger.getLogger(ZkServiceHandle.class.getName());
+
+
     /**
      * Create a ZkServiceHandle for a given coordinate.
      *
@@ -34,14 +41,16 @@ public class ZkServiceHandle implements ServiceHandle {
      *
      * @param coordinate the coordinate for this service handle.
      */
-    public ZkServiceHandle(Coordinate coordinate) {
-        this.coordinate = coordinate;
+    public ZkServiceHandle(Coordinate coordinate, ZooKeeper zk) {
 
+
+        this.coordinate = coordinate;
+        this.zk = zk;
         // Just set some paths for convenience
-        prefix = coordinate.asPath();
-        statusPath = prefix + "/" + CN_STATUS_NAME;
-        endpointsPath = prefix + "/" + CN_ENDPOINTS_NAME;
-        configPath = prefix + "/" + CN_CONFIG_NAME;
+        prefix = Util.coordinateAsPath(coordinate);
+        statusPath = prefix + "/" + Util.CN_STATUS_NAME;
+        endpointsPath = prefix + "/" + Util.CN_ENDPOINTS_NAME;
+        configPath = prefix + "/" + Util.CN_CONFIG_NAME;
 
         // Stat the status node so we have the version.  If later
         // we try to operate on the status node and we do not have
@@ -66,7 +75,7 @@ public class ZkServiceHandle implements ServiceHandle {
 
         try {
             Stat stat = zk.setData(statusPath,
-                    status.toJson().getBytes(CHARSET_NAME),
+                    status.toJson().getBytes(Util.CHARSET_NAME),
                     lastStatusVersion);
             lastStatusVersion = stat.getVersion();
         } catch (KeeperException.BadVersionException e) {
@@ -91,9 +100,9 @@ public class ZkServiceHandle implements ServiceHandle {
             throw new IllegalStateException("Service handle was closed.");
         }
 
-        String endpointPath = CN_PATH_PREFIX
-                + "/" + coordinate.asPath()
-                + "/" + CN_ENDPOINTS_NAME
+        String endpointPath = Util.CN_PATH_PREFIX
+                + "/" + Util.coordinateAsPath(coordinate)
+                + "/" + Util.CN_ENDPOINTS_NAME
                 + "/" + name;
 
         log.info("Publishing endpoint for " + coordinate.asString() + ": " + endpoint.toJson()
@@ -102,7 +111,7 @@ public class ZkServiceHandle implements ServiceHandle {
 
         try {
             zk.create(endpointPath,
-                    endpoint.toJson().getBytes(CHARSET_NAME),
+                    endpoint.toJson().getBytes(Util.CHARSET_NAME),
                     ZooDefs.Ids.OPEN_ACL_UNSAFE,
                     CreateMode.EPHEMERAL);
         } catch (KeeperException.NodeExistsException e) {
@@ -122,9 +131,9 @@ public class ZkServiceHandle implements ServiceHandle {
             throw new IllegalStateException("Service handle was closed.");
         }
 
-        String endpointPath = CN_PATH_PREFIX
-                + "/" + coordinate.asPath()
-                + "/" + CN_ENDPOINTS_NAME
+        String endpointPath = Util.CN_PATH_PREFIX
+                + "/" + Util.coordinateAsPath(coordinate)
+                + "/" + Util.CN_ENDPOINTS_NAME
                 + "/" + name;
 
         try {

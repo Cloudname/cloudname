@@ -121,10 +121,9 @@ public class ZkResolver implements Resolver {
         }
         String path;
         if (strategy == Strategy.ONE_INSTANCE) {
-            Coordinate coordinate = new Coordinate(instance, service, user, cell, true);
-            path = coordinate.asPath();
+            path = Util.coordinateAsPath(cell, user, service, instance);
         } else {
-            path = Coordinate.cellUserServiceAsPath(cell, user, service);
+            path = Util.coordinateAsPath(cell, user, service);
         }
 
         return Collections.emptyList();
