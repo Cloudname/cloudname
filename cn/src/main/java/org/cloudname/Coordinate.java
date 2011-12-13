@@ -138,12 +138,8 @@ public class Coordinate {
         return instance + "." + service + "." + user + "." + cell;
     }
 
-    static public String cellUserServiceAsPath(String cell, String user, String service) {
-        return cell + "/" + user + "/" + service + "/";        
-    }
-    
     public String asPath() {
-        return cellUserServiceAsPath(cell, user, service) + instance;
+        return cell + "/" + user + "/" + service + "/" + instance;
     }
 
     @Override

@@ -28,6 +28,13 @@ import java.util.List;
  * @author borud
  */
 public interface Resolver {
+    /**
+     * Resolve an address to a single endpoint.  If the address refers
+     * to multiple endpoints only one endpoint is returned.
+     *
+     * @param address the address of the endpoint(s).
+     */
+    public Endpoint resolve(String address);
 
     /**
      * Resolve an address to a list of endpoints.  The order of the
@@ -35,5 +42,5 @@ public interface Resolver {
      *
      * @param address the address of the endpoint(s).
      */
-    public List<Endpoint> resolve(String address);
+    public List<Endpoint> resolveAll(String address);
 }

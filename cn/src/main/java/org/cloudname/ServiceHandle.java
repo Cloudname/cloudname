@@ -37,8 +37,6 @@ public interface ServiceHandle {
      * is a configuration change.
      */
     public void registerConfigListener(ConfigListener listener);
-
-    public void addStatusListener(StatusListener listener);
     
     /**
      * Close the service handle and free up the coordinate so it can
