@@ -16,6 +16,8 @@ import java.util.concurrent.ConcurrentHashMap;
  * requested for a defined time period, the delay will reset to the
  * initial value.
  *
+ * This class is thread safe.
+ *
  * @author borud
  */
 public class ReconnectDelayManager {
@@ -66,6 +68,8 @@ public class ReconnectDelayManager {
      * InetAddress.  Note that this class is not static -- it accesses
      * the reconnection settings from ReconnectDelayManager.
      *
+     * This class is thread safe.
+     *
      * @author borud
      */
     private class ReconnectItem {
@@ -76,7 +80,7 @@ public class ReconnectDelayManager {
          * Get the reconnection delay.  Whenever you call this method
          * it updates the internal state of the ReconnectItem.
          */
-        public int getReconnectDelay() {
+        public synchronized int getReconnectDelay() {
             long now = timeProvider.currentTimeMillis();
             long diff = now - lastReconnectTime;
 
