@@ -12,7 +12,6 @@ import org.cloudname.ServiceState;
 
 import org.apache.zookeeper.WatchedEvent;
 import org.apache.zookeeper.Watcher;
-import org.apache.zookeeper.Watcher.Event.EventType;
 import org.apache.zookeeper.ZooKeeper;
 import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.ZooDefs.Ids;
@@ -20,17 +19,10 @@ import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.data.Stat;
 
 import java.util.logging.Logger;
-import java.util.logging.Level;
-
-import java.util.Set;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.HashMap;
 
 import java.util.concurrent.CountDownLatch;
 
 import java.io.IOException;
-import java.io.UnsupportedEncodingException;
 import java.io.UnsupportedEncodingException;
 
 
@@ -56,31 +48,13 @@ import java.io.UnsupportedEncodingException;
  */
 public class ZkCloudname
     implements Cloudname,
-               Watcher
+
 {
     private static final Logger log = Logger.getLogger(ZkCloudname.class.getName());
-
-    // Constants
-    private static final int SESSION_TIMEOUT = 5000;
-    private static final String CHARSET_NAME = "UTF-8";
-
-    // This is the path prefix used by Cloudname in ZooKeeper.
-    // Anything that lives under this prefix can only be touched by
-    // the Cloudname library.  If clients begin to fiddle with nodes
-    // under this prefix directly, all deals are off.
-    private static final String CN_PATH_PREFIX = "/cn";
 
     private static final String CN_STATUS_NAME = "status";
     private static final String CN_ENDPOINTS_NAME = "endpoints";
     private static final String CN_CONFIG_NAME = "config";
-
-    // Instance variables
-    private ZooKeeper zk;
-    private String connectString;
-
-    // Latches that count down when ZooKeeper is connected
-    private final CountDownLatch connectedSignal = new CountDownLatch(1);
-
 
     /**
      * A service handle implementation.
@@ -111,7 +85,7 @@ public class ZkCloudname
             this.coordinate = coordinate;
 
             // Just set some paths for convenience
-            prefix = CN_PATH_PREFIX + "/" + coordinate.asPath();
+            prefix = coordinate.asPath();
             statusPath = prefix + "/" + CN_STATUS_NAME;
             endpointsPath = prefix + "/" + CN_ENDPOINTS_NAME;
             configPath = prefix + "/" + CN_CONFIG_NAME;
@@ -264,46 +238,6 @@ public class ZkCloudname
     }
 
 
-    /**
-     * Connect to ZooKeeper instance.
-     *
-     * TODO(borud): if the ZooKeeper server is not there this method
-     *   will hang forever.  It should probably time out or produce an
-     *   exception.
-     *
-     * @param connectString the connect string of the ZooKeeper server
-     *   (host:port).
-     */
-    public ZkCloudname connect(String connectString) {
-        this.connectString = connectString;
-
-        try {
-            zk = new ZooKeeper(connectString, SESSION_TIMEOUT, this);
-            connectedSignal.await();
-            log.info("Connected to ZooKeeper " + connectString);
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        } catch (InterruptedException e) {
-            throw new RuntimeException(e);
-        }
-
-        return this;
-    }
-
-    @Override
-    public void process(WatchedEvent event) {
-        log.fine("Got event " + event.toString());
-
-        // Initial connection to ZooKeeper is completed.
-        if (event.getState() == Event.KeeperState.SyncConnected) {
-            if (connectedSignal.getCount() == 0) {
-                // I am not sure if this can ever occur, but until I
-                // know I'll just leave this log message in here.
-                log.info("The connectedSignal count was already zero.  Duplicate Event.KeeperState.SyncConnected");
-            }
-            connectedSignal.countDown();
-        }
-    }
 
     /**
      * Create a given coordinate in the ZooKeeper node tree.
@@ -319,7 +253,7 @@ public class ZkCloudname
         // be ensureCoordinate(), but that might confuse developers.
         String root = CN_PATH_PREFIX + "/" + coordinate.asPath();
         try {
-            Util.mkdir(zk, root, Ids.OPEN_ACL_UNSAFE);
+            ZooKeeperWrapper.mkdir(zk, root, Ids.OPEN_ACL_UNSAFE);
         } catch (KeeperException e) {
             throw new RuntimeException(e);
         }
@@ -411,20 +345,3 @@ public class ZkCloudname
         }
     }
 
-    /**
-     * Close the connection to ZooKeeper.
-     */
-    public void close() {
-        if (null == zk) {
-            throw new IllegalStateException("Cannot close(): Not connected to ZooKeeper");
-        }
-
-        try {
-            zk.close();
-            log.info("ZooKeeper session closed for " + connectString);
-        } catch (InterruptedException e) {
-            throw new RuntimeException(e);
-        }
-
-    }
-}
