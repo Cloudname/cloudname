@@ -24,13 +24,16 @@ import java.util.logging.Level;
 public class TimberClient {
     private static final Logger log = Logger.getLogger(TimberClient.class.getName());
 
-    private String host;
-    private int port;
-
-    private TimberClientHandler handler;
+    private final String host;
+    private final int port;
     private ClientBootstrap bootstrap;
     private Channel channel;
+    private volatile boolean wantShutdown = false;
 
+    // Used to synchronize access on channel so that the channel
+    // cannot change from under our feet when using it (channel is set
+    // asynchronously on connection completion).
+    private Object channelSync = new Object();
     private Set<AckEventListener> ackEventListeners = new HashSet<AckEventListener>();
 
     /**
@@ -49,7 +52,12 @@ public class TimberClient {
         public void ackEventReceived(Timber.AckEvent ackEvent);
     }
 
-
+    /**
+     * Create a Timber client.
+     *
+     * @param host the host where the log server runs.
+     * @param port the port the log server listens to.
+     */
     public TimberClient(String host, int port) {
         this.host = host;
         this.port = port;
@@ -65,42 +73,47 @@ public class TimberClient {
                 Executors.newCachedThreadPool())
         );
 
-        // Configure the pipeline factory
-        bootstrap.setPipelineFactory(new TimberClientPipelineFactory(this));
+        // Configure the bootstrap
+        bootstrap.setPipelineFactory(new TimberClientPipelineFactory(this, bootstrap));
+        bootstrap.setOption("tcpNoDelay", true);
+        bootstrap.setOption("remoteAddress", new InetSocketAddress(host, port));
 
         // Make a new connection
         log.info("Client connecting to " + host + ":" + port + "...");
-        ChannelFuture connectFuture =
-            bootstrap.connect(new InetSocketAddress(host, port));
-
-        // Wait for connection to succeed
-        channel = connectFuture.awaitUninterruptibly().getChannel();
-        log.info("Client connected to " + host + ":" + port);
+        bootstrap.connect().awaitUninterruptibly();
     }
 
     /**
      * Shut down the client.
      */
     public void shutdown() {
+        wantShutdown = true;
+
         // The first step is always to get rid of any open channels.
         // If we do not the releaseExternalResources() method is just
         // going to hang until we do.
-        if ((channel != null) && channel.isOpen()) {
-            try {
-                ChannelFuture closeFuture = channel.getCloseFuture();
-                channel.close();
-                closeFuture.await();
-            } catch (InterruptedException e) {
-                // TODO(borud): is there anything else we can do at this point?
-                throw new RuntimeException(e);
+        synchronized(channelSync) {
+            if ((channel != null) && channel.isConnected()) {
+                try {
+                    ChannelFuture closeFuture = channel.getCloseFuture();
+                    channel.close();
+                    closeFuture.await();
+                } catch (InterruptedException e) {
+                    // Swallow the exception
+                    log.log(Level.WARNING, "Got exception during shutdown", e);
+                }
             }
-        }
 
-        bootstrap.releaseExternalResources();
+            // TODO(borud): Not sure if this should be inside or
+            //   outside the synchronization barrier.
+            bootstrap.releaseExternalResources();
+        }
     }
 
     /**
-     * This method is called by the TimberClient
+     * This method is called by the TimberClientHandler.
+     *
+     * TODO(borud): factor out of public interface.
      */
     public void onAckEvent(Timber.AckEvent ack) {
         synchronized(ackEventListeners) {
@@ -115,12 +128,65 @@ public class TimberClient {
     }
 
     /**
-     * Submit a Timber.LogEvent to the server.
+     * Callback method called by TimberClientHandler when the
+     * connection has been made.  This can be the result of a connect
+     * or a reconnect on connection loss.
+     *
+     * TODO(borud): factor out of public interface.
+     *
+     * @param channel the newly connected channel.
+     */
+    public void onConnect(Channel channel) {
+        log.info("Client connected to " + host + ":" + port);
+        synchronized(channelSync) {
+            this.channel = channel;
+        }
+    }
+
+    /**
+     * Callback method called by TimberClientHandler when the
+     * connection has been lost.
+     *
+     * TODO(borud): factor out of public interface.
+     */
+    public void onDisconnect() {
+        log.info("DISCONNECTED from " + host + ":" + port);
+        synchronized(channelSync) {
+            channel = null;
+        }
+    }
+
+    /**
+     * Submit a Timber.LogEvent to the server.  If the underlying
+     * connection to the log server is gone, this method will just
+     * drop the LogEvent on the floor.
      *
      * @param logEvent the Timber.LogEvent we wish to send to the server.
+     *
+     * @return returns {@code true} if an attempt was made to write
+     *   the log event. Returns {@code false} if there was no
+     *   connection to the log server.
      */
-    public void submitLogEvent(Timber.LogEvent logEvent) {
-        channel.write(logEvent);
+    public boolean submitLogEvent(Timber.LogEvent logEvent) {
+        // Note that the synchronization is necessary to make sure
+        // that the channel does not disappear under our feet after
+        // the conditional.
+        synchronized(channelSync) {
+            if (null == channel) {
+                return false;
+            }
+
+            if (! channel.isConnected()) {
+                return false;
+            }
+
+            if (wantShutdown) {
+                return false;
+            }
+
+            channel.write(logEvent);
+            return true;
+        }
     }
 
     /**
@@ -154,5 +220,12 @@ public class TimberClient {
             ackEventListeners.remove(listener);
         }
         return this;
+    }
+
+    /**
+     * @return {@code true} if shutdown() has been called.
+     */
+    public boolean shutdownRequested() {
+        return wantShutdown;
     }
 }
