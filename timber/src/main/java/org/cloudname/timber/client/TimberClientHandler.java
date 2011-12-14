@@ -118,7 +118,7 @@ public class TimberClientHandler extends SimpleChannelUpstreamHandler {
                 public void run(Timeout timeout) throws Exception {
                     // There is no use in reconnecting if shutdown()
                     // has been called on the TimberClient
-                    if (! client.isShutdown()) {
+                    if (! client.shutdownRequested()) {
                         bootstrap.connect();
                     }
                 }

@@ -33,7 +33,6 @@ public class TimberClient {
 
     // Used to synchronize access on channel so that channel
     private Object channelSync = new Object();
-
     private Set<AckEventListener> ackEventListeners = new HashSet<AckEventListener>();
 
     /**
@@ -216,7 +215,7 @@ public class TimberClient {
     /**
      * @return {@code true} if shutdown() has been called.
      */
-    public boolean isShutdown() {
+    public boolean shutdownRequested() {
         return wantShutdown;
     }
 }
