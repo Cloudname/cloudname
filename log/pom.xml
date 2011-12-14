@@ -80,6 +80,7 @@
               <!-- Optional, default is false -->
               <attachToBuild>true</attachToBuild>
 	      <mainClass>org.cloudname.log.logcat.Main</mainClass>
+	      <filename>logcat-${project.version}.jar</filename>
             </configuration>
             <goals>
               <goal>one-jar</goal>
