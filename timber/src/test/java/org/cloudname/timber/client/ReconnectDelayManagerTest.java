@@ -68,7 +68,7 @@ public class ReconnectDelayManagerTest {
         ArrayList<Integer> values = new ArrayList<Integer>();
         int delay = 0;
         while (delay < maxDelay) {
-            delay = delayManager.getReconnectDelayForAddress(address);
+            delay = delayManager.getReconnectDelayMs(address);
             values.add(delay);
         }
 
@@ -77,7 +77,7 @@ public class ReconnectDelayManagerTest {
         assertEquals(expected, values);
 
         // Make sure that next delay is also equal to maxDelay
-        assertEquals(maxDelay, delayManager.getReconnectDelayForAddress(address));
+        assertEquals(maxDelay, delayManager.getReconnectDelayMs(address));
     }
 
     /**
@@ -87,7 +87,7 @@ public class ReconnectDelayManagerTest {
      * initialDelay.
      */
     @Test
-    public void testResetDelay() throws Exception {
+    public void testResetDelayMs() throws Exception {
         // Set clock to known point
         long now = System.currentTimeMillis();
         timeProvider.setTime(now);
@@ -95,7 +95,7 @@ public class ReconnectDelayManagerTest {
         // Request delay time until max is reached
         int delay = 0;
         while (delay < maxDelay) {
-            delay = delayManager.getReconnectDelayForAddress(address);
+            delay = delayManager.getReconnectDelayMs(address);
         }
 
         // Advance the clock by resetTime milliseconds
@@ -104,15 +104,15 @@ public class ReconnectDelayManagerTest {
 
         // Now bump the time up by resetTime and ensure that this
         // gives us a delay that is equal to initialDelay
-        assertEquals(initialDelay, delayManager.getReconnectDelayForAddress(address));
-        assertEquals(initialDelay * 2, delayManager.getReconnectDelayForAddress(address));
+        assertEquals(initialDelay, delayManager.getReconnectDelayMs(address));
+        assertEquals(initialDelay * 2, delayManager.getReconnectDelayMs(address));
     }
 
     /**
      * Test constructor with invalid initialReconnectDelay parameter.
      */
     @Test (expected = IllegalArgumentException.class)
-    public void testIllegalInitialDelay() {
+    public void testIllegalInitialDelayMs() {
         new ReconnectDelayManager(-1, maxDelay, resetTime, timeProvider);
     }
 

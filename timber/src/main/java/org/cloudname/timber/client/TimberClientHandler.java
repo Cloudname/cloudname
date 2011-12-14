@@ -32,26 +32,6 @@ public class TimberClientHandler extends SimpleChannelUpstreamHandler {
     // Use common ReconnectDelayManager across all TimberClientHandler instances.
     private static final ReconnectDelayManager reconnectDelayManager  = new ReconnectDelayManager();
 
-    // Initial delay before reconnect.  This is the delay used on the
-    // first reconnect.  On successive reconnect attempts this value
-    // is doubled up to RECONNECT_MAX_DELAY.
-    private static final int RECONNECT_DELAY = 500;
-
-    // The reconnect delay is doubled on each successive reconnect
-    // failure, up to this value.
-    private static final int RECONNECT_MAX_DELAY = 30000;
-
-    // If the last reconnect was more than this number of seconds ago
-    // we reset lastReconnectDelay to this value.
-    private static final int RECONNECT_DELAY_RESET_TIME = 60000;
-
-    // The time at which we last attempted a reconnect.
-    private long lastReconnect = 0;
-
-    // The last reconnect delay value we used.
-    private int lastReconnectDelay = RECONNECT_DELAY;
-
-
     private final TimberClient client;
     private final ClientBootstrap bootstrap;
     private final Timer timer;
@@ -62,9 +42,6 @@ public class TimberClientHandler extends SimpleChannelUpstreamHandler {
      * @param client the timber client.
      */
     public TimberClientHandler(TimberClient client, ClientBootstrap bootstrap) {
-        // Do we need to call super()?  Since we extend SimpleChannelUpstreamHandler
-        // it is likely the answer is yes.
-        super();
         this.client = client;
         this.bootstrap = bootstrap;
         timer = new HashedWheelTimer();
@@ -111,7 +88,7 @@ public class TimberClientHandler extends SimpleChannelUpstreamHandler {
     public void channelClosed(ChannelHandlerContext ctx, ChannelStateEvent e) {
         // Figure out how long we should delay the next reconnect attempt
         InetSocketAddress address = (InetSocketAddress) bootstrap.getOption("remoteAddress");
-        int delay = reconnectDelayManager.getReconnectDelayForSocketAddress(address);
+        int delay = reconnectDelayManager.getReconnectDelayMs(address);
 
         // Set a timer that tries to reconnect.
         timer.newTimeout(new TimerTask() {
@@ -126,29 +103,5 @@ public class TimberClientHandler extends SimpleChannelUpstreamHandler {
 
         // Alert the client that we have disconnected
         client.onDisconnect();
-    }
-
-    /**
-     * Calculate the reconnection delay in milliseconds.
-     */
-    private synchronized int getReconnectDelay() {
-        long now = System.currentTimeMillis();
-        long diff = now - lastReconnectDelay;
-
-        // If the last reconnect was long ago we reset lastReconnectDelay
-        if (diff > RECONNECT_DELAY_RESET_TIME) {
-            lastReconnectDelay = RECONNECT_DELAY;
-            return lastReconnectDelay;
-        }
-
-        // Double the delay.
-        lastReconnectDelay *= 2;
-
-        // Make sure the delay is no longer than RECONNECT_MAX_DELAY
-        if (lastReconnectDelay > RECONNECT_MAX_DELAY) {
-            lastReconnectDelay = RECONNECT_MAX_DELAY;
-        }
-
-        return lastReconnectDelay;
     }
 }

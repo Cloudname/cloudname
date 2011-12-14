@@ -24,14 +24,15 @@ import java.util.logging.Level;
 public class TimberClient {
     private static final Logger log = Logger.getLogger(TimberClient.class.getName());
 
-    private String host;
-    private int port;
-    private TimberClientHandler handler;
+    private final String host;
+    private final int port;
     private ClientBootstrap bootstrap;
     private Channel channel;
     private volatile boolean wantShutdown = false;
 
-    // Used to synchronize access on channel so that channel
+    // Used to synchronize access on channel so that the channel
+    // cannot change from under our feet when using it (channel is set
+    // asynchronously on connection completion).
     private Object channelSync = new Object();
     private Set<AckEventListener> ackEventListeners = new HashSet<AckEventListener>();
 
@@ -79,8 +80,7 @@ public class TimberClient {
 
         // Make a new connection
         log.info("Client connecting to " + host + ":" + port + "...");
-        ChannelFuture connectFuture = bootstrap.connect().awaitUninterruptibly();
-        log.info("Client connected to " + host + ":" + port);
+        bootstrap.connect().awaitUninterruptibly();
     }
 
     /**
@@ -92,22 +92,28 @@ public class TimberClient {
         // The first step is always to get rid of any open channels.
         // If we do not the releaseExternalResources() method is just
         // going to hang until we do.
-        if ((channel != null) && channel.isConnected()) {
-            try {
-                ChannelFuture closeFuture = channel.getCloseFuture();
-                channel.close();
-                closeFuture.await();
-            } catch (InterruptedException e) {
-                // TODO(borud): is there anything else we can do at this point?
-                throw new RuntimeException(e);
+        synchronized(channelSync) {
+            if ((channel != null) && channel.isConnected()) {
+                try {
+                    ChannelFuture closeFuture = channel.getCloseFuture();
+                    channel.close();
+                    closeFuture.await();
+                } catch (InterruptedException e) {
+                    // Swallow the exception
+                    log.log(Level.WARNING, "Got exception during shutdown", e);
+                }
             }
-        }
 
-        bootstrap.releaseExternalResources();
+            // TODO(borud): Not sure if this should be inside or
+            //   outside the synchronization barrier.
+            bootstrap.releaseExternalResources();
+        }
     }
 
     /**
-     * This method is called by the TimberClient
+     * This method is called by the TimberClientHandler.
+     *
+     * TODO(borud): factor out of public interface.
      */
     public void onAckEvent(Timber.AckEvent ack) {
         synchronized(ackEventListeners) {
@@ -126,10 +132,12 @@ public class TimberClient {
      * connection has been made.  This can be the result of a connect
      * or a reconnect on connection loss.
      *
+     * TODO(borud): factor out of public interface.
+     *
      * @param channel the newly connected channel.
      */
     public void onConnect(Channel channel) {
-        log.info("CONNECTED to " + host + ":" + port);
+        log.info("Client connected to " + host + ":" + port);
         synchronized(channelSync) {
             this.channel = channel;
         }
@@ -138,6 +146,8 @@ public class TimberClient {
     /**
      * Callback method called by TimberClientHandler when the
      * connection has been lost.
+     *
+     * TODO(borud): factor out of public interface.
      */
     public void onDisconnect() {
         log.info("DISCONNECTED from " + host + ":" + port);

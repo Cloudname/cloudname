@@ -26,25 +26,25 @@ public class ReconnectDelayManager {
      * this is the number of milliseconds we will wait for.  This
      * default can be overridden in the constructor.
      */
-    public static final int DEFAULT_RECONNECT_DELAY_INITIAL = 500;
+    public static final int DEFAULT_RECONNECT_DELAY_INITIAL_MS = 500;
 
     /**
      * The default maximum reconnect delay.  As the reconnect time
      * increases it will never go above this delay.  This default can
      * be overridden in the constructor.
      */
-    public static final int DEFAULT_RECONNECT_MAX_DELAY = 30000;
+    public static final int DEFAULT_RECONNECT_MAX_DELAY_MS = 30000;
 
     /**
      * The default time before the delay time is reset to the initial
      * value.
      */
-    public static final int DEFAULT_RECONNECT_DELAY_RESET_TIME = 60000;
+    public static final int DEFAULT_RECONNECT_DELAY_RESET_TIME_MS = 60000;
 
     // Settings
-    private final int initialReconnectDelay;
-    private final int maxReconnectDelay;
-    private final int reconnectDelayReset;
+    private final int initialReconnectDelayMs;
+    private final int maxReconnectDelayMs;
+    private final int reconnectDelayResetMs;
     private final TimeProvider timeProvider;
 
     // State
@@ -74,31 +74,31 @@ public class ReconnectDelayManager {
      */
     private class ReconnectItem {
         private long lastReconnectTime = 0;
-        private int lastReconnectDelay = initialReconnectDelay;
+        private int lastReconnectDelay = initialReconnectDelayMs;
 
         /**
          * Get the reconnection delay.  Whenever you call this method
          * it updates the internal state of the ReconnectItem.
          */
-        public synchronized int getReconnectDelay() {
+        public synchronized int getReconnectDelayMs() {
             long now = timeProvider.currentTimeMillis();
             long diff = now - lastReconnectTime;
 
-            // If the last reconnect was longer than reconnectDelayReset
+            // If the last reconnect was longer than reconnectDelayResetMs
             // milliseconds ago, we reset the reconnect delay to
-            // initialReconnectDelay
-            if (diff >= reconnectDelayReset) {
+            // initialReconnectDelayMs
+            if (diff >= reconnectDelayResetMs) {
                 lastReconnectTime = now;
-                lastReconnectDelay = initialReconnectDelay;
+                lastReconnectDelay = initialReconnectDelayMs;
                 return lastReconnectDelay;
             }
 
             // Double the last delay.
             lastReconnectDelay *= 2;
 
-            // Cap delay to maxReconnectDelay
-            if (lastReconnectDelay > maxReconnectDelay) {
-                lastReconnectDelay = maxReconnectDelay;
+            // Cap delay to maxReconnectDelayMs
+            if (lastReconnectDelay > maxReconnectDelayMs) {
+                lastReconnectDelay = maxReconnectDelayMs;
             }
 
             lastReconnectTime = now;
@@ -110,41 +110,41 @@ public class ReconnectDelayManager {
      * Create a ReconnectDelayManager with default settings.
      */
     public ReconnectDelayManager() {
-        this(DEFAULT_RECONNECT_DELAY_INITIAL,
-             DEFAULT_RECONNECT_MAX_DELAY,
-             DEFAULT_RECONNECT_DELAY_RESET_TIME,
+        this(DEFAULT_RECONNECT_DELAY_INITIAL_MS,
+             DEFAULT_RECONNECT_MAX_DELAY_MS,
+             DEFAULT_RECONNECT_DELAY_RESET_TIME_MS,
              DEFAULT_TIMEPROVIDER);
     }
 
     /**
      * Create a ReconnectDelayManager.
      *
-     * @param initialReconnectDelay initial delay in milliseconds.
-     * @param maxReconnectDelay maximum delay in milliseconds.
-     * @param reconnectDelayReset number of milliseconds before the
-     *   delay is reset to {@code initialReconnectDelay}
+     * @param initialReconnectDelayMs initial delay in milliseconds.
+     * @param maxReconnectDelayMs maximum delay in milliseconds.
+     * @param reconnectDelayResetMs number of milliseconds before the
+     *   delay is reset to {@code initialReconnectDelayMs}
      * @param timeProvider the time provider
      */
-    public ReconnectDelayManager(final int initialReconnectDelay,
-                                 final int maxReconnectDelay,
-                                 final int reconnectDelayReset,
+    public ReconnectDelayManager(final int initialReconnectDelayMs,
+                                 final int maxReconnectDelayMs,
+                                 final int reconnectDelayResetMs,
                                  final TimeProvider timeProvider)
     {
-        if (initialReconnectDelay < 0) {
+        if (initialReconnectDelayMs < 0) {
             throw new IllegalArgumentException("Initial Reconnect Delay cannot be negative");
         }
 
-        if (maxReconnectDelay < initialReconnectDelay) {
+        if (maxReconnectDelayMs < initialReconnectDelayMs) {
             throw new IllegalArgumentException("Max reconnect Delay cannot be smaller than Initial Reconnect Delay");
         }
 
-        if (reconnectDelayReset < maxReconnectDelay) {
+        if (reconnectDelayResetMs < maxReconnectDelayMs) {
             throw new IllegalArgumentException("Reconnect Delay Reset cannot be smaller than Max Reconnect Delay");
         }
 
-        this.initialReconnectDelay = initialReconnectDelay;
-        this.maxReconnectDelay = maxReconnectDelay;
-        this.reconnectDelayReset = reconnectDelayReset;
+        this.initialReconnectDelayMs = initialReconnectDelayMs;
+        this.maxReconnectDelayMs = maxReconnectDelayMs;
+        this.reconnectDelayResetMs = reconnectDelayResetMs;
         this.timeProvider = timeProvider;
     }
 
@@ -158,8 +158,8 @@ public class ReconnectDelayManager {
      * @return the time to delay reconnect in milliseconds.
      * @see #getReconnectDelayForAddress
      */
-    public int getReconnectDelayForSocketAddress(InetSocketAddress socketAddress) {
-        return getReconnectDelayForAddress(socketAddress.getAddress());
+    public int getReconnectDelayMs(InetSocketAddress socketAddress) {
+        return getReconnectDelayMs(socketAddress.getAddress());
     }
 
     /**
@@ -169,7 +169,7 @@ public class ReconnectDelayManager {
      *   timeout.
      * @return the time to delay reconnect in milliseconds.
      */
-    public int getReconnectDelayForAddress(InetAddress address) {
+    public int getReconnectDelayMs(InetAddress address) {
         ReconnectItem item = addressMap.get(address);
         if (null == item) {
             item = new ReconnectItem();
@@ -178,7 +178,6 @@ public class ReconnectDelayManager {
 
         assert(null != item);
 
-        return item.getReconnectDelay();
+        return item.getReconnectDelayMs();
     }
 }
-
