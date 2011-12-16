@@ -58,6 +58,8 @@ public class ZkCloudname
     implements Cloudname,
                Watcher
 {
+    private static final int SESSION_TIMEOUT = 5000;
+
     private static final Logger log = Logger.getLogger(ZkCloudname.class.getName());
 
     // Instance variables
@@ -82,7 +84,7 @@ public class ZkCloudname
         this.connectString = connectString;
 
         try {
-            zk = new ZooKeeper(connectString, Util.SESSION_TIMEOUT, this);
+            zk = new ZooKeeper(connectString, SESSION_TIMEOUT, this);
             connectedSignal.await();
             log.info("Connected to ZooKeeper " + connectString);
         } catch (IOException e) {
@@ -122,7 +124,6 @@ public class ZkCloudname
         // that's ok -- so a more correct name for this method would
         // be ensureCoordinate(), but that might confuse developers.
         ZkCoordinatePath path = new ZkCoordinatePath(coordinate);
-        System.err.println("BBBBBBBBBBBBBB" + path.getRoot());
         String root = path.getRoot();
         try {
             Util.mkdir(zk, root, Ids.OPEN_ACL_UNSAFE);
@@ -131,11 +132,8 @@ public class ZkCloudname
         }
 
         // Create the nodes that represent subdirectories.
-        String endpointsPath = path.getEndpointPath(null);
         String configPath = path.getConfigPath(null);
         try {
-            log.info("Creating endpoints node " + endpointsPath);
-            zk.create(endpointsPath, null, Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
             log.info("Creating config node " + configPath);
             zk.create(configPath, null, Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
         } catch (KeeperException e) {
@@ -158,34 +156,13 @@ public class ZkCloudname
         String configPath = path.getStatusPath();
         log.info("Claiming " + coordinate.asString() + " (" + configPath + ")");
 
-        // Default service status
-        ServiceStatus status = new ServiceStatus(ServiceState.UNASSIGNED,
-                                                 "No service state has been assigned");
-        try {
-            zk.create(configPath,
-                      status.toJson().getBytes(Util.CHARSET_NAME),
-                      Ids.OPEN_ACL_UNSAFE,
-                      CreateMode.EPHEMERAL);
-        } catch (KeeperException.NodeExistsException e) {
-            log.info("Coordinate already claimed " + coordinate.asString() + " (" + configPath + ")");
-            throw new CloudnameException.AlreadyClaimed(e);
-        } catch (KeeperException.NoNodeException e) {
-            log.info("Coordinate does not exist " + coordinate.asString() + " (" + configPath + ")");
-            throw new CloudnameException.CoordinateNotFound(e);
-        } catch (KeeperException e) {
-            throw new CloudnameException(e);
-        } catch (InterruptedException e) {
-            throw new CloudnameException(e);
-        } catch (UnsupportedEncodingException e) {
-            // This is not supposed to be happening since CHARSET_NAME
-            // should always be "UTF-8".
-            throw new CloudnameException(e);
-        }
-
+        ZkStatusEndpoint statusEndpoint = new ZkStatusEndpoint(zk, configPath);
+        statusEndpoint.claim();
         // If we have come thus far we have succeeded in creating the
         // CN_STATUS_NAME node within the service coordinate directory
         // in ZooKeeper and we can give the client a ServiceHandle.
-        return new ZkServiceHandle(coordinate, zk);
+
+        return new ZkServiceHandle(coordinate, statusEndpoint);
     }
 
     @Override
@@ -196,25 +173,12 @@ public class ZkCloudname
 
     @Override
     public ServiceStatus getStatus(Coordinate coordinate) {
+
         ZkCoordinatePath path = new ZkCoordinatePath(coordinate);
         String statusPath = path.getStatusPath();
-
-        try {
-            Stat stat = new Stat();
-            byte[] data = zk.getData(statusPath, null, stat);
-            return ServiceStatus.fromJson(new String(data, Util.CHARSET_NAME));
-        } catch (KeeperException e) {
-            throw new CloudnameException(e);
-        } catch (InterruptedException e) {
-            throw new CloudnameException(e);
-        } catch (UnsupportedEncodingException e) {
-            // Should never happen.
-            throw new CloudnameException(e);
-        } catch (IOException e) {
-            // TODO(borud): Contents of node must have been
-            //   mangled. Throw more sensible exception.
-            throw new CloudnameException(e);
-        }
+        ZkStatusEndpoint statusEndpoint = new ZkStatusEndpoint(zk, statusPath);
+        statusEndpoint.load();
+        return statusEndpoint.getStatus();
     }
 
     /**

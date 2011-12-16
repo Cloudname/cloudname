@@ -1,12 +1,18 @@
 package org.cloudname.zk;
 
 import com.sun.java.swing.action.AlignLeftAction;
+import org.apache.zookeeper.CreateMode;
+import org.apache.zookeeper.KeeperException;
+import org.apache.zookeeper.ZooDefs;
+import org.apache.zookeeper.ZooKeeper;
+import org.apache.zookeeper.data.Stat;
+import org.cloudname.CloudnameException;
 import org.cloudname.Resolver;
 import org.cloudname.Coordinate;
 import org.cloudname.Endpoint;
 
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
+import java.util.logging.Logger;
 import java.util.regex.Pattern;
 import java.util.regex.Matcher;
 
@@ -19,7 +25,7 @@ import java.util.regex.Matcher;
 public class ZkResolver implements Resolver {
     // Included here for convenience.  Matches a bare coordinate.
     public static final Pattern coordinatePattern = Coordinate.coordinatePattern;
-
+    private static final Logger log = Logger.getLogger(ZkResolver.class.getName());
     // Matches coordinate with endpoint of the form:
     // endpoint.instance.service.user.cell
     public static final Pattern endpointPattern
@@ -109,23 +115,57 @@ public class ZkResolver implements Resolver {
         return true;
     }
      
+    
+    private List<Integer> getInstances(String path) {
+        List<Integer> paths = new ArrayList<Integer>();
+        try {
+            List<String> children = zk.getChildren(path, false /* watcher */);
+            for (String child : children) {
+                paths.add(Integer.parseInt(child));
+            }
+        } catch (KeeperException e) {
+            throw new CloudnameException(e);
+        } catch (InterruptedException e) {
+            throw new CloudnameException(e);
+        }
+        return paths;
+    }
+    
     /**
      * TODO(borud): implement.
      */
     @Override
     public List<Endpoint> resolve(String address) {
+        log.info("Resolving " + address);
+        // Verify that address is recognized.
         if (! (trySetEndPointPattern(address) ||
               trySetStrategyPattern(address) ||
               trySetEndpointStrategyPattern(address))) {
             throw new IllegalStateException("Could not parse address:" + address);
         }
-        String path;
-        if (strategy == Strategy.ONE_INSTANCE) {
-            path = ZkCoordinatePath.coordinateAsPath(cell, user, service, instance);
-        } else {
-            path = ZkCoordinatePath.coordinateAsPath(cell, user, service);
-        }
 
-        return Collections.emptyList();
+        // Based on address, generate list of paths.
+        List<Integer> instances = new ArrayList<Integer>();
+        if (strategy == Strategy.ONE_INSTANCE) {
+            instances.add(instance);
+        } else {
+            instances = getInstances(ZkCoordinatePath.coordinateAsPath(cell, user, service));
+        }
+        List<Endpoint> endpoints = new ArrayList<Endpoint>();
+        for (Integer instance : instances) {
+            String path = ZkCoordinatePath.coordinateAsPath(cell, user, service, instance);
+            ZkStatusEndpoint statusEndpoint = new ZkStatusEndpoint(zk, path);
+            statusEndpoint.load();
+            if (endpointName == null) {
+                statusEndpoint.addAllEndpoints(endpoints);
+            } else {
+                endpoints.add(statusEndpoint.getEndpoint(endpointName));
+            }
+        }
+        return endpoints;
+    }
+    private ZooKeeper zk;
+    public ZkResolver(ZooKeeper zk) {
+        this.zk = zk;
     }
 }

@@ -158,6 +158,14 @@
         </exclusions>
       </dependency>
 
+      <!--    <json-lib.version>2.4</json-lib.version>-->
+      <dependency>
+            <groupId>net.sf.json-lib</groupId>
+            <artifactId>json-lib</artifactId>
+            <version>${json-lib.version}</version>
+            <classifier>jdk15</classifier>
+      </dependency>
+
       <!-- Jackson JSON library -->
       <dependency>
         <groupId>org.codehaus.jackson</groupId>

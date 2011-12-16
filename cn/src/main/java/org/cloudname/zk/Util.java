@@ -23,7 +23,7 @@ import java.util.logging.Logger;
  */
 public class Util {
     // Constants
-    public static final int SESSION_TIMEOUT = 5000;
+
     public static final String CHARSET_NAME = "UTF-8";
 
     private static final Logger log = Logger.getLogger(Util.class.getName());

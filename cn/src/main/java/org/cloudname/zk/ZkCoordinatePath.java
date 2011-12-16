@@ -17,7 +17,6 @@ public class ZkCoordinatePath {
 
     private Coordinate coordinate;
 
-    public static final String CN_ENDPOINTS_NAME = "endpoints";
     public static final String CN_STATUS_NAME = "status";
 
     public static final String CN_CONFIG_NAME = "config";
@@ -29,24 +28,14 @@ public class ZkCoordinatePath {
     public static final String CN_PATH_PREFIX = "/cn";
 
     public String getRoot() {
-        return coordinateAsPath();
+        return coordinateAsPath(coordinate.getCell(), coordinate.getUser(), coordinate.getService(),
+                coordinate.getInstance());
     }
     
     public String getStatusPath() {
         return getRoot() + "/" + CN_STATUS_NAME;
     }
 
-    /**
-     *
-     * @param name might be null.
-     * @return path of endpoint.
-     */
-    public String getEndpointPath(String name) {
-        if (name == null) {
-            return getRoot() + "/" + CN_ENDPOINTS_NAME;
-        }
-        return getRoot() + "/" + CN_ENDPOINTS_NAME + "/" + name;
-    }
 
     public String getConfigPath(String name) {
         if (name == null) {
@@ -54,14 +43,6 @@ public class ZkCoordinatePath {
         }
         return getRoot() + "/" +  CN_CONFIG_NAME + "/" + name;
     }
-    /*
-    // Just set some paths for convenience
-        prefix = prefix = Util.CN_PATH_PREFIX + "/" + Util.coordinateAsPath(coordinate);
-        statusPath = prefix + "/" + Util.CN_STATUS_NAME;
-        endpointsPath = prefix + "/" + Util.CN_ENDPOINTS_NAME;
-        configPath = prefix + "/" + Util.CN_CONFIG_NAME;
-        */
-
 
     public static String coordinateAsPath(String cell, String user, String service) {
         return CN_PATH_PREFIX + "/" + cell + "/" + user + "/" + service;
@@ -70,10 +51,4 @@ public class ZkCoordinatePath {
     public static String coordinateAsPath(String cell, String user, String service, Integer instance) {
         return coordinateAsPath(cell, user, service) + "/" + instance.toString();
     }
-
-    private String coordinateAsPath() {
-        return coordinateAsPath(coordinate.getCell(), coordinate.getUser(), coordinate.getService(),
-                coordinate.getInstance());
-    }
-
 }
