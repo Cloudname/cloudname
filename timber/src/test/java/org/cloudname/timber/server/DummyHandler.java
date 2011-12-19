@@ -54,5 +54,3 @@ public class DummyHandler implements LogEventHandler {
         return handleCalled.get();
     }
 }
-
-

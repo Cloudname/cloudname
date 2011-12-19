@@ -9,7 +9,7 @@ import org.jboss.netty.handler.codec.protobuf.ProtobufDecoder;
 import org.jboss.netty.handler.codec.protobuf.ProtobufEncoder;
 import org.jboss.netty.handler.codec.protobuf.ProtobufVarint32FrameDecoder;
 import org.jboss.netty.handler.codec.protobuf.ProtobufVarint32LengthFieldPrepender;
-
+import org.jboss.netty.bootstrap.ClientBootstrap;
 
 /**
  * Client pipeline factory.
@@ -17,15 +17,29 @@ import org.jboss.netty.handler.codec.protobuf.ProtobufVarint32LengthFieldPrepend
  * @author borud
  */
 public class TimberClientPipelineFactory  implements ChannelPipelineFactory {
+    private TimberClient client;
+    private ClientBootstrap bootstrap;
+
+    /**
+     * Create a pipeline for the timber client.
+     *
+     * @param client
+     */
+    public TimberClientPipelineFactory(TimberClient client, ClientBootstrap bootstrap) {
+        this.client = client;
+        this.bootstrap = bootstrap;
+    }
+
+    @Override
     public ChannelPipeline getPipeline() throws Exception {
         ChannelPipeline p = Channels.pipeline();
 
         p.addLast("frameDecoder", new ProtobufVarint32FrameDecoder());
-        p.addLast("protobufDecoder", new ProtobufDecoder(Timber.LogEvent.getDefaultInstance()));
+        p.addLast("protobufDecoder", new ProtobufDecoder(Timber.AckEvent.getDefaultInstance()));
 
         p.addLast("frameEncoder", new ProtobufVarint32LengthFieldPrepender());
         p.addLast("protobufEncoder", new ProtobufEncoder());
-        p.addLast("handler", new TimberClientHandler());
+        p.addLast("handler", new TimberClientHandler(client, bootstrap));
         return p;
     }
 }

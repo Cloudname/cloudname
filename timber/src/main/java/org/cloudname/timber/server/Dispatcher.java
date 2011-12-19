@@ -6,16 +6,16 @@ import org.cloudname.timber.server.handler.LogEventHandler;
 
 import org.jboss.netty.channel.Channel;
 
+import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
-
-import java.util.logging.Logger;
 import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * This class implements the main dispatcher for LogEvents.
@@ -23,23 +23,6 @@ import java.util.logging.Level;
  * Right now this class is really primitive and probably won't offer
  * much in terms of performance or safety features.  The dispatcher
  * has an incoming queue of a fixed size.
- *
- * TODO(borud): acknowledgement of log events with elevated
- *   consistency level is very rudimentary and probably inefficient at
- *   the moment.  Each logevent is ack'ed separately and we make no
- *   use of the underlying protocol's ability to batch several
- *   acknowledgements into one response.
- *
- *   There is also a corner case for dispatchers that have no
- *   handlers: if a dispatcher has no handlers the message has not
- *   been persisted.  We probably need to extend the EventHandler
- *   interface so that the handle() method can return something that
- *   says if the handler persisted the message or not.  If at least
- *   one handler says it has persisted the message then we can
- *   consider it persisted.  If no handlers persisted the message, we
- *   should perhaps send back some kind of negative acknowledgement
- *   indicating this.
- *
  *
  * @author borud
  */
@@ -59,34 +42,13 @@ public class Dispatcher {
     private Thread consumerThread;
     private final CountDownLatch shutdownComplete = new CountDownLatch(1);
 
-    /**
-     * Value class for transporting log events and the channel they
-     * came from to the handler.
-     */
-    private static class LogEventQueueEntry {
-        private Timber.LogEvent event;
-        private Channel channel;
-
-        public LogEventQueueEntry(Timber.LogEvent event, Channel channel) {
-            this.event = event;
-            this.channel = channel;
-        }
-
-        public Timber.LogEvent getLogEvent() {
-            return event;
-        }
-
-        public Channel getChannel() {
-            return channel;
-        }
-    }
-
+    // The acknowledgement manager
+    private final AckManager ackManager = new AckManager();
 
     /**
      * @param incomingQueueLength the length of the input queue to the dispatcher.
      */
-    public Dispatcher(int incomingQueueLength)
-    {
+    public Dispatcher(int incomingQueueLength) {
         this.incomingQueueLength = incomingQueueLength;
         incomingQueue = new ArrayBlockingQueue<LogEventQueueEntry>(incomingQueueLength, true);
         handlers = new CopyOnWriteArrayList<LogEventHandler>();
@@ -96,6 +58,10 @@ public class Dispatcher {
      * Initialize the dispatcher.  Creates a consumer thread.
      */
     public void init() {
+        // Fire up the ackManager
+        ackManager.init();
+
+        // Fire up the consumer thread
         consumerThread = new Thread(new Runnable() {
                 public void run() {
                     log.fine("Starting consumer");
@@ -107,33 +73,67 @@ public class Dispatcher {
         consumerThread.start();
     }
 
+    /**
+     * Shut down the dispatcher.  Waits for the queue to be drained
+     * and all the handlers to be closed before returning.
+     */
+    public void shutdown()
+    {
+        if (isShutdown.get()) {
+            throw new IllegalStateException("Already called shutdown for dispatcher");
+        }
+
+        isShutdown.set(true);
+        try {
+            log.info("Waiting for queue to drain");
+            shutdownComplete.await();
+            log.info("Shutdown complete");
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+
+        // Shut down the ackManager.
+        ackManager.shutdown();
+    }
 
     /**
      * This method implements the consumer loop.  Poll the incoming
      * queue for events.  If the queue is empty.
      *
-     * TODO(borud): this method is getting a bit long and should
-     * probably be broken up a bit.
      */
     private void consumerLoop()
     {
+        List<LogEventQueueEntry> rest = new ArrayList<LogEventQueueEntry>(incomingQueueLength);
+
         while (true) {
             LogEventQueueEntry entry = null;
             try {
-                // Get next event off the queue.  Time out
-                // after POLL_TIME milliseconds
+                // Get next event off the queue.  Time out after
+                // POLL_TIME milliseconds
                 entry = incomingQueue.poll(POLL_TIME, TimeUnit.MILLISECONDS);
             } catch (InterruptedException e) {
-                // If we are interrupted that probably means we
-                // need to shut down?
-                Thread.currentThread().interrupt();
-                return;
+                // TODO(borud): Not sure what to do when we are
+                //   interrupted. Restarting the loop should be safe.
+                continue;
             }
 
             // Process the event
             if (null != entry) {
                 processEvent(entry);
-                continue;
+
+                // If there is one event there is likely to be more,
+                // so while we let the poll() operation take care of
+                // the pacing we can opportunistically try to just
+                // fetch the rest of the entries available to lower
+                // contention.
+                if (incomingQueue.size() > 0) {
+                    incomingQueue.drainTo(rest);
+                    for (LogEventQueueEntry ent : rest) {
+                        processEvent(ent);
+                    }
+                    rest.clear();
+                }
+
             }
 
             // Invariant: If we end up here it was because the queue
@@ -165,7 +165,6 @@ public class Dispatcher {
         }
     }
 
-
     /**
      * Take care of the actual dispatching of an event to the
      * registered handlers.  Will also determine if we can send back
@@ -179,7 +178,6 @@ public class Dispatcher {
     private void processEvent(LogEventQueueEntry entry) {
         // Loop through the registered handlers and offer the event to them.
         Timber.LogEvent event = entry.getLogEvent();
-        boolean wasFlushed = false;
         for (LogEventHandler handler : handlers) {
             try {
                 handler.handle(event);
@@ -189,49 +187,16 @@ public class Dispatcher {
                 // have to flush.
                 if (event.getConsistencyLevel() != Timber.ConsistencyLevel.BESTEFFORT) {
                     handler.flush();
-                    wasFlushed = true;
                 }
             } catch (Exception e) {
                 log.log(Level.WARNING, "Got exception while dispatching to " + handler.getName(), e);
             }
         }
 
-        // If we have come thus far we can acknowledge the event if applicable.
-        if (wasFlushed) {
-            maybeAcknowledgeEvent(entry);
+        // Enqueue ack message if the message had an id
+        if (event.hasId()) {
+            ackManager.ack(entry.getChannel(), event.getId());
         }
-    }
-
-
-    /**
-     * Acknowledge the log event to the originator.  If the id of the
-     * message is not set, no acknowledgement will be sent.  Likewise,
-     * if there is not originating channel, no acknowledgement can be
-     * sent.
-     *
-     * @param entry the LogEventQueueEntry for which we wish to return
-     *   an acknowledgement.
-     */
-    private void maybeAcknowledgeEvent(LogEventQueueEntry entry) {
-        Timber.LogEvent event = entry.getLogEvent();
-
-        // If the log event has no id we cannot acknowledge it.
-        if (! event.hasId()) {
-            return;
-        }
-
-        // If we have no channel we can't send an ack
-        Channel channel = entry.getChannel();
-        if (null == channel) {
-            return;
-        }
-
-        Timber.AckEvent ack = Timber.AckEvent.newBuilder()
-            .setTimestamp(System.currentTimeMillis())
-            .addId(event.getId())
-            .build();
-
-        channel.write(ack);
     }
 
 
@@ -278,21 +243,4 @@ public class Dispatcher {
             throw new RuntimeException(e);
         }
     }
-
-    /**
-     * Shut down the dispatcher.  Waits for the queue to be drained
-     * and all the handlers to be closed before returning.
-     */
-    public void shutdown()
-    {
-        isShutdown.set(true);
-        try {
-            log.info("Waiting for queue to drain");
-            shutdownComplete.await();
-            log.info("Shutdown complete");
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-        }
-    }
-
 }
