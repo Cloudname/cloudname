@@ -16,6 +16,10 @@ import java.util.logging.Logger;
 
 /**
  * This class keeps track of status and endpoints for a coordinate.
+ *
+ * TODO(dybdahl): Add support for claiming an existing node. This could be used for
+ * recovery after network failure etc.
+ *
  * @author dybdahl
  */
 public class ZkStatusEndpoint {
@@ -38,7 +42,6 @@ public class ZkStatusEndpoint {
     private Map<String, Endpoint> endpointsByName = new HashMap<String, Endpoint>();
     
     public ZkStatusEndpoint(ZooKeeper zk, String path) {
-
         this.zk = zk;
         this.path = path;
     }
@@ -192,6 +195,9 @@ public class ZkStatusEndpoint {
         }
     }
 
+    public String toString() {
+       return getSerializedState();
+    }
 
     private String getSerializedState() {
         StringWriter stringWriter = new StringWriter();

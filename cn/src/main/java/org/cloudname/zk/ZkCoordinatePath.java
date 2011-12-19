@@ -37,7 +37,7 @@ public class ZkCoordinatePath {
     }
 
     /**
-     * Bulds the config path of a coordinate.
+     * Builds the config path of a coordinate.
      * @param coordinate
      * @param name if null, the last path of the path (/%name%) is not included.
      * @return config path /cn/%cell%/%user%/%service%/%instance%/config or
@@ -51,7 +51,7 @@ public class ZkCoordinatePath {
     }
 
     /**
-     * Build first part of a ZooKeeper path.
+     * Builds first part of a ZooKeeper path.
      * @param cell
      * @param user
      * @param service
@@ -62,7 +62,7 @@ public class ZkCoordinatePath {
     }
 
     /**
-     * Build first part of a ZooKeeper path.
+     * Builds first part of a ZooKeeper path.
      * @param cell
      * @param user
      * @param service

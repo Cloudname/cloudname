@@ -5,6 +5,10 @@ import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;
 
+/**
+ *  Unit tests for class ZkCoordinatePathTest.
+ *  @author dybdahl
+ */
 public class ZkCoordinatePathTest {
     @Test
     public void testSimple() throws Exception {

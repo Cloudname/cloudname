@@ -6,7 +6,8 @@ import org.cloudname.CloudnameException;
 import org.cloudname.Resolver;
 import org.cloudname.Endpoint;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.logging.Logger;
 import java.util.regex.Pattern;
 import java.util.regex.Matcher;
@@ -60,6 +61,7 @@ public class ZkResolver implements Resolver {
     private String user = null;
     private String cell = null;
     InstanceStrategy strategy = null;
+    private ZooKeeper zk;
 
     public ZkResolver(ZooKeeper zk) {
         this.zk = zk;
@@ -95,7 +97,6 @@ public class ZkResolver implements Resolver {
         }
         return endpoints;
     }
-    private ZooKeeper zk;
 
     private boolean trySetEndPointPattern(String address) {
         Matcher m = strategyPattern.matcher(address);
