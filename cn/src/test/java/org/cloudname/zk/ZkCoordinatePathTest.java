@@ -18,6 +18,6 @@ public class ZkCoordinatePathTest {
         assertEquals("/cn/cell/user/service/42", ZkCoordinatePath.getRoot(coordinate));
         assertEquals("/cn/cell/user/service/42/status", ZkCoordinatePath.getStatusPath(coordinate));
         assertEquals("/cn/cell/user/service", ZkCoordinatePath.coordinateWithoutInstanceAsPath("cell", "user", "service"));
-        assertEquals("/cn/cell/user/service/42", ZkCoordinatePath.coordinateAsPath("cell", "user", "service", 42));
+        assertEquals("/cn/cell/user/service/42/status", ZkCoordinatePath.getStatusPath("cell", "user", "service", 42));
     }
 }

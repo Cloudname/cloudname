@@ -86,7 +86,7 @@ public class ZkResolver implements Resolver {
         }
         List<Endpoint> endpoints = new ArrayList<Endpoint>();
         for (Integer instance : instances) {
-            String path = ZkCoordinatePath.coordinateAsPath(cell, user, service, instance);
+            String path = ZkCoordinatePath.getStatusPath(cell, user, service, instance);
             ZkStatusEndpoint statusEndpoint = new ZkStatusEndpoint(zk, path);
             statusEndpoint.loadFromZooKeeper();
             if (endpointName == null) {
@@ -99,7 +99,7 @@ public class ZkResolver implements Resolver {
     }
 
     private boolean trySetEndPointPattern(String address) {
-        Matcher m = strategyPattern.matcher(address);
+        Matcher m = endpointPattern.matcher(address);
         if (! m.matches()) {
             return false;
         }

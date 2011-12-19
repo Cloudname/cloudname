@@ -65,6 +65,7 @@ public class ZkCloudnameTest {
                     }
                 }
             });
+        connectedLatch.await();
     }
 
     @After

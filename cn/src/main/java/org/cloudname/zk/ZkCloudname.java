@@ -136,10 +136,10 @@ public class ZkCloudname implements Cloudname, Watcher {
      */
     @Override
     public ServiceHandle claim(Coordinate coordinate) {
-        String configPath = ZkCoordinatePath.getStatusPath(coordinate);
-        log.info("Claiming " + coordinate.asString() + " (" + configPath + ")");
+        String statusPath = ZkCoordinatePath.getStatusPath(coordinate);
+        log.info("Claiming " + coordinate.asString() + " (" + statusPath + ")");
 
-        ZkStatusEndpoint statusEndpoint = new ZkStatusEndpoint(zk, configPath);
+        ZkStatusEndpoint statusEndpoint = new ZkStatusEndpoint(zk, statusPath);
         statusEndpoint.claim();
         // If we have come thus far we have succeeded in creating the
         // CN_STATUS_NAME node within the service coordinate directory
@@ -150,8 +150,7 @@ public class ZkCloudname implements Cloudname, Watcher {
 
     @Override
     public Resolver getResolver() {
-        // TODO(borud): implement
-        return null;
+        return new ZkResolver(zk);
     }
 
     @Override

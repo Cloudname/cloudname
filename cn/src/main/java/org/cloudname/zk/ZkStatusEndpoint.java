@@ -141,7 +141,7 @@ public class ZkStatusEndpoint {
     }
 
     public void addAllEndpoints(List<Endpoint> endpoints) {
-        if (state != State.CLAIMED) {
+        if (state == State.EMPTY) {
             throw new IllegalStateException("This instance did not claim this coordinate.");
         }
         for (Endpoint endpoint : endpointsByName.values()) {

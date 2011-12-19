@@ -61,6 +61,10 @@ public class ZkCoordinatePath {
         return CN_PATH_PREFIX + "/" + cell + "/" + user + "/" + service;
     }
 
+    public static String getStatusPath(String cell, String user, String service, Integer instance) {
+        return coordinateAsPath(cell, user, service, instance) + "/" + CN_STATUS_NAME;
+    }
+    
     /**
      * Builds first part of a ZooKeeper path.
      * @param cell
@@ -69,7 +73,7 @@ public class ZkCoordinatePath {
      * @param instance
      * @return path (/cn/%cell%/%user%/%service%/%instance%)
      */
-    public static String coordinateAsPath(String cell, String user, String service, Integer instance) {
+    private static String coordinateAsPath(String cell, String user, String service, Integer instance) {
         return coordinateWithoutInstanceAsPath(cell, user, service) + "/" + instance.toString();
     }
 }
