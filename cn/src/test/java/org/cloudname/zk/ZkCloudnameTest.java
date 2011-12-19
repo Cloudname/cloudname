@@ -9,12 +9,7 @@ import org.cloudname.Endpoint;
 
 import org.apache.zookeeper.WatchedEvent;
 import org.apache.zookeeper.Watcher;
-import org.apache.zookeeper.Watcher.Event.EventType;
 import org.apache.zookeeper.ZooKeeper;
-import org.apache.zookeeper.CreateMode;
-import org.apache.zookeeper.ZooDefs.Ids;
-import org.apache.zookeeper.KeeperException;
-import org.apache.zookeeper.data.Stat;
 
 import java.util.concurrent.CountDownLatch;
 
@@ -110,14 +105,11 @@ public class ZkCloudnameTest {
         handle.putEndpoint(new Endpoint(c, "foo", "localhost", 1234, "http", null));
         handle.putEndpoint(new Endpoint(c, "bar", "localhost", 1235, "http", null));
 
-       // assertTrue(pathExists("/cn/cell/user/service/1/endpoints/foo"));
-      //  assertTrue(pathExists("/cn/cell/user/service/1/endpoints/bar"));
-
         // Remove one of them
         handle.removeEndpoint("bar");
 
         ZkStatusEndpoint statusEndpoint = new ZkStatusEndpoint(zk, "/cn/cell/user/service/1/status");
-        statusEndpoint.load();
+        statusEndpoint.loadFromZooKeeper();
         assertEquals(null, statusEndpoint.getEndpoint("bar"));
 
         Endpoint endpointFoo = statusEndpoint.getEndpoint("foo");
@@ -133,10 +125,9 @@ public class ZkCloudnameTest {
         handle.close();
 
         // These nodes are ephemeral and will be cleaned out when we
-        // call cn.close(), but calling handle.close() explicitly
+        // call cn.deleteClaimed(), but calling handle.deleteClaimed() explicitly
         // cleans out the ephemeral nodes.
         assertFalse(pathExists("/cn/cell/user/service/1/status"));
-        assertFalse(pathExists("/cn/cell/user/service/1/endpoints/foo"));
 
         // Closing Cloudname instance disconnects the zk client
         // connection and thus should kill all ephemeral nodes.

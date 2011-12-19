@@ -18,7 +18,7 @@ import java.util.List;
  *
  *   Note that both filtering and ranking can depend on properties
  *   that are completely outside CN.  For instance, you can do
- *   load-based ranking in which load-data is gathered by some
+ *   loadFromZooKeeper-based ranking in which loadFromZooKeeper-data is gathered by some
  *   external mechanism, but then acted on by the resolver.
  *
  *   Until we have a couple of use-cases, we will provide some default

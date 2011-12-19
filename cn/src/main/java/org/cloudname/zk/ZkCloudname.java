@@ -2,36 +2,23 @@ package org.cloudname.zk;
 
 import org.cloudname.Cloudname;
 import org.cloudname.CloudnameException;
-import org.cloudname.ConfigListener;
 import org.cloudname.Coordinate;
-import org.cloudname.Endpoint;
 import org.cloudname.Resolver;
 import org.cloudname.ServiceHandle;
 import org.cloudname.ServiceStatus;
-import org.cloudname.ServiceState;
 
 import org.apache.zookeeper.WatchedEvent;
 import org.apache.zookeeper.Watcher;
-import org.apache.zookeeper.Watcher.Event.EventType;
 import org.apache.zookeeper.ZooKeeper;
 import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.ZooDefs.Ids;
 import org.apache.zookeeper.KeeperException;
-import org.apache.zookeeper.data.Stat;
 
 import java.util.logging.Logger;
-import java.util.logging.Level;
-
-import java.util.Set;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.HashMap;
 
 import java.util.concurrent.CountDownLatch;
 
 import java.io.IOException;
-import java.io.UnsupportedEncodingException;
-import java.io.UnsupportedEncodingException;
 
 
 /**
@@ -47,7 +34,7 @@ import java.io.UnsupportedEncodingException;
  *  - We need a recovery mechanism for when the ZK server we are
  *    connected to goes down.
  *
- *  - when the ZkCloudname instance is close()d the handles should
+ *  - when the ZkCloudname instance is deleteClaimed()d the handles should
  *    perhaps be invalidated.
  *
  *  - The exception handling in this class is just atrocious.
@@ -55,8 +42,8 @@ import java.io.UnsupportedEncodingException;
  * @author borud
  */
 public class ZkCloudname
-    implements Cloudname,
-               Watcher
+        implements Cloudname,
+        Watcher
 {
     private static final int SESSION_TIMEOUT = 5000;
 
@@ -123,8 +110,7 @@ public class ZkCloudname
         // blindly, meaning that if the path already exists, then
         // that's ok -- so a more correct name for this method would
         // be ensureCoordinate(), but that might confuse developers.
-        ZkCoordinatePath path = new ZkCoordinatePath(coordinate);
-        String root = path.getRoot();
+        String root = ZkCoordinatePath.getRoot(coordinate);
         try {
             Util.mkdir(zk, root, Ids.OPEN_ACL_UNSAFE);
         } catch (KeeperException e) {
@@ -132,7 +118,7 @@ public class ZkCloudname
         }
 
         // Create the nodes that represent subdirectories.
-        String configPath = path.getConfigPath(null);
+        String configPath = ZkCoordinatePath.getConfigPath(coordinate, null);
         try {
             log.info("Creating config node " + configPath);
             zk.create(configPath, null, Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
@@ -152,8 +138,7 @@ public class ZkCloudname
      */
     @Override
     public ServiceHandle claim(Coordinate coordinate) {
-        ZkCoordinatePath path = new ZkCoordinatePath(coordinate);
-        String configPath = path.getStatusPath();
+        String configPath = ZkCoordinatePath.getStatusPath(coordinate);
         log.info("Claiming " + coordinate.asString() + " (" + configPath + ")");
 
         ZkStatusEndpoint statusEndpoint = new ZkStatusEndpoint(zk, configPath);
@@ -173,11 +158,9 @@ public class ZkCloudname
 
     @Override
     public ServiceStatus getStatus(Coordinate coordinate) {
-
-        ZkCoordinatePath path = new ZkCoordinatePath(coordinate);
-        String statusPath = path.getStatusPath();
+        String statusPath = ZkCoordinatePath.getStatusPath(coordinate);
         ZkStatusEndpoint statusEndpoint = new ZkStatusEndpoint(zk, statusPath);
-        statusEndpoint.load();
+        statusEndpoint.loadFromZooKeeper();
         return statusEndpoint.getStatus();
     }
 
@@ -186,7 +169,7 @@ public class ZkCloudname
      */
     public void close() {
         if (null == zk) {
-            throw new IllegalStateException("Cannot close(): Not connected to ZooKeeper");
+            throw new IllegalStateException("Cannot deleteClaimed(): Not connected to ZooKeeper");
         }
 
         try {

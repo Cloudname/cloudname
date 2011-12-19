@@ -1,13 +1,7 @@
 package org.cloudname.zk;
 
-import org.apache.zookeeper.CreateMode;
-import org.apache.zookeeper.KeeperException;
-import org.apache.zookeeper.ZooDefs;
-import org.apache.zookeeper.ZooKeeper;
-import org.apache.zookeeper.data.Stat;
 import org.cloudname.*;
 
-import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
 import java.util.logging.Logger;
 
@@ -41,7 +35,6 @@ public class ZkServiceHandle implements ServiceHandle {
 
         this.statusEndpoint = statusEndpoint;
         assert(statusEndpoint != null);
-        ZkCoordinatePath path = new ZkCoordinatePath(coordinate);
     }
 
     @Override
@@ -54,7 +47,7 @@ public class ZkServiceHandle implements ServiceHandle {
     public void putEndpoints(List<Endpoint> endpoints) {
         statusEndpoint.putEndpoints(endpoints);
     }
-    
+
     @Override
     public void putEndpoint(Endpoint endpoint) {
         List<Endpoint> endpoints = new ArrayList<Endpoint>();
@@ -66,7 +59,7 @@ public class ZkServiceHandle implements ServiceHandle {
     public void removeEndpoints(List<String> names) {
         statusEndpoint.removeEndpoints(names);
     }
-    
+
     @Override
     public void removeEndpoint(String name) {
         List<String> names = new ArrayList<String>();
@@ -81,15 +74,12 @@ public class ZkServiceHandle implements ServiceHandle {
 
     @Override
     public void close() {
-        statusEndpoint.close();
+        statusEndpoint.deleteClaimed();
     }
 
     @Override
     public String toString() {
-        ZkCoordinatePath path = new ZkCoordinatePath(coordinate);
-        return coordinate.asString()
-                + "[" + path.getRoot() + "]"
-                ;
+        return "TODO";
     }
 
     /**

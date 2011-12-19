@@ -15,33 +15,39 @@ import java.util.*;
 import java.util.logging.Logger;
 
 /**
- * Created by IntelliJ IDEA.
- * User: dybdahl
- * Date: 12/15/11
- * Time: 9:51 AM
- * To change this template use File | Settings | File Templates.
+ * This class keeps track of status and endpoints for a coordinate.
+ * @author dybdahl
  */
 public class ZkStatusEndpoint {
- 
+    
+    enum State {
+        EMPTY,
+        LOADED,
+        CLAIMED
+    }
+    
+    private State state = State.EMPTY;
     private static final Logger log = Logger.getLogger(ZkStatusEndpoint.class.getName());
     private ZooKeeper zk;
     private String path;
-
-    private int lastStatusVersion ;
-    private ObjectMapper objectMapper;
+    private int lastStatusVersion = -1000;
+    private ObjectMapper objectMapper = new ObjectMapper();
     // Default service status
     private ServiceStatus status = new ServiceStatus(ServiceState.UNASSIGNED,
             "No service state has been assigned");
     private Map<String, Endpoint> endpointsByName = new HashMap<String, Endpoint>();
-
+    
     public ZkStatusEndpoint(ZooKeeper zk, String path) {
 
         this.zk = zk;
         this.path = path;
-        objectMapper = new ObjectMapper();
-        lastStatusVersion = -2;  // Enforce can't write without claim.
     }
-    public void load() {
+
+    public void loadFromZooKeeper() {
+        if (state == State.CLAIMED) {
+            throw new IllegalStateException("This instance is tracking a claimed endpoint. It does not make sense to " +
+                    "load the endpoint again as this instance has the latest information.");
+        }
         Stat stat = new Stat();
         try {
             byte[] data = zk.getData(path, false /*watcher*/, stat);
@@ -66,9 +72,14 @@ public class ZkStatusEndpoint {
             throw new CloudnameException(e);
 
         }
+        state = State.LOADED;
     }
     
     public void claim() {
+        if (state != State.EMPTY) {
+            throw new IllegalStateException("This instance is already used for claim or loading data." +
+                    " Create a new instance for claiming.");
+        }
         try {
             zk.create(
                  path, getSerializedState().getBytes(Util.CHARSET_NAME), ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.EPHEMERAL);
@@ -101,7 +112,87 @@ public class ZkStatusEndpoint {
         } catch (InterruptedException e) {
             throw new CloudnameException(e);
         }
+        state = State.CLAIMED;
     }
+
+    public void updateStatus(ServiceStatus status) {
+        if (state != State.CLAIMED) {
+            throw new IllegalStateException("This instance did not claim this coordinate.");
+        }
+        this.status = status;
+        writeStatusEndpoint();
+    }
+
+    public ServiceStatus getStatus() {
+        if (state == State.EMPTY) {
+            throw new IllegalStateException("I know nothing about this endpoint.");
+        }
+        return status;
+    }
+
+    public Endpoint getEndpoint(String name) {
+        if (state == State.EMPTY) {
+            throw new IllegalStateException("I know nothing about this endpoint.");
+        }
+        return endpointsByName.get(name);
+    }
+
+    public void addAllEndpoints(List<Endpoint> endpoints) {
+        if (state != State.CLAIMED) {
+            throw new IllegalStateException("This instance did not claim this coordinate.");
+        }
+        for (Endpoint endpoint : endpointsByName.values()) {
+            endpoints.add(endpoint);
+        }
+    }
+
+    public void putEndpoints(List<Endpoint> newEndpoints) {
+        if (state != State.CLAIMED) {
+            throw new IllegalStateException("This instance did not claim this coordinate.");
+        }
+        for (Endpoint endpoint : newEndpoints) {
+            if (endpointsByName.containsKey(endpoint.getName())) {
+                log.info("endpoint already exists: " +  endpoint.getName());
+                throw new CloudnameException.EndpointExists();
+            }
+            endpointsByName.put(endpoint.getName(), endpoint);
+        }
+        writeStatusEndpoint();
+    }
+
+    public void removeEndpoints(List<String> names) {
+        if (state != State.CLAIMED) {
+            throw new IllegalStateException("This instance did not claim this coordinate.");
+        }
+        for (String name : names) {
+            if (! endpointsByName.containsKey(name)) {
+                log.info("endpoint does not exist: " +  name);
+                throw new CloudnameException.EndpointDoesNotExist();
+            }
+            endpointsByName.remove(name);
+        }
+        writeStatusEndpoint();
+    }
+
+    public void deleteClaimed() {
+        if (state != State.CLAIMED) {
+            throw new IllegalStateException("This instance did not claim this coordinate.");
+        }
+        // The nodes that are removed here are ephemeral nodes and
+        // we could just let zk remove them, but on the off chance
+        // that a single process would try to claim more than one
+        // coordinate we provide more explicit cleanup.
+        try {
+            zk.delete(path, lastStatusVersion);
+
+        } catch (KeeperException e) {
+            throw new CloudnameException(e);
+        } catch (InterruptedException e) {
+            throw new CloudnameException(e);
+        }
+    }
+
+
     private String getSerializedState() {
         StringWriter stringWriter = new StringWriter();
         JsonGenerator generator;
@@ -127,7 +218,9 @@ public class ZkStatusEndpoint {
     }
 
     private Boolean writeStatusEndpoint() {
-
+        if (state != State.CLAIMED) {
+            throw new IllegalStateException("This instance did not claim this coordinate.");
+        }
         try {
 
             Stat stat = zk.setData(path,
@@ -150,62 +243,4 @@ public class ZkStatusEndpoint {
         }
         return true;
     }
-    
-    public void updateStatus(ServiceStatus status) {
-
-        this.status = status;
-        writeStatusEndpoint();
-    }
-
-    public ServiceStatus getStatus() {
-        return status;
-    }
-
-    public Endpoint getEndpoint(String name) {
-        return endpointsByName.get(name);
-    }
-    
-    public void addAllEndpoints(List<Endpoint> endpoints) {
-        for (Endpoint endpoint : endpointsByName.values()) {
-            endpoints.add(endpoint);
-        }
-    }
-
-    public void putEndpoints(List<Endpoint> newEndpoints) {
-        for (Endpoint endpoint : newEndpoints) {
-            if (endpointsByName.containsKey(endpoint.getName())) {
-                log.info("endpoint already exists: " +  endpoint.getName());
-                throw new CloudnameException.EndpointExists();
-            }
-            endpointsByName.put(endpoint.getName(), endpoint);
-        }
-        writeStatusEndpoint();
-    }
-
-    public void removeEndpoints(List<String> names) {
-        for (String name : names) {
-            if (! endpointsByName.containsKey(name)) {
-                log.info("endpoint does not exist: " +  name);
-                throw new CloudnameException.EndpointDoesNotExist();
-            }
-            endpointsByName.remove(name);
-        }
-        writeStatusEndpoint();
-    }
-
-    public void close() {
-        // The nodes that are removed here are ephemeral nodes and
-        // we could just let zk remove them, but on the off chance
-        // that a single process would try to claim more than one
-        // coordinate we provide more explicit cleanup.
-        try {
-            zk.delete(path, lastStatusVersion);
-
-        } catch (KeeperException e) {
-            throw new CloudnameException(e);
-        } catch (InterruptedException e) {
-            throw new CloudnameException(e);
-        }
-    }          
-            
 }
