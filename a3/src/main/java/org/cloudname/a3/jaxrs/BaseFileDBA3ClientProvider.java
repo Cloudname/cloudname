@@ -39,11 +39,13 @@ public abstract class BaseFileDBA3ClientProvider
         }
     }
 
-    private static A3Client makeA3ClientFromFile(final String file)
-        throws IOException
-    {
-        final Charset charset = Charset.forName("UTF-8");
+    private static A3Client makeA3ClientFromFile(final String file) throws IOException {
         final InputStream stream = new FileInputStream(file);
+        return makeA3ClientFromStream(stream);
+    }
+
+    private static A3Client makeA3ClientFromStream(final InputStream stream) throws IOException {
+        final Charset charset = Charset.forName("UTF-8");
         final Reader reader = new InputStreamReader(stream, charset);
         return A3Client.newMemoryOnlyClient(reader);
     }
