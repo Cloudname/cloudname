@@ -28,26 +28,32 @@ public abstract class BaseFileDBA3ClientProvider
     private static final Logger logger = Logger.getLogger(
         BaseFileDBA3ClientProvider.class.getName());
 
-    private static A3Client makeEmptyDbA3Client()
+    protected static A3Client makeEmptyDbA3Client()
     {
         final String emptyUserDbJson = "[]";
         final Reader reader = new StringReader(emptyUserDbJson);
         try {
-            return A3Client.newMemoryOnlyClient(reader);
+            a3Client = A3Client.newMemoryOnlyClient(reader);
+            a3Client.open();
+            return a3Client;
         } catch (IOException e) {
             throw new RuntimeException("Unexpected", e);
         }
     }
 
-    private static A3Client makeA3ClientFromFile(final String file) throws IOException {
+    protected static A3Client makeA3ClientFromFile(final String file) throws IOException {
         final InputStream stream = new FileInputStream(file);
-        return makeA3ClientFromStream(stream);
+        a3Client = makeA3ClientFromStream(stream);
+        a3Client.open();
+        return a3Client;
     }
 
-    private static A3Client makeA3ClientFromStream(final InputStream stream) throws IOException {
+    protected static A3Client makeA3ClientFromStream(final InputStream stream) throws IOException {
         final Charset charset = Charset.forName("UTF-8");
         final Reader reader = new InputStreamReader(stream, charset);
-        return A3Client.newMemoryOnlyClient(reader);
+        a3Client = A3Client.newMemoryOnlyClient(reader);
+        a3Client.open();
+        return a3Client;
     }
 
     private static A3Client a3Client;
@@ -55,15 +61,14 @@ public abstract class BaseFileDBA3ClientProvider
     protected static void initProvider(String file) {
         if (file == null || file.isEmpty()) {
             logger.warning("No user database file specified.");
-            a3Client = makeEmptyDbA3Client();
+            makeEmptyDbA3Client();
         } else {
             try {
-                a3Client = makeA3ClientFromFile(file);
+                makeA3ClientFromFile(file);
             } catch (IOException e) {
                 throw new RuntimeException("Unable to read user database from file " + file, e);
             }
         }
-        a3Client.open();
     }
 
     @Override
