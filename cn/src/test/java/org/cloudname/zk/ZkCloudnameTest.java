@@ -79,8 +79,8 @@ public class ZkCloudnameTest {
     @Test
     public void testSimple() throws Exception {
         Coordinate c = Coordinate.parse("1.service.user.cell");
-        ZkCloudname cn = new ZkCloudname();
-        cn.connect("localhost:" + zkport);
+        ZkCloudname cn = new ZkCloudname(new ZkCloudnameBuilder().setConnectString("localhost:" + zkport));
+        cn.connect();
 
         assertFalse(pathExists("/cn/cell/user/service/1"));
         cn.createCoordinate(c);
@@ -146,8 +146,7 @@ public class ZkCloudnameTest {
     @Test (expected = CloudnameException.AlreadyClaimed.class)
     public void testDoubleClaim() throws Exception {
         Coordinate c = Coordinate.parse("2.service.user.cell");
-        ZkCloudname cn = new ZkCloudname();
-        cn.connect("localhost:" + zkport);
+        ZkCloudname cn = new ZkCloudname(new ZkCloudnameBuilder().setConnectString("localhost:" + zkport)).connect();
         cn.createCoordinate(c);
         cn.claim(c);
         cn.claim(c);
@@ -159,8 +158,7 @@ public class ZkCloudnameTest {
     @Test (expected = CloudnameException.CoordinateNotFound.class)
     public void testCoordinateNotFound() throws Exception {
         Coordinate c = Coordinate.parse("3.service.user.cell");
-        ZkCloudname cn = new ZkCloudname();
-        cn.connect("localhost:" + zkport);
+        ZkCloudname cn = new ZkCloudname(new ZkCloudnameBuilder().setConnectString("localhost:" + zkport)).connect();
         cn.claim(c);
     }
 
