@@ -2,12 +2,12 @@ package org.cloudname.zk;
 
 import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.ZooKeeper;
-import org.cloudname.CloudnameException;
-import org.cloudname.Resolver;
-import org.cloudname.Endpoint;
+import org.cloudname.*;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.logging.Logger;
 import java.util.regex.Pattern;
 import java.util.regex.Matcher;
@@ -20,13 +20,11 @@ import java.util.regex.Matcher;
  */
 public class ZkResolver implements Resolver {
 
-    enum InstanceStrategy {
-        ONE_INSTANCE,
-        ANY_INSTANCE,
-        ALL_INSTANCES
-    }
-
     private static final Logger log = Logger.getLogger(ZkResolver.class.getName());
+
+    private ZooKeeper zk;
+
+    Map<String, ResolverStrategy> strategies = new HashMap<String, ResolverStrategy>();
 
     // Matches coordinate with endpoint of the form:
     // endpoint.instance.service.user.cell
@@ -55,102 +53,172 @@ public class ZkResolver implements Resolver {
                          + "([a-z][a-z0-9-_]*)\\." // user
                          + "([a-z][a-z0-9-_]*)\\z"); // cell
 
-    private String endpointName = null;
-    private Integer instance = null;
-    private String service = null;
-    private String user = null;
-    private String cell = null;
-    InstanceStrategy strategy = null;
-    private ZooKeeper zk;
 
+    /**
+     * Inner class to keep track of parameters parsed from addressExpression.
+     */
+    class Parameters {
+        private String endpointName = null;
+        private Integer instance = null;
+        private String service = null;
+        private String user = null;
+        private String cell = null;
+        private String strategy = null;
+
+        /**
+         * Constructor that takes an addressExperssion and sets the inner variables.
+         * @param addressExpression
+         */
+        public Parameters(String addressExpression) {
+            log.info("Resolving " + addressExpression);
+            
+            if (! (trySetEndPointPattern(addressExpression) ||
+                    trySetStrategyPattern(addressExpression) ||
+                    trySetEndpointStrategyPattern(addressExpression))) {
+                throw new IllegalStateException("Could not parse addressExpression:" + addressExpression);
+            }
+ 
+        }
+
+        /**
+         * Returns strategy.
+         * @return the string (e.g. "all" or "any", or "" if there is no strategy (but instance is specified).
+         */
+        public String getStrategy() {
+            return strategy;
+        }
+
+        /**
+         * Returns endpoint name if set or "" if not set.
+         * @return endpointname.
+         */
+        public String getEndpointName() {
+            return endpointName;
+        }
+
+        /**
+         * Returns instance if set or negative number if not set.
+         * @return
+         */
+        public Integer getInstance() {
+            return instance;
+        }
+
+        /**
+         * Returns service
+         * @return  service name.
+         */
+        public String getService() {
+            return service;
+        }
+
+        /**
+         * Returns user
+         * @return user.
+         */
+        public String getUser() {
+            return user;
+        }
+
+        /**
+         * Returns cell.
+         * @return cell.
+         */
+        public String getCell() {
+            return cell;
+        }
+
+        private boolean trySetEndPointPattern(String addressExperssion) {
+            Matcher m = endpointPattern.matcher(addressExperssion);
+            if (! m.matches()) {
+                return false;
+            }
+            endpointName = m.group(1);
+            instance = Integer.parseInt(m.group(2));
+            strategy = "";
+            service = m.group(3);
+            user = m.group(4);
+            cell = m.group(5);
+            return true;
+
+        }
+
+        private boolean trySetStrategyPattern(String addressExpression) {
+            Matcher m = strategyPattern.matcher(addressExpression);
+            if (! m.matches()) {
+                return false;
+            }
+            endpointName = "";
+            strategy = m.group(1);
+            service = m.group(2);
+            user = m.group(3);
+            cell = m.group(4);
+            instance = -1;
+            return true;
+        }
+
+        private boolean trySetEndpointStrategyPattern(String addressExperssion) {
+            Matcher m = endpointStrategyPattern.matcher(addressExperssion);
+            if (! m.matches()) {
+                return false;
+            }
+            endpointName = m.group(1);
+            strategy = m.group(2);
+            service = m.group(3);
+            user = m.group(4);
+            cell = m.group(5);
+            instance = -1;
+            return true;
+        }
+
+    }
+
+    // TODO(dybdahl): Make this public as input to the constructor to support
+    // more strategies.
+    private void  addStrategy(ResolverStrategy strategy) {
+        strategies.put(strategy.getName(), strategy);
+    }
+    
     /**
      * Constructor
      * @param zk  ZooKeeper that is used for resolving.
      */
     public ZkResolver(ZooKeeper zk) {
         this.zk = zk;
+        addStrategy(new StrategyAll());
+        addStrategy(new StrategyAny());
     }
 
     @Override
     public List<Endpoint> resolve(String addressExperssion) {
-        log.info("Resolving " + addressExperssion);
-        // Verify that addressExperssion is recognized.
-        if (! (trySetEndPointPattern(addressExperssion) ||
-                trySetStrategyPattern(addressExperssion) ||
-                trySetEndpointStrategyPattern(addressExperssion))) {
-            throw new IllegalStateException("Could not parse addressExperssion:" + addressExperssion);
-        }
-
-        // Based on addressExperssion, generate list of paths.
+        Parameters parameters = new Parameters(addressExperssion);
+               
         List<Integer> instances = new ArrayList<Integer>();
-        if (strategy == InstanceStrategy.ONE_INSTANCE) {
-            instances.add(instance);
+        if (parameters.getInstance() > -1) {
+            instances.add(parameters.getInstance());
         } else {
-            instances = getInstances(ZkCoordinatePath.coordinateWithoutInstanceAsPath(cell, user, service));
+            instances = getInstances(ZkCoordinatePath.coordinateWithoutInstanceAsPath(parameters.getCell(),
+                    parameters.getUser(), parameters.getService()));
         }
         List<Endpoint> endpoints = new ArrayList<Endpoint>();
         for (Integer instance : instances) {
-            String path = ZkCoordinatePath.getStatusPath(cell, user, service, instance);
+            String path = ZkCoordinatePath.getStatusPath(parameters.getCell(), parameters.getUser(),
+                    parameters.getService(), instance);
             ZkStatusAndEndpoints statusAndEndpoints = new ZkStatusAndEndpoints.Builder(zk, path).load().build();
-            if (endpointName == null) {
+            if (parameters.getEndpointName() == "") {
                 statusAndEndpoints.returnAllEndpoints(endpoints);
             } else {
-                endpoints.add(statusAndEndpoints.getEndpoint(endpointName));
+                endpoints.add(statusAndEndpoints.getEndpoint(parameters.getEndpointName()));
             }
         }
-        return endpoints;
+        if (parameters.getStrategy() == "") {
+         return endpoints;
+        }
+        ResolverStrategy strategy = strategies.get(parameters.getStrategy());
+        return strategy.order(strategy.filter(endpoints));
     }
 
-    private boolean trySetEndPointPattern(String addressExperssion) {
-        Matcher m = endpointPattern.matcher(addressExperssion);
-        if (! m.matches()) {
-            return false;
-        }
-        endpointName = m.group(1);
-        instance = Integer.parseInt(m.group(2));
-        strategy = InstanceStrategy.ONE_INSTANCE;
-        service = m.group(3);
-        user = m.group(4);
-        cell = m.group(5);
-        return true;
-
-    }
-
-    private InstanceStrategy getStrategy(String strategyString) {
-        if (strategyString.compareToIgnoreCase("any") == 0 /* equals any */) {
-            return InstanceStrategy.ANY_INSTANCE;
-        }
-        if (strategyString.compareToIgnoreCase("all") == 0 /* equal all */) {
-            return InstanceStrategy.ALL_INSTANCES;
-        }
-        throw new IllegalStateException("Unknown strategy:" + strategyString);
-    }
-
-    private boolean trySetStrategyPattern(String addressExpression) {
-        Matcher m = strategyPattern.matcher(addressExpression);
-        if (! m.matches()) {
-            return false;
-        }
-        strategy = getStrategy(m.group(1));
-        service = m.group(2);
-        user = m.group(3);
-        cell = m.group(4);
-        return true;
-    }
-
-    private boolean trySetEndpointStrategyPattern(String addressExperssion) {
-        Matcher m = endpointStrategyPattern.matcher(addressExperssion);
-        if (! m.matches()) {
-            return false;
-        }
-        endpointName = m.group(1);
-        strategy = getStrategy(m.group(2));
-        service = m.group(3);
-        user = m.group(4);
-        cell = m.group(5);
-        return true;
-    }
-
+ 
     private List<Integer> getInstances(String path) {
         List<Integer> paths = new ArrayList<Integer>();
         try {
