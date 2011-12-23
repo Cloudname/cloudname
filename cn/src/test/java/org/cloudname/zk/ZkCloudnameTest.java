@@ -109,11 +109,11 @@ public class ZkCloudnameTest {
         // Remove one of them
         handle.removeEndpoint("bar");
 
-        ZkStatusEndpoint statusEndpoint = new ZkStatusEndpoint(zk, "/cn/cell/user/service/1/status");
-        statusEndpoint.loadFromZooKeeper();
-        assertEquals(null, statusEndpoint.getEndpoint("bar"));
+        ZkStatusAndEndpoints statusAndEndpoints = new ZkStatusAndEndpoints.Builder(
+                zk, "/cn/cell/user/service/1/status").load().build();
+        assertEquals(null, statusAndEndpoints.getEndpoint("bar"));
 
-        Endpoint endpointFoo = statusEndpoint.getEndpoint("foo");
+        Endpoint endpointFoo = statusAndEndpoints.getEndpoint("foo");
         String fooData = endpointFoo.getName();
         assertEquals("foo", fooData);
         assertEquals("foo", endpointFoo.getName());
@@ -126,7 +126,7 @@ public class ZkCloudnameTest {
         handle.close();
 
         // These nodes are ephemeral and will be cleaned out when we
-        // call cn.deleteClaimed(), but calling handle.deleteClaimed() explicitly
+        // call cn.releaseClaim(), but calling handle.releaseClaim() explicitly
         // cleans out the ephemeral nodes.
         assertFalse(pathExists("/cn/cell/user/service/1/status"));
 

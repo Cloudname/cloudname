@@ -63,21 +63,25 @@ public class ZkResolver implements Resolver {
     InstanceStrategy strategy = null;
     private ZooKeeper zk;
 
+    /**
+     * Constructor
+     * @param zk  ZooKeeper that is used for resolving.
+     */
     public ZkResolver(ZooKeeper zk) {
         this.zk = zk;
     }
 
     @Override
-    public List<Endpoint> resolve(String address) {
-        log.info("Resolving " + address);
-        // Verify that address is recognized.
-        if (! (trySetEndPointPattern(address) ||
-                trySetStrategyPattern(address) ||
-                trySetEndpointStrategyPattern(address))) {
-            throw new IllegalStateException("Could not parse address:" + address);
+    public List<Endpoint> resolve(String addressExperssion) {
+        log.info("Resolving " + addressExperssion);
+        // Verify that addressExperssion is recognized.
+        if (! (trySetEndPointPattern(addressExperssion) ||
+                trySetStrategyPattern(addressExperssion) ||
+                trySetEndpointStrategyPattern(addressExperssion))) {
+            throw new IllegalStateException("Could not parse addressExperssion:" + addressExperssion);
         }
 
-        // Based on address, generate list of paths.
+        // Based on addressExperssion, generate list of paths.
         List<Integer> instances = new ArrayList<Integer>();
         if (strategy == InstanceStrategy.ONE_INSTANCE) {
             instances.add(instance);
@@ -87,19 +91,18 @@ public class ZkResolver implements Resolver {
         List<Endpoint> endpoints = new ArrayList<Endpoint>();
         for (Integer instance : instances) {
             String path = ZkCoordinatePath.getStatusPath(cell, user, service, instance);
-            ZkStatusEndpoint statusEndpoint = new ZkStatusEndpoint(zk, path);
-            statusEndpoint.loadFromZooKeeper();
+            ZkStatusAndEndpoints statusAndEndpoints = new ZkStatusAndEndpoints.Builder(zk, path).load().build();
             if (endpointName == null) {
-                statusEndpoint.addAllEndpoints(endpoints);
+                statusAndEndpoints.returnAllEndpoints(endpoints);
             } else {
-                endpoints.add(statusEndpoint.getEndpoint(endpointName));
+                endpoints.add(statusAndEndpoints.getEndpoint(endpointName));
             }
         }
         return endpoints;
     }
 
-    private boolean trySetEndPointPattern(String address) {
-        Matcher m = endpointPattern.matcher(address);
+    private boolean trySetEndPointPattern(String addressExperssion) {
+        Matcher m = endpointPattern.matcher(addressExperssion);
         if (! m.matches()) {
             return false;
         }
@@ -123,8 +126,8 @@ public class ZkResolver implements Resolver {
         throw new IllegalStateException("Unknown strategy:" + strategyString);
     }
 
-    private boolean trySetStrategyPattern(String address) {
-        Matcher m = strategyPattern.matcher(address);
+    private boolean trySetStrategyPattern(String addressExpression) {
+        Matcher m = strategyPattern.matcher(addressExpression);
         if (! m.matches()) {
             return false;
         }
@@ -135,8 +138,8 @@ public class ZkResolver implements Resolver {
         return true;
     }
 
-    private boolean trySetEndpointStrategyPattern(String address) {
-        Matcher m = endpointStrategyPattern.matcher(address);
+    private boolean trySetEndpointStrategyPattern(String addressExperssion) {
+        Matcher m = endpointStrategyPattern.matcher(addressExperssion);
         if (! m.matches()) {
             return false;
         }

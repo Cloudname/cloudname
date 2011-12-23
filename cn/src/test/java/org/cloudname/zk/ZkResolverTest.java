@@ -105,7 +105,7 @@ public class ZkResolverTest {
     @Test
     public void testBasicResolving() throws Exception {
         Resolver resolver = cn.getResolver();
-        List<Endpoint> endpoints = resolver.resolve("foo.01.service.user.cell");
+        List<Endpoint> endpoints = resolver.resolve("foo.1.service.user.cell");
         assertEquals(1, endpoints.size());
         assertEquals("foo", endpoints.get(0).getName());
         assertEquals("localhost", endpoints.get(0).getHost());

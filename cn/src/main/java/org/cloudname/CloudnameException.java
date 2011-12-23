@@ -47,7 +47,7 @@ public class CloudnameException extends RuntimeException {
     }
 
     /**
-     * The endpoint the user tried to publish already existed.
+     * The endpoint the user tried to access does not exist.
      */
     public static class EndpointDoesNotExist extends CloudnameException {
         public EndpointDoesNotExist() {

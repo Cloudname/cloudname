@@ -34,7 +34,7 @@ import java.io.IOException;
  *  - We need a recovery mechanism for when the ZK server we are
  *    connected to goes down.
  *
- *  - when the ZkCloudname instance is deleteClaimed()d the handles should
+ *  - when the ZkCloudname instance is releaseClaim()d the handles should
  *    perhaps be invalidated.
  *
  *  - The exception handling in this class is just atrocious.
@@ -139,13 +139,12 @@ public class ZkCloudname implements Cloudname, Watcher {
         String statusPath = ZkCoordinatePath.getStatusPath(coordinate);
         log.info("Claiming " + coordinate.asString() + " (" + statusPath + ")");
 
-        ZkStatusEndpoint statusEndpoint = new ZkStatusEndpoint(zk, statusPath);
-        statusEndpoint.claim();
+        ZkStatusAndEndpoints statusAndEndpoints = new ZkStatusAndEndpoints.Builder(zk, statusPath).claim().build();
         // If we have come thus far we have succeeded in creating the
         // CN_STATUS_NAME node within the service coordinate directory
         // in ZooKeeper and we can give the client a ServiceHandle.
 
-        return new ZkServiceHandle(coordinate, statusEndpoint);
+        return new ZkServiceHandle(coordinate, statusAndEndpoints);
     }
 
     @Override
@@ -156,9 +155,8 @@ public class ZkCloudname implements Cloudname, Watcher {
     @Override
     public ServiceStatus getStatus(Coordinate coordinate) {
         String statusPath = ZkCoordinatePath.getStatusPath(coordinate);
-        ZkStatusEndpoint statusEndpoint = new ZkStatusEndpoint(zk, statusPath);
-        statusEndpoint.loadFromZooKeeper();
-        return statusEndpoint.getStatus();
+        ZkStatusAndEndpoints statusAndEndpoints = new ZkStatusAndEndpoints.Builder(zk, statusPath).load().build();
+        return statusAndEndpoints.getServiceStatus();
     }
 
     /**
@@ -166,7 +164,7 @@ public class ZkCloudname implements Cloudname, Watcher {
      */
     public void close() {
         if (null == zk) {
-            throw new IllegalStateException("Cannot deleteClaimed(): Not connected to ZooKeeper");
+            throw new IllegalStateException("Cannot releaseClaim(): Not connected to ZooKeeper");
         }
 
         try {
