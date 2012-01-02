@@ -35,8 +35,6 @@ import java.util.logging.Logger;
  * @author borud
  */
 public class SlotMapper {
-    private static final Logger log = Logger.getLogger(SlotMapper.class.getName());
-
     // All formatted times are UTC always.
     public static final TimeZone TZ = TimeZone.getTimeZone("UTC");
 
@@ -75,13 +73,11 @@ public class SlotMapper {
             // For all but the most degenerate use-cases this should not
             // affect performance noticably
             if (slotCache.size() > LARGE_CACHE) {
-                log.fine("Purging slot cache size=" + slotCache.size());
                 slotCache.clear();
             }
 
             slot = mapToPath(time);
             slotCache.put(slotnum, slot);
-            log.fine("Added new slot " + slotnum + " = " + slot);
         }
 
         return slot;
