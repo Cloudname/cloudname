@@ -9,12 +9,7 @@ import org.cloudname.Endpoint;
 
 import org.apache.zookeeper.WatchedEvent;
 import org.apache.zookeeper.Watcher;
-import org.apache.zookeeper.Watcher.Event.EventType;
 import org.apache.zookeeper.ZooKeeper;
-import org.apache.zookeeper.CreateMode;
-import org.apache.zookeeper.ZooDefs.Ids;
-import org.apache.zookeeper.KeeperException;
-import org.apache.zookeeper.data.Stat;
 
 import java.util.concurrent.CountDownLatch;
 
@@ -70,6 +65,7 @@ public class ZkCloudnameTest {
                     }
                 }
             });
+        connectedLatch.await();
     }
 
     @After
@@ -91,7 +87,6 @@ public class ZkCloudnameTest {
 
         // Coordinate should exist, but no status node
         assertTrue(pathExists("/cn/cell/user/service/1"));
-        assertTrue(pathExists("/cn/cell/user/service/1/endpoints"));
         assertTrue(pathExists("/cn/cell/user/service/1/config"));
         assertFalse(pathExists("/cn/cell/user/service/1/status"));
 
@@ -108,35 +103,32 @@ public class ZkCloudnameTest {
         assertSame(ServiceState.STARTING, status.getState());
 
         // Publish two endpoints
-        handle.putEndpoint("foo", new Endpoint(c, "foo", "localhost", 1234, "http", null));
-        handle.putEndpoint("bar", new Endpoint(c, "bar", "localhost", 1235, "http", null));
-
-        assertTrue(pathExists("/cn/cell/user/service/1/endpoints/foo"));
-        assertTrue(pathExists("/cn/cell/user/service/1/endpoints/bar"));
+        handle.putEndpoint(new Endpoint(c, "foo", "localhost", 1234, "http", null));
+        handle.putEndpoint(new Endpoint(c, "bar", "localhost", 1235, "http", null));
 
         // Remove one of them
         handle.removeEndpoint("bar");
 
-        // Make sure one exists and the other doesn't.
-        assertTrue(pathExists("/cn/cell/user/service/1/endpoints/foo"));
-        assertFalse(pathExists("/cn/cell/user/service/1/endpoints/bar"));
+        ZkStatusAndEndpoints statusAndEndpoints = new ZkStatusAndEndpoints.Builder(
+                zk, "/cn/cell/user/service/1/status").load().build();
+        assertEquals(null, statusAndEndpoints.getEndpoint("bar"));
 
-        // Sneakily read it directly out of ZooKeeper and verify its contents
-        Endpoint ep = Endpoint.fromJson(fetchNodeData("/cn/cell/user/service/1/endpoints/foo"));
-        assertEquals("foo", ep.getName());
-        assertEquals("localhost", ep.getHost());
-        assertEquals(1234, ep.getPort());
-        assertEquals("http", ep.getProtocol());
-        assertNull(ep.getEndpointData());
+        Endpoint endpointFoo = statusAndEndpoints.getEndpoint("foo");
+        String fooData = endpointFoo.getName();
+        assertEquals("foo", fooData);
+        assertEquals("foo", endpointFoo.getName());
+        assertEquals("localhost", endpointFoo.getHost());
+        assertEquals(1234, endpointFoo.getPort());
+        assertEquals("http", endpointFoo.getProtocol());
+        assertNull(endpointFoo.getEndpointData());
 
         // Close handle just invalidates handle
         handle.close();
 
         // These nodes are ephemeral and will be cleaned out when we
-        // call cn.close(), but calling handle.close() explicitly
+        // call cn.releaseClaim(), but calling handle.releaseClaim() explicitly
         // cleans out the ephemeral nodes.
         assertFalse(pathExists("/cn/cell/user/service/1/status"));
-        assertFalse(pathExists("/cn/cell/user/service/1/endpoints/foo"));
 
         // Closing Cloudname instance disconnects the zk client
         // connection and thus should kill all ephemeral nodes.
@@ -144,7 +136,7 @@ public class ZkCloudnameTest {
 
         // But the coordinate and its persistent subnodes should
         assertTrue(pathExists("/cn/cell/user/service/1"));
-        assertTrue(pathExists("/cn/cell/user/service/1/endpoints"));
+    //    assertTrue(pathExists("/cn/cell/user/service/1/endpoints"));
         assertTrue(pathExists("/cn/cell/user/service/1/config"));
     }
 
