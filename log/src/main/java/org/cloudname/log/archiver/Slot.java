@@ -28,8 +28,6 @@ import java.util.logging.Logger;
  * @author borud
  */
 public class Slot {
-    private static final Logger log = Logger.getLogger(Slot.class.getName());
-
     // When resuming an existing file we skip to the next sequence file if we have
     // already logged more than RESUME_LIMIT_PERCENT percent of maxSize
     private static final int RESUME_LIMIT_PERCENT = 90;
