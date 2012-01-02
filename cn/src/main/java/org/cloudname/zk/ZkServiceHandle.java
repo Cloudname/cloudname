@@ -14,7 +14,6 @@ import java.util.List;
  */
 public class ZkServiceHandle implements ServiceHandle {
     private Coordinate coordinate;
-    //private ZooKeeper zk;
     private ZkStatusAndEndpoints statusAndEndpoints;
     private static final Logger log = Logger.getLogger(ZkServiceHandle.class.getName());
 

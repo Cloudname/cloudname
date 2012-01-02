@@ -1,9 +1,13 @@
 package org.cloudname;
 
-
 import java.util.List;
 
+/**
+ * The ResolverStrategy is an interface for implementing a strategy when resolving endpoints.
+ */
+
 public interface ResolverStrategy {
+
     /**
      * Given a list of endpoints, return only those endpoints that are desired for this strategy.
      */

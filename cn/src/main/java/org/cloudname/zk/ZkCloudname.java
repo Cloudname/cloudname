@@ -1,11 +1,6 @@
 package org.cloudname.zk;
 
-import org.cloudname.Cloudname;
-import org.cloudname.CloudnameException;
-import org.cloudname.Coordinate;
-import org.cloudname.Resolver;
-import org.cloudname.ServiceHandle;
-import org.cloudname.ServiceStatus;
+import org.cloudname.*;
 
 import org.apache.zookeeper.WatchedEvent;
 import org.apache.zookeeper.Watcher;
@@ -149,7 +144,7 @@ public class ZkCloudname implements Cloudname, Watcher {
 
     @Override
     public Resolver getResolver() {
-        return new ZkResolver(zk);
+        return new ZkResolver.Builder(zk).addStrategy(new StrategyAll()).addStrategy(new StrategyAny()).build();
     }
 
     @Override

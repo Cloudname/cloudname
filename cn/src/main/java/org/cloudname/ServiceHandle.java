@@ -26,7 +26,10 @@ public interface ServiceHandle {
      */
     public void putEndpoint(Endpoint endpoint);
 
-
+    /**
+     * Same as putEndpoints, but takes a list.
+     * @param endpoints the endpoints data.
+     */
     public void putEndpoints(List<Endpoint> endpoints);
 
     /**
@@ -35,6 +38,11 @@ public interface ServiceHandle {
      * @param name the name of the endpoint we wish to remove.
      */
     public void removeEndpoint(String name);
+
+    /**
+     * Same as removeEndpoint() but takes a list of names.
+     * @param names
+     */
     public void removeEndpoints(List<String> names);
 
     /**

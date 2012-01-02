@@ -24,8 +24,37 @@ public class ZkResolver implements Resolver {
 
     private ZooKeeper zk;
 
-    Map<String, ResolverStrategy> strategies = new HashMap<String, ResolverStrategy>();
+    Map<String, ResolverStrategy> strategies;
 
+    public static class Builder {
+
+        Map<String, ResolverStrategy> strategies = new HashMap<String, ResolverStrategy>();
+        private ZooKeeper zk;
+        
+        public Builder(ZooKeeper zk) {
+            this.zk = zk;
+        }
+
+        public Builder addStrategy(ResolverStrategy strategy) {
+            strategies.put(strategy.getName(), strategy);
+            return this;
+        }
+
+        public Map<String, ResolverStrategy> getStrategies() {
+            return strategies;
+        }
+        
+        public ZooKeeper getZooKeeper() {
+            return zk;
+        }
+        
+        public ZkResolver build() {
+            return new ZkResolver(this);
+        }
+
+    }
+    
+    
     // Matches coordinate with endpoint of the form:
     // endpoint.instance.service.user.cell
     public static final Pattern endpointPattern
@@ -173,20 +202,13 @@ public class ZkResolver implements Resolver {
 
     }
 
-    // TODO(dybdahl): Make this public as input to the constructor to support
-    // more strategies.
-    private void  addStrategy(ResolverStrategy strategy) {
-        strategies.put(strategy.getName(), strategy);
-    }
-    
     /**
-     * Constructor
-     * @param zk  ZooKeeper that is used for resolving.
+     * Constructor, to be called from the inner Builder class.
+     * @param builder
      */
-    public ZkResolver(ZooKeeper zk) {
-        this.zk = zk;
-        addStrategy(new StrategyAll());
-        addStrategy(new StrategyAny());
+    private ZkResolver(Builder builder) {
+        this.zk = builder.getZooKeeper();
+        this.strategies = builder.getStrategies();
     }
 
     @Override
