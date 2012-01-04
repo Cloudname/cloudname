@@ -36,6 +36,12 @@
       <artifactId>jackson-mapper-asl</artifactId>
     </dependency>
 
+     <dependency>
+      <groupId>org.cloudname</groupId>
+      <artifactId>flags</artifactId>
+      <version>${cn.version}</version>
+    </dependency>
+
     <dependency>
       <groupId>junit</groupId>
       <artifactId>junit</artifactId>
