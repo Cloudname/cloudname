@@ -80,7 +80,7 @@ public class Main {
             System.err.println("Created coordinate.");
         }
         if (o == Operation.DELETE) {
-            cloudname.close();
+            // TODO: We need deletion in api...
             System.err.println("Deleted coordinate.");
         }
     }
