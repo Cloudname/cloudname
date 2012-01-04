@@ -55,7 +55,7 @@ public class ZkCloudname implements Cloudname, Watcher {
     private final CountDownLatch connectedSignal = new CountDownLatch(1);
 
 
-    public ZkCloudname(ZkCloudnameBuilder builder) {
+    private ZkCloudname(Builder builder) {
         connectString = builder.getConnectString();
     }
 
@@ -178,29 +178,34 @@ public class ZkCloudname implements Cloudname, Watcher {
         }
 
     }
-}
 
-/**
- *  This class builds parameters for ZkCloudname.
- */
-class ZkCloudnameBuilder {
-    private String connectString;
 
-    public ZkCloudnameBuilder setConnectString(String connectString) {
-        this.connectString = connectString;
-        return this;
-    }
+    /**
+     *  This class builds parameters for ZkCloudname.
+     */
+    static class Builder {
+        private String connectString;
 
-    // TODO(borud, dybdahl): Make this smarter, some ideas:
-    //                       Connect to one node and read from a magic path
-    //                       how many zookeepers that are running and build
-    //                       the path based on this information.
-    public ZkCloudnameBuilder autoConnect() {
-        this.connectString = "z1:2181,z2:2181,z3:2181";
-        return this;
-    }
-    
-    public String getConnectString() {
-        return connectString;
+        public Builder setConnectString(String connectString) {
+            this.connectString = connectString;
+            return this;
+        }
+
+        // TODO(borud, dybdahl): Make this smarter, some ideas:
+        //                       Connect to one node and read from a magic path
+        //                       how many zookeepers that are running and build
+        //                       the path based on this information.
+        public Builder autoConnect() {
+            this.connectString = "z1:2181,z2:2181,z3:2181";
+            return this;
+        }
+
+        public String getConnectString() {
+            return connectString;
+        }
+
+        public ZkCloudname build() {
+            return new ZkCloudname(this);
+        }
     }
 }
