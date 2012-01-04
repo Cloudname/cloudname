@@ -50,6 +50,10 @@ public class ZkCloudname implements Cloudname, Watcher {
     private final CountDownLatch connectedSignal = new CountDownLatch(1);
 
 
+    private ZkCloudname(Builder builder) {
+        connectString = builder.getConnectString();
+    }
+
     /**
      * Connect to ZooKeeper instance.
      *
@@ -57,11 +61,8 @@ public class ZkCloudname implements Cloudname, Watcher {
      *   will hang forever.  It should probably time out or produce an
      *   exception.
      *
-     * @param connectString the connect string of the ZooKeeper server
-     *   List of (host:port).
      */
-    public ZkCloudname connect(String connectString) {
-        this.connectString = connectString;
+    public ZkCloudname connect() {
 
         try {
             zk = new ZooKeeper(connectString, SESSION_TIMEOUT, this);
@@ -169,5 +170,35 @@ public class ZkCloudname implements Cloudname, Watcher {
             throw new RuntimeException(e);
         }
 
+    }
+
+
+    /**
+     *  This class builds parameters for ZkCloudname.
+     */
+    static class Builder {
+        private String connectString;
+
+        public Builder setConnectString(String connectString) {
+            this.connectString = connectString;
+            return this;
+        }
+
+        // TODO(borud, dybdahl): Make this smarter, some ideas:
+        //                       Connect to one node and read from a magic path
+        //                       how many zookeepers that are running and build
+        //                       the path based on this information.
+        public Builder autoConnect() {
+            this.connectString = "z1:2181,z2:2181,z3:2181";
+            return this;
+        }
+
+        public String getConnectString() {
+            return connectString;
+        }
+
+        public ZkCloudname build() {
+            return new ZkCloudname(this);
+        }
     }
 }
