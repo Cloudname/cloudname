@@ -75,6 +75,13 @@ public class Main {
         Resolver resolver = cloudname.getResolver();
         Coordinate c = Coordinate.parse(coordinate);
 
-        cloudname.createCoordinate(c);
+        if (o == Operation.CREATE) {
+            cloudname.createCoordinate(c);
+            System.err.println("Created coordinate.");
+        }
+        if (o == Operation.DELETE) {
+            cloudname.close();
+            System.err.println("Deleted coordinate.");
+        }
     }
 }
