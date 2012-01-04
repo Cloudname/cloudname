@@ -138,10 +138,6 @@ public class Coordinate {
         return instance + "." + service + "." + user + "." + cell;
     }
 
-    public String asPath() {
-        return cell + "/" + user + "/" + service + "/" + instance;
-    }
-
     @Override
     public String toString() {
         return asString();

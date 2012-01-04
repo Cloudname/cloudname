@@ -2,15 +2,10 @@ package org.cloudname.zk;
 
 import org.cloudname.CloudnameException;
 
-import org.apache.zookeeper.WatchedEvent;
-import org.apache.zookeeper.Watcher;
-import org.apache.zookeeper.Watcher.Event.EventType;
 import org.apache.zookeeper.ZooKeeper;
 import org.apache.zookeeper.CreateMode;
-import org.apache.zookeeper.ZooDefs.Ids;
 import org.apache.zookeeper.data.ACL;
 import org.apache.zookeeper.KeeperException;
-import org.apache.zookeeper.data.Stat;
 
 import java.util.List;
 import java.util.logging.Logger;
@@ -21,6 +16,9 @@ import java.util.logging.Logger;
  * @author borud
  */
 public class Util {
+    // Constants
+    public static final String CHARSET_NAME = "UTF-8";
+
     private static final Logger log = Logger.getLogger(Util.class.getName());
     /**
      * Create a path in ZooKeeper.  We just start at the top and work
@@ -52,4 +50,4 @@ public class Util {
         }
 
     }
-}
+ }
