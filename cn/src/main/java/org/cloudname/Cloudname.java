@@ -7,9 +7,9 @@ package org.cloudname;
  */
 public interface Cloudname {
     /**
-     * Claim a coordinate returning a {@link ServiceHandle} through
+     * Claim a coordinateFlag returning a {@link ServiceHandle} through
      * which the service can interact with the system.  If the
-     * coordinate has already been claimed by a different running
+     * coordinateFlag has already been claimed by a different running
      * instance of the service, an exception will be thrown.
      *
      * @param coordinate of the service we wish to claim
@@ -22,23 +22,23 @@ public interface Cloudname {
     public Resolver getResolver();
 
     /**
-     * Create a coordinate in the persistent service store.  Must
-     * throw an exception if the coordinate has already been defined.
+     * Create a coordinateFlag in the persistent service store.  Must
+     * throw an exception if the coordinateFlag has already been defined.
      *
-     * @param coordinate the coordinate we wish to create
+     * @param coordinate the coordinateFlag we wish to create
      */
     public void createCoordinate(Coordinate coordinate);
 
     /**
-     * Deletes a coordinate in the persistent service store. It will fail if the coordinate is claimed.
-     * @param coordinate the coordinate we wish to destroy.
+     * Deletes a coordinateFlag in the persistent service store. It will fail if the coordinateFlag is claimed.
+     * @param coordinate the coordinateFlag we wish to destroy.
      */
     public void destroyCoordinate(Coordinate coordinate);
     
     /**
      * Get the ServiceStatus for a given Coordinate.
      *
-     * @param coordinate the coordinate we want to get the status of
+     * @param coordinate the coordinateFlag we want to get the status of
      * @return a ServiceStatus instance.
      */
     public ServiceStatus getStatus(Coordinate coordinate);

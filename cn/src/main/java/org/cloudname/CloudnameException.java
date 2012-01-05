@@ -7,7 +7,7 @@ package org.cloudname;
  */
 public class CloudnameException extends RuntimeException {
     /**
-     * The coordinate we attempted to claim has already been claimed
+     * The coordinateFlag we attempted to claim has already been claimed
      * by a different instance.
      */
     public static class AlreadyClaimed extends CloudnameException {
@@ -21,7 +21,7 @@ public class CloudnameException extends RuntimeException {
     }
 
     /**
-     * The coordinate does not exist.
+     * The coordinateFlag does not exist.
      */
     public static class CoordinateNotFound extends CloudnameException {
         public CoordinateNotFound() {
@@ -60,7 +60,7 @@ public class CloudnameException extends RuntimeException {
     }
 
     /**
-     * The coordinate the user tried to destroy is claimed.
+     * The coordinateFlag the user tried to destroy is claimed.
      */
     public static class CoordinateIsClaimed extends CloudnameException {
         public CoordinateIsClaimed() {
@@ -73,7 +73,7 @@ public class CloudnameException extends RuntimeException {
     }
 
     /**
-     * The coordinate the user tried to destroy has config nodes.
+     * The coordinateFlag the user tried to destroy has config nodes.
      */
     public static class CoordinateHasConfig extends CloudnameException {
         public CoordinateHasConfig() {

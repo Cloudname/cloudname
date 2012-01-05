@@ -2,45 +2,65 @@ package org.cloudname.zk;
 
 import org.cloudname.Coordinate;
 import org.cloudname.Resolver;
+import org.cloudname.ServiceStatus;
 import org.cloudname.flags.Flag;
 import org.cloudname.flags.Flags;
 
+import java.util.ArrayList;
+import java.util.List;
 
 
 /**
- * Created by IntelliJ IDEA.
- * User: dybdahl
- * Date: 04.01.12
- * Time: 10:35
- * To change this template use File | Settings | File Templates.
+ * Commandline tool for using the Cloudname library.
+ * Flags:
+ *   --operationFlag   create|delete|status|list
+ *   --coordinateFlag the coordinateFlag to perform operationFlag on
+ * @author dybdahl
  */
 public class Main {
-    @Flag(name="zooKeeper", description="A list of host:port for connecting to ZooKeeper.", required=false)
-    public static String zooKeeper = null;
+    @Flag(name="zooKeeperFlag", description="A list of host:port for connecting to ZooKeeper.", required=false)
+    public static String zooKeeperFlag = null;
 
-    @Flag(name="cordinate", description="The coordinate to work on.", required=true)
-    public static String coordinate = null;
+    @Flag(name="cordinateFøag", description="The coordinateFlag to work on.", required=false)
+    public static String coordinateFlag = null;
 
-    @Flag(name="operation", description="The operation to do on coordinate (create, delete).", required=true)
-    public static String operation = null;
+    @Flag(name="operationFlag",
+          description="The operationFlag to do on coordinateFlag (create, delete, status, list).", required=true)
+    public static String operationFlag = null;
 
     /**
-     *   The possible operations to do on a coordinate
+     *   The possible operations to do on a coordinateFlag
      */  
     enum Operation {
+        /**
+         * Invalid operationFlag specified by the user.
+         */
         NOT_VALID,
+        /**
+         * Create a new coordinateFlag.
+         */
         CREATE,
-        DELETE
-    }
-    
-    private static Operation getOperation(String operationString) {
-        if (operationString.equals("delete")) {
-            return Operation.DELETE;
+        /**
+         * Delete a coordinateFlag.
+         */
+        DELETE,
+        /**
+         * Print out some status about a coordinateFlag
+         */
+        STATUS,
+        /**
+         * Print the coordinates in zookeeper
+         */
+        LIST;
+        public static Operation getOperation(String operationString) {
+            operationString = operationString.toUpperCase();
+            for (Operation operation : Operation.values()) {
+                if (operation.name().equals(operationString)) {
+                    return operation;
+                }
+            }
+            return Operation.NOT_VALID;
         }
-        if (operationString.equals("create")) {
-            return Operation.CREATE;
-        }
-        return Operation.NOT_VALID;
     }
     
     public static void main(String[] args) throws Exception {
@@ -55,33 +75,48 @@ public class Main {
             return;
         }
 
-        Operation o = getOperation(operation);
-        if (o == Operation.NOT_VALID) {
-            System.err.println("Unknown operation: " + operation);
+        Operation operation = Operation.getOperation(operationFlag);
+        if (operation == Operation.NOT_VALID) {
+            System.err.println("Unknown operationFlag: " + operationFlag);
             return;
         }
         
         ZkCloudname.Builder builder = new ZkCloudname.Builder();
-        if (zooKeeper == null) {
+        if (zooKeeperFlag == null) {
             System.out.println("Connecting to cloudname with auto connect.");
             builder.autoConnect();
         } else {
-            System.out.println("Connecting to cloudname with ZooKeeper connect string " + zooKeeper);
-            builder.setConnectString(zooKeeper);
+            System.out.println("Connecting to cloudname with ZooKeeper connect string " + zooKeeperFlag);
+            builder.setConnectString(zooKeeperFlag);
         }
         ZkCloudname cloudname = builder.build().connect();
         System.err.println("Connected to ZooKeeper.");
 
         Resolver resolver = cloudname.getResolver();
-        Coordinate c = Coordinate.parse(coordinate);
+        Coordinate c = Coordinate.parse(coordinateFlag);
 
-        if (o == Operation.CREATE) {
-            cloudname.createCoordinate(c);
-            System.err.println("Created coordinate.");
-        }
-        if (o == Operation.DELETE) {
-            // TODO: We need deletion in api...
-            System.err.println("Deleted coordinate.");
+        switch (operation) {
+            case CREATE:
+                cloudname.createCoordinate(c);
+                System.err.println("Created coordinateFlag.");
+                break;
+            case DELETE:
+                cloudname.destroyCoordinate(c);
+                System.err.println("Deleted coordinateFlag.");
+                break;
+            case STATUS:
+                ServiceStatus status = cloudname.getStatus(c);
+                System.err.println("Status:\n" + status.getState().toString());
+                break;
+            case LIST:
+                List<String> nodeList = new ArrayList<String>();
+                cloudname.listRecursively(nodeList);
+                for (String node : nodeList) {
+                    System.err.println(node);
+                }
+                break;
+            default:
+                System.out.println("Unknown command " + operationFlag);
         }
     }
 }

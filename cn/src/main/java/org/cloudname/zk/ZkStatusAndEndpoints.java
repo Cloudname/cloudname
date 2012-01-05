@@ -24,7 +24,7 @@ import java.util.Map;
 import java.util.logging.Logger;
 
 /**
- * This class keeps track of serviceStatus and endpoints for a coordinate.
+ * This class keeps track of serviceStatus and endpoints for a coordinateFlag.
  * It has an inner class for building an instance (Builder).
  *
  * TODO(dybdahl): Add support for claiming an existing node. This could be used for
@@ -44,7 +44,7 @@ public class ZkStatusAndEndpoints {
          */
         LOADED,
         /**
-         * We have claimed and own the coordinate. We are the only one that are allowed to modify.
+         * We have claimed and own the coordinateFlag. We are the only one that are allowed to modify.
          */
         CLAIMED
     }
@@ -74,19 +74,19 @@ public class ZkStatusAndEndpoints {
     }
 
     /**
-     * Updates the ServiceStatus and persists it. Only allowed if we claimed the coordinate.
+     * Updates the ServiceStatus and persists it. Only allowed if we claimed the coordinateFlag.
      * @param status The new value for serviceStatus.
      */
     public synchronized void updateStatus(ServiceStatus status) {
         if (state != State.CLAIMED) {
-            throw new IllegalStateException("This instance did not claim this coordinate.");
+            throw new IllegalStateException("This instance did not claim this coordinateFlag.");
         }
         this.serviceStatus = status;
         writeStatusEndpoint();
     }
 
     /**
-     * Returns the ServiceStatus. If we claimed the coordinate, this is the real-time value, otherwise
+     * Returns the ServiceStatus. If we claimed the coordinateFlag, this is the real-time value, otherwise
      * it is the last loaded value.
      * @return ServiceStatus.
      */
@@ -95,7 +95,7 @@ public class ZkStatusAndEndpoints {
     }
 
     /**
-     * Returns the Endpoint. If we claimed the coordinate, this is the real-time value, otherwise
+     * Returns the Endpoint. If we claimed the coordinateFlag, this is the real-time value, otherwise
      * it is the last loaded value.
      * @return Endpoint.
      */
@@ -114,12 +114,12 @@ public class ZkStatusAndEndpoints {
     }
 
     /**
-     * Adds new endpoints and persist them. Requires that this instance owns the claim to the coordinate.
+     * Adds new endpoints and persist them. Requires that this instance owns the claim to the coordinateFlag.
      * @param newEndpoints endpoints to be added.
      */
     public synchronized void putEndpoints(List<Endpoint> newEndpoints) {
         if (state != State.CLAIMED) {
-            throw new IllegalStateException("This instance did not claim this coordinate.");
+            throw new IllegalStateException("This instance did not claim this coordinateFlag.");
         }
         for (Endpoint endpoint : newEndpoints) {
             if (endpointsByName.containsKey(endpoint.getName())) {
@@ -132,12 +132,12 @@ public class ZkStatusAndEndpoints {
     }
 
     /**
-     * Remove endpoints and persist it. Requires that this instance owns the claim to the coordinate.
+     * Remove endpoints and persist it. Requires that this instance owns the claim to the coordinateFlag.
      * @param names names of endpoints to be removed.
      */
     public synchronized void removeEndpoints(List<String> names) {
         if (state != State.CLAIMED) {
-            throw new IllegalStateException("This instance did not claim this coordinate.");
+            throw new IllegalStateException("This instance did not claim this coordinateFlag.");
         }
         for (String name : names) {
             if (! endpointsByName.containsKey(name)) {
@@ -150,17 +150,17 @@ public class ZkStatusAndEndpoints {
     }
 
     /**
-     * Release the claim of the coordinate. It means that nobody owns the coordinate anymore.
-     * Requires that that this instance owns the claim to the coordinate.
+     * Release the claim of the coordinateFlag. It means that nobody owns the coordinateFlag anymore.
+     * Requires that that this instance owns the claim to the coordinateFlag.
      */
     public synchronized void releaseClaim() {
         if (state != State.CLAIMED) {
-            throw new IllegalStateException("This instance did not own the claim to this coordinate.");
+            throw new IllegalStateException("This instance did not own the claim to this coordinateFlag.");
         }
         // The nodes that are removed here are ephemeral nodes and
         // we could just let zk remove them, but on the off chance
         // that a single process would try to claim more than one
-        // coordinate we provide more explicit cleanup.
+        // coordinateFlag we provide more explicit cleanup.
         try {
             zk.delete(path, lastStatusVersion);
 
@@ -246,7 +246,7 @@ public class ZkStatusAndEndpoints {
      */
     private void writeStatusEndpoint() {
         if (state != State.CLAIMED) {
-            throw new IllegalStateException("This instance did not claim this coordinate.");
+            throw new IllegalStateException("This instance did not claim this coordinateFlag.");
         }
         try {
 
@@ -271,9 +271,9 @@ public class ZkStatusAndEndpoints {
 
     /**
      * This class can build ZkStatusAndEndpoints.
-     * If you want to create an instance that first claims the coordinate it can be done like this:
+     * If you want to create an instance that first claims the coordinateFlag it can be done like this:
      *   ZkStatusAndEndpoints statusAndEndpoints = new ZkStatusAndEndpoints.Builder(zk, statusPath).claim().build();
-     * Instead of claim you can also load the coordinate.
+     * Instead of claim you can also load the coordinateFlag.
      */
     public static class Builder {
         private ZkStatusAndEndpoints.State state = ZkStatusAndEndpoints.State.UNKNOWN;
@@ -288,7 +288,7 @@ public class ZkStatusAndEndpoints {
         /**
          * Constructor for builder.
          * @param zk The ZooKeeper instance to use.
-         * @param path The serviceStatus/endpoints path of the coordinate to claim or load.
+         * @param path The serviceStatus/endpoints path of the coordinateFlag to claim or load.
          */
         Builder(ZooKeeper zk, String path) {
             this.zk = zk;
@@ -305,7 +305,7 @@ public class ZkStatusAndEndpoints {
 
         /**
          * Returns the path.
-         * @return serviceStatus/endpoints path of the coordinate.
+         * @return serviceStatus/endpoints path of the coordinateFlag.
          */
         public String getPath() {
             return path;
@@ -336,7 +336,7 @@ public class ZkStatusAndEndpoints {
         }
 
         /**
-         * Returns the version if the coordinate was claimed.
+         * Returns the version if the coordinateFlag was claimed.
          * @return version.
          */
         public int getLastStatusVersion() {
@@ -363,7 +363,7 @@ public class ZkStatusAndEndpoints {
         }
 
         /**
-         * Loads the coordinate from ZooKeeper.
+         * Loads the coordinateFlag from ZooKeeper.
          * @return this.
          */
         public Builder load() {
@@ -392,7 +392,7 @@ public class ZkStatusAndEndpoints {
         }
 
         /**
-         * Claims a coordinate.
+         * Claims a coordinateFlag.
          * @return this.
          */
         public Builder claim() {

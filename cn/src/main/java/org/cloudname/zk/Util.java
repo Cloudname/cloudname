@@ -54,6 +54,31 @@ public class Util {
     }
 
     /**
+     * Lists sub nodes
+     * @param zk
+     * @param path starts from this path
+     * @param acl
+     * @param nodeList target list
+     */
+    public static void listRecursively(ZooKeeper zk, String path, List<ACL> acl, List<String> nodeList) {
+        List<String> children = null;
+        try {
+            children = zk.getChildren(path, false);
+        } catch (InterruptedException e) {
+            throw new CloudnameException(e);
+        } catch (KeeperException e) {
+            throw new CloudnameException(e);
+        }
+        if (children.size() == 0) {
+            nodeList.add(path);
+            return;
+        }
+        for (String childPath : children) {
+            listRecursively(zk, path + "/" +childPath, acl, nodeList);
+        }
+    }
+    
+    /**
      * Figures out if there are sub nodes under the path. If the path does not exist, returns false.
      * @param zk
      * @param path

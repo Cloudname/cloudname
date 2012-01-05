@@ -17,27 +17,30 @@ public class ZkCoordinatePath {
     private static final String CN_STATUS_NAME = "status";
     private static final String CN_CONFIG_NAME = "config";
 
+    public static String getCloudnameRoot() {
+        return CN_PATH_PREFIX;
+    }
     /**
-     * Builds the root path of a coordinate.
+     * Builds the root path of a coordinateFlag.
      * @param coordinate
-     * @return the path of the coordinate in ZooKeeper (/cn/%cell%/%user%/%service%/%instance%).
+     * @return the path of the coordinateFlag in ZooKeeper (/cn/%cell%/%user%/%service%/%instance%).
      */
-    public static String getRoot(Coordinate coordinate) {
+    public static String getCoordinateRoot(Coordinate coordinate) {
         return coordinateAsPath(coordinate.getCell(), coordinate.getUser(), coordinate.getService(),
                 coordinate.getInstance());
     }
 
     /**
-     * Builds the status path of a coordinate.
+     * Builds the status path of a coordinateFlag.
      * @param coordinate
      * @return full status path (/cn/%cell%/%user%/%service%/%instance%/status)
      */
     public static String getStatusPath(Coordinate coordinate) {
-        return getRoot(coordinate) + "/" + CN_STATUS_NAME;
+        return getCoordinateRoot(coordinate) + "/" + CN_STATUS_NAME;
     }
 
     /**
-     * Builds the config path of a coordinate.
+     * Builds the config path of a coordinateFlag.
      * @param coordinate
      * @param name if null, the last path of the path (/%name%) is not included.
      * @return config path /cn/%cell%/%user%/%service%/%instance%/config or
@@ -45,9 +48,9 @@ public class ZkCoordinatePath {
      */
     public static String getConfigPath(Coordinate coordinate, String name) {
         if (name == null) {
-            return getRoot(coordinate) + "/" + CN_CONFIG_NAME;
+            return getCoordinateRoot(coordinate) + "/" + CN_CONFIG_NAME;
         }
-        return getRoot(coordinate) + "/" +  CN_CONFIG_NAME + "/" + name;
+        return getCoordinateRoot(coordinate) + "/" +  CN_CONFIG_NAME + "/" + name;
     }
 
     /**

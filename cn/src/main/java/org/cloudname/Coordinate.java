@@ -10,7 +10,7 @@ import org.codehaus.jackson.annotate.JsonProperty;
 import java.io.IOException;
 
 /**
- * This class represents a service coordinate.  A coordinate is given
+ * This class represents a service coordinateFlag.  A coordinateFlag is given
  * by four pieces of data.
  *
  * <dl>
@@ -31,7 +31,7 @@ import java.io.IOException;
  * </dd> An integer [0, Integer.MAX_VALUE) indicating the instance number
  *       of the service.
  *
- * The canonical form of a coordinate is {@code 0.service.user.dc}.
+ * The canonical form of a coordinateFlag is {@code 0.service.user.dc}.
  *
  * This class is immutable.
  *
@@ -52,20 +52,20 @@ public class Coordinate {
                           + "([a-z][a-z0-9-_]*)\\z"); // cell
 
     /**
-     * Create a new coordinate instance.
+     * Create a new coordinateFlag instance.
      *
      * @param instance the instance number
      * @param service the service name
      * @param user the user name
      * @param cell the cell name
-     * @throws IllegalArgumentException if the coordinate is invalid.
+     * @throws IllegalArgumentException if the coordinateFlag is invalid.
      */
     @JsonCreator
     public Coordinate (@JsonProperty("instance") int instance,
                        @JsonProperty("service") String service,
                        @JsonProperty("user") String user,
                        @JsonProperty("cell") String cell) {
-        // Enables validation of coordinate.
+        // Enables validation of coordinateFlag.
         this(instance, service, user, cell, true);
     }
 
@@ -82,32 +82,32 @@ public class Coordinate {
             throw new IllegalArgumentException("Invalid instance number: " + instance);
         }
 
-        // If the coordinate was created by the parse() method the
-        // coordinate has already been parsed using the
+        // If the coordinateFlag was created by the parse() method the
+        // coordinateFlag has already been parsed using the
         // coordinatePattern so no validation is required.  If the
-        // coordinate was defined using the regular constructor we
+        // coordinateFlag was defined using the regular constructor we
         // need to validate the parts.  And we do this by re-using the
         // coordinatePattern.
         if (validate) {
             if (! coordinatePattern.matcher(asString()).matches()) {
-                throw new IllegalArgumentException("Invalid coordinate: '" + asString() + "'");
+                throw new IllegalArgumentException("Invalid coordinateFlag: '" + asString() + "'");
             }
         }
     }
 
     /**
-     * Parse coordinate and create a {@code Coordinate} instance from
+     * Parse coordinateFlag and create a {@code Coordinate} instance from
      * a {@code String}.
      *
      * @param s Coordinate we wish to parse as a string.
      * @return a Coordinate instance equivalent to {@code s}
-     * @throws IllegalArgumentException if the coordinate string {@s}
-     *   is not a valid coordinate.
+     * @throws IllegalArgumentException if the coordinateFlag string {@s}
+     *   is not a valid coordinateFlag.
      */
     public static Coordinate parse(String s) {
         Matcher m = coordinatePattern.matcher(s);
         if (! m.matches()) {
-            throw new IllegalArgumentException("Malformed coordinate: " + s);
+            throw new IllegalArgumentException("Malformed coordinateFlag: " + s);
         }
 
         int instance = Integer.parseInt(m.group(1));

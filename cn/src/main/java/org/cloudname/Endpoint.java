@@ -16,7 +16,7 @@ import java.io.IOException;
  *
  * Instances of this class are immutable.
  *
- * TODO(borud): decide if coordinate and name should be part of this
+ * TODO(borud): decide if coordinateFlag and name should be part of this
  *   class.
  *
  * @author borud

@@ -55,7 +55,7 @@ public class ZkResolver implements Resolver {
     }
     
     
-    // Matches coordinate with endpoint of the form:
+    // Matches coordinateFlag with endpoint of the form:
     // endpoint.instance.service.user.cell
     public static final Pattern endpointPattern
         = Pattern.compile( "^([a-z][a-z0-9-_]*)\\." // endpoint
@@ -64,7 +64,7 @@ public class ZkResolver implements Resolver {
                          + "([a-z][a-z0-9-_]*)\\." // user
                          + "([a-z][a-z-_]*)\\z"); // cell
 
-    // Parses abstract coordinate of the form:
+    // Parses abstract coordinateFlag of the form:
     // strategy.service.user.cell.  This pattern is useful for
     // resolving hosts, but not endpoints.
     public static final Pattern strategyPattern
