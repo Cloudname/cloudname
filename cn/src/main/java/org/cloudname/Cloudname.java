@@ -30,6 +30,12 @@ public interface Cloudname {
     public void createCoordinate(Coordinate coordinate);
 
     /**
+     * Deletes a coordinate in the persistent service store. It will fail if the coordinate is claimed.
+     * @param coordinate the coordinate we wish to destroy.
+     */
+    public void destroyCoordinate(Coordinate coordinate);
+    
+    /**
      * Get the ServiceStatus for a given Coordinate.
      *
      * @param coordinate the coordinate we want to get the status of

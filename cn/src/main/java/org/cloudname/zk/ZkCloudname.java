@@ -1,5 +1,7 @@
 package org.cloudname.zk;
 
+import org.apache.zookeeper.data.ACL;
+import org.apache.zookeeper.data.Stat;
 import org.cloudname.*;
 
 import org.apache.zookeeper.WatchedEvent;
@@ -9,6 +11,7 @@ import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.ZooDefs.Ids;
 import org.apache.zookeeper.KeeperException;
 
+import java.util.List;
 import java.util.logging.Logger;
 
 import java.util.concurrent.CountDownLatch;
@@ -120,6 +123,42 @@ public class ZkCloudname implements Cloudname, Watcher {
             throw new CloudnameException(e);
         } catch (InterruptedException e) {
             throw new CloudnameException(e);
+        }
+    }
+
+    /**
+     * Deletes a coordinate in the persistent service store. This includes deletion
+     * of config. It will fail if the coordinate is claimed.
+     * @param coordinate the coordinate we wish to destroy.
+     */
+    @Override
+    public void destroyCoordinate(Coordinate coordinate) {
+        List<ACL> acl = null;
+        String statusPath = ZkCoordinatePath.getStatusPath(coordinate);
+        String configPath = ZkCoordinatePath.getConfigPath(coordinate, null);
+
+        // Do this early to raise the error before anything is deleted. However, there might be a raise condition
+        // if someone claims while we delete configPath and instance (root) node.
+        if (Util.existAndHasChildren(zk, configPath, null)) {
+            throw new CloudnameException.CoordinateHasConfig();
+        }
+
+        // Check that it is not claimed.
+        Integer statusVersion = Util.getVersionForDeletion(zk, statusPath, acl);
+        if (statusVersion != null) {
+            throw new CloudnameException.CoordinateIsClaimed();
+        }
+
+        // Delete config, the instance node, and continue with as much as possible.
+        // We might have a raise condition if someone is creating a coordinate with a shared path in parallel.
+        int deletedNodes = Util.deleteAsMuchAsPossible(zk, configPath, acl);
+        if (deletedNodes == 0) {
+            throw new CloudnameException(
+                    new RuntimeException("Did not manage to delete config node:" + configPath));
+        }
+        if (deletedNodes == 1) {
+            throw new CloudnameException(
+                    new RuntimeException("Did not manage to delete instance node:" + configPath));
         }
     }
 

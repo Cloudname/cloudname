@@ -161,6 +161,37 @@ public class ZkCloudnameTest {
         cn.claim(c);
     }
 
+    @Test
+    public void testDestroyBasic() throws Exception {
+        Coordinate c = Coordinate.parse("1.service.user.cell");
+        ZkCloudname cn = new ZkCloudname.Builder().setConnectString("localhost:" + zkport).build().connect();
+        cn.createCoordinate(c);
+        cn.destroyCoordinate(c);
+        assertFalse(pathExists("/cn/cell/user/service/1"));
+        assertFalse(pathExists("/cn"));
+    }
+
+    @Test
+    public void testDestroyTwoInstances() throws Exception {
+        Coordinate c1 = Coordinate.parse("1.service.user.cell");
+        Coordinate c2 = Coordinate.parse("2.service.user.cell");
+        ZkCloudname cn = new ZkCloudname.Builder().setConnectString("localhost:" + zkport).build().connect();
+        cn.createCoordinate(c1);
+        cn.createCoordinate(c2);
+        cn.destroyCoordinate(c1);
+        assertFalse(pathExists("/cn/cell/user/service/1"));
+        assertTrue(pathExists("/cn/cell/user/service/2/config"));
+    }
+
+    @Test (expected = CloudnameException.CoordinateIsClaimed.class)
+    public void testDestroyClaimed() throws Exception {
+        Coordinate c = Coordinate.parse("1.service.user.cell");
+        ZkCloudname cn = new ZkCloudname.Builder().setConnectString("localhost:" + zkport).build().connect();
+        cn.createCoordinate(c);
+        ServiceHandle handle = cn.claim(c);
+        cn.destroyCoordinate(c);
+    }
+
     private boolean pathExists(String path) throws Exception {
         return (null != zk.exists(path, false));
     }
