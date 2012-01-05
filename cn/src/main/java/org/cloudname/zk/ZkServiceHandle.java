@@ -14,8 +14,7 @@ import java.util.List;
  */
 public class ZkServiceHandle implements ServiceHandle {
     private Coordinate coordinate;
-    //private ZooKeeper zk;
-    private ZkStatusEndpoint statusEndpoint;
+    private ZkStatusAndEndpoints statusAndEndpoints;
     private static final Logger log = Logger.getLogger(ZkServiceHandle.class.getName());
 
     /**
@@ -24,19 +23,19 @@ public class ZkServiceHandle implements ServiceHandle {
      *
      * @param coordinate the coordinate for this service handle.
      */
-    public ZkServiceHandle(Coordinate coordinate, ZkStatusEndpoint statusEndpoint) {
+    public ZkServiceHandle(Coordinate coordinate, ZkStatusAndEndpoints statusAndEndpoints) {
         this.coordinate = coordinate;
-        this.statusEndpoint = statusEndpoint;
+        this.statusAndEndpoints = statusAndEndpoints;
     }
 
     @Override
     public void setStatus(ServiceStatus status) {
-        statusEndpoint.updateStatus(status);
+        statusAndEndpoints.updateStatus(status);
     }
 
     @Override
     public void putEndpoints(List<Endpoint> endpoints) {
-        statusEndpoint.putEndpoints(endpoints);
+        statusAndEndpoints.putEndpoints(endpoints);
     }
 
     @Override
@@ -48,7 +47,7 @@ public class ZkServiceHandle implements ServiceHandle {
 
     @Override
     public void removeEndpoints(List<String> names) {
-        statusEndpoint.removeEndpoints(names);
+        statusAndEndpoints.removeEndpoints(names);
     }
 
     @Override
@@ -65,12 +64,12 @@ public class ZkServiceHandle implements ServiceHandle {
 
     @Override
     public void close() {
-        statusEndpoint.deleteClaimed();
-        statusEndpoint = null;
+        statusAndEndpoints.releaseClaim();
+        statusAndEndpoints = null;
     }
 
     @Override
     public String toString() {
-        return "StatusEndpoint instance: "+ statusEndpoint.toString();
+        return "StatusEndpoint instance: "+ statusAndEndpoints.toString();
     }
 }

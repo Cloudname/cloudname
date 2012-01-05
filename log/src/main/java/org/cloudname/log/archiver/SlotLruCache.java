@@ -12,8 +12,6 @@ import java.util.logging.Level;
  * @author borud
  */
 public class SlotLruCache<K,V> extends LinkedHashMap<K,V> {
-    private static final Logger log = Logger.getLogger(SlotLruCache.class.getName());
-
     private final int capacity;
 
     public SlotLruCache(int capacity)
@@ -31,7 +29,6 @@ public class SlotLruCache<K,V> extends LinkedHashMap<K,V> {
                 slot.close();
             } catch (IOException e) {
                 // Log the error and ignore it
-                log.log(Level.WARNING, "Got exception while closing slot " + eldest.getKey(), e);
             }
             return true;
         }
