@@ -143,7 +143,7 @@ public class ZkCloudnameTest {
 
         // But the coordinateFlag and its persistent subnodes should
         assertTrue(pathExists("/cn/cell/user/service/1"));
-    //    assertTrue(pathExists("/cn/cell/user/service/1/endpoints"));
+        assertFalse(pathExists("/cn/cell/user/service/1/endpoints"));
         assertTrue(pathExists("/cn/cell/user/service/1/config"));
     }
 
@@ -174,9 +174,10 @@ public class ZkCloudnameTest {
         Coordinate c = Coordinate.parse("1.service.user.cell");
         ZkCloudname cn = new ZkCloudname.Builder().setConnectString("localhost:" + zkport).build().connect();
         cn.createCoordinate(c);
+        assertTrue(pathExists("/cn/cell/user/service/1/config"));
         cn.destroyCoordinate(c);
-        assertFalse(pathExists("/cn/cell/user/service/1"));
-        assertFalse(pathExists("/cn"));
+        assertFalse(pathExists("/cn/cell/user/service"));
+        assertTrue(pathExists("/cn/cell/user"));
     }
 
     @Test
@@ -186,6 +187,8 @@ public class ZkCloudnameTest {
         ZkCloudname cn = new ZkCloudname.Builder().setConnectString("localhost:" + zkport).build().connect();
         cn.createCoordinate(c1);
         cn.createCoordinate(c2);
+        assertTrue(pathExists("/cn/cell/user/service/1/config"));
+        assertTrue(pathExists("/cn/cell/user/service/2/config"));
         cn.destroyCoordinate(c1);
         assertFalse(pathExists("/cn/cell/user/service/1"));
         assertTrue(pathExists("/cn/cell/user/service/2/config"));
