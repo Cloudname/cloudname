@@ -27,7 +27,7 @@
                         <configuration>
                             <!-- Optional, default is false -->
                             <attachToBuild>true</attachToBuild>
-                            <mainClass>org.cloudname.codelabs.simpleZooKeeper</mainClass>
+                            <mainClass>org.cloudname.codelabs.SimpleZooKeeper</mainClass>
                         </configuration>
                         <goals>
                             <goal>one-jar</goal>

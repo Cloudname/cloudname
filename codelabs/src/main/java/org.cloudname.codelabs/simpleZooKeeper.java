@@ -7,7 +7,7 @@ import java.io.File;
  * A simple app that runs an embedded zookeeper. This is intended for codelabs / testing.
  * @author dybdahl
  */
-public class simpleZooKeeper {
+public class SimpleZooKeeper {
     private static EmbeddedZooKeeper ezk;
     private static int zkport = 5454;
 
@@ -17,7 +17,7 @@ public class simpleZooKeeper {
      */
     public static File createTempDir() {
         File baseDir = new File(System.getProperty("java.io.tmpdir"));
-        File tempDir = new File(baseDir, "simpleZooKeeper");
+        File tempDir = new File(baseDir, "SimpleZooKeeper");
         tempDir.delete();
         tempDir.mkdir();
         tempDir.deleteOnExit();
@@ -34,7 +34,7 @@ public class simpleZooKeeper {
             }
             ezk = new EmbeddedZooKeeper(rootDir, zkport);
             ezk.init();
-            System.out.println("Simple ZooKeeper running on port " + zkport);
+            System.out.println("SimpleZooKeeper running on port " + zkport);
             Thread.sleep(Long.MAX_VALUE);
         }
     }
