@@ -57,7 +57,7 @@ public interface ServiceHandle {
     public void registerConfigListener(ConfigListener listener);
     
     /**
-     * Close the service handle and free up the coordinateFlag so it can
+     * Close the service handle and free up the coordinate so it can
      * be claimed by others.  After close() has been called all
      * operations on this instance of the service handle will result
      * in an exception being thrown. All endpoints are deleted.

@@ -29,23 +29,23 @@ public class Main {
     public static String operationFlag = null;
 
     /**
-     *   The possible operations to do on a coordinateFlag
+     *   The possible operations to do on a coordinate.
      */  
     enum Operation {
         /**
-         * Invalid operationFlag specified by the user.
+         * Invalid operation specified by the user.
          */
         NOT_VALID,
         /**
-         * Create a new coordinateFlag.
+         * Create a new coordinate.
          */
         CREATE,
         /**
-         * Delete a coordinateFlag.
+         * Delete a coordinate.
          */
         DELETE,
         /**
-         * Print out some status about a coordinateFlag
+         * Print out some status about a coordinate.
          */
         STATUS,
         /**
@@ -77,7 +77,7 @@ public class Main {
 
         Operation operation = Operation.getOperation(operationFlag);
         if (operation == Operation.NOT_VALID) {
-            System.err.println("Unknown operationFlag: " + operationFlag);
+            System.err.println("Unknown operation: " + operation);
             return;
         }
         
@@ -98,11 +98,11 @@ public class Main {
         switch (operation) {
             case CREATE:
                 cloudname.createCoordinate(c);
-                System.err.println("Created coordinateFlag.");
+                System.err.println("Created coordinate.");
                 break;
             case DELETE:
                 cloudname.destroyCoordinate(c);
-                System.err.println("Deleted coordinateFlag.");
+                System.err.println("Deleted coordinate.");
                 break;
             case STATUS:
                 ServiceStatus status = cloudname.getStatus(c);

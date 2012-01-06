@@ -18,10 +18,10 @@ public class ZkServiceHandle implements ServiceHandle {
     private static final Logger log = Logger.getLogger(ZkServiceHandle.class.getName());
 
     /**
-     * Create a ZkServiceHandle for a given coordinateFlag.
+     * Create a ZkServiceHandle for a given coordinate.
      * TODO(borud, dybdahl): Implement config listener.
      *
-     * @param coordinate the coordinateFlag for this service handle.
+     * @param coordinate the coordinate for this service handle.
      */
     public ZkServiceHandle(Coordinate coordinate, ZkStatusAndEndpoints statusAndEndpoints) {
         this.coordinate = coordinate;

@@ -21,9 +21,9 @@ public class ZkCoordinatePath {
         return CN_PATH_PREFIX;
     }
     /**
-     * Builds the root path of a coordinateFlag.
+     * Builds the root path of a coordinate.
      * @param coordinate
-     * @return the path of the coordinateFlag in ZooKeeper (/cn/%cell%/%user%/%service%/%instance%).
+     * @return the path of the coordinate in ZooKeeper (/cn/%cell%/%user%/%service%/%instance%).
      */
     public static String getCoordinateRoot(Coordinate coordinate) {
         return coordinateAsPath(coordinate.getCell(), coordinate.getUser(), coordinate.getService(),
@@ -31,7 +31,7 @@ public class ZkCoordinatePath {
     }
 
     /**
-     * Builds the status path of a coordinateFlag.
+     * Builds the status path of a coordinate.
      * @param coordinate
      * @return full status path (/cn/%cell%/%user%/%service%/%instance%/status)
      */
@@ -40,7 +40,7 @@ public class ZkCoordinatePath {
     }
 
     /**
-     * Builds the config path of a coordinateFlag.
+     * Builds the config path of a coordinate.
      * @param coordinate
      * @param name if null, the last path of the path (/%name%) is not included.
      * @return config path /cn/%cell%/%user%/%service%/%instance%/config or

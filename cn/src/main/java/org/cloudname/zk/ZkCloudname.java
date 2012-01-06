@@ -95,14 +95,14 @@ public class ZkCloudname implements Cloudname, Watcher {
     }
 
     /**
-     * Create a given coordinateFlag in the ZooKeeper node tree.
+     * Create a given coordinate in the ZooKeeper node tree.
      *
      * Just blindly creates the entire path.  Elements of the path may
      * exist already, but it seems wasteful to
      */
     @Override
     public void createCoordinate(Coordinate coordinate) {
-        // Create the root path for the coordinateFlag.  We do this
+        // Create the root path for the coordinate.  We do this
         // blindly, meaning that if the path already exists, then
         // that's ok -- so a more correct name for this method would
         // be ensureCoordinate(), but that might confuse developers.
@@ -126,9 +126,9 @@ public class ZkCloudname implements Cloudname, Watcher {
     }
 
     /**
-     * Deletes a coordinateFlag in the persistent service store. This includes deletion
-     * of config. It will fail if the coordinateFlag is claimed.
-     * @param coordinate the coordinateFlag we wish to destroy.
+     * Deletes a coordinate in the persistent service store. This includes deletion
+     * of config. It will fail if the coordinate is claimed.
+     * @param coordinate the coordinate we wish to destroy.
      */
     @Override
     public void destroyCoordinate(Coordinate coordinate) {
@@ -149,7 +149,7 @@ public class ZkCloudname implements Cloudname, Watcher {
         }
 
         // Delete config, the instance node, and continue with as much as possible.
-        // We might have a raise condition if someone is creating a coordinateFlag with a shared path in parallel.
+        // We might have a raise condition if someone is creating a coordinate with a shared path in parallel.
         int deletedNodes = Util.deleteAsMuchAsPossible(zk, configPath, acl);
         if (deletedNodes == 0) {
             throw new CloudnameException(
@@ -162,11 +162,11 @@ public class ZkCloudname implements Cloudname, Watcher {
     }
 
     /**
-     * Claim a coordinateFlag.
+     * Claim a coordinate.
      *
-     * In this implementation a coordinateFlag is claimed by creating an
+     * In this implementation a coordinate is claimed by creating an
      * ephemeral with the name defined in CN_STATUS_NAME.  If the node
-     * already exists the coordinateFlag has already been claimed.
+     * already exists the coordinate has already been claimed.
      */
     @Override
     public ServiceHandle claim(Coordinate coordinate) {
@@ -175,7 +175,7 @@ public class ZkCloudname implements Cloudname, Watcher {
 
         ZkStatusAndEndpoints statusAndEndpoints = new ZkStatusAndEndpoints.Builder(zk, statusPath).claim().build();
         // If we have come thus far we have succeeded in creating the
-        // CN_STATUS_NAME node within the service coordinateFlag directory
+        // CN_STATUS_NAME node within the service coordinate directory
         // in ZooKeeper and we can give the client a ServiceHandle.
 
         return new ZkServiceHandle(coordinate, statusAndEndpoints);
