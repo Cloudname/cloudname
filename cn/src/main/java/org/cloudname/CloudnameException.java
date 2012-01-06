@@ -60,6 +60,15 @@ public class CloudnameException extends RuntimeException {
     }
 
     /**
+     * The coordinate exists, and it was assumed it did not.
+     */
+    public static class CoordinateExist  extends CloudnameException {
+        public CoordinateExist() {
+            super();
+        }
+    }
+
+    /**
      * The coordinate the user tried to destroy is claimed.
      */
     public static class CoordinateIsClaimed extends CloudnameException {

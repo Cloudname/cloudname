@@ -1,16 +1,14 @@
 package org.cloudname.zk;
 
-import org.apache.zookeeper.data.Stat;
 import org.cloudname.CloudnameException;
 
 import org.apache.zookeeper.ZooKeeper;
 import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.data.ACL;
 import org.apache.zookeeper.KeeperException;
-import org.cloudname.Coordinate;
 
+import java.util.ArrayList;
 import java.util.List;
-import java.util.Vector;
 import java.util.logging.Logger;
 
 /**
@@ -57,14 +55,13 @@ public class Util {
      * Figures out if there are sub nodes under the path. If the path does not exist, returns false.
      * @param zk
      * @param path
-     * @param acl
      * @return true iff the node exists and has children.
      */
-    public static boolean existAndHasChildren(ZooKeeper zk, String path, List<ACL> acl)  {
-        if (getVersionForDeletion(zk, path, acl) == null) {
-            return false;
+    public static boolean hasChildren(ZooKeeper zk, String path)  {
+        if (! exist(zk, path)) {
+            throw new CloudnameException(
+                    new RuntimeException("Could not get children due to non-existing path " + path));
         }
-
         List<String> children = null;
         try {
             children = zk.getChildren(path, false);
@@ -77,36 +74,50 @@ public class Util {
     }
 
     /**
-     * Returns the version of the path, if not exist, return null.
+     * Figures out if a path exists.
      * @param zk
      * @param path
-     * @param acl
-     * @return version number or null.
+     * @return true if the path exists.
      */
-    public static Integer getVersionForDeletion(ZooKeeper zk, String path, List<ACL> acl) {
-
-        Stat stat = null;
+    public static boolean exist(ZooKeeper zk, String path)  {
         try {
-            stat = zk.exists(path, false);
+            return zk.exists(path, false) != null;
         } catch (KeeperException e) {
             throw new CloudnameException(e);
         } catch (InterruptedException e) {
             throw new CloudnameException(e);
         }
-        if (stat == null) {
-            return null;
+    }
+    
+    /**
+     * Returns the version of the path.
+     * @param zk
+     * @param path
+     * @return version number 
+     */
+    public static int getVersionForDeletion(ZooKeeper zk, String path) {
+
+        try {
+            int version = zk.exists(path, false).getVersion();
+            if (version < 0) {
+                throw new CloudnameException(new RuntimeException("Got negative version for path " + path));
+            }
+            return version;
+        } catch (KeeperException e) {
+            throw new CloudnameException(e);
+        } catch (InterruptedException e) {
+            throw new CloudnameException(e);
         }
-        return stat.getVersion();
     }
 
     /**
-     * Deletes as much as possible from a path, i.e. all nodes until there is some fan-out due to other nodes.
+     * Deletes nodes from a path from the right to the left.
      * @param zk
-     * @param path
-     * @param acl
-     * @return the numbner of deletes nodes.
+     * @param path to be deleted
+     * @param keepMinLevels is the minimum number of levels (depths) to keep in the path.
+     * @return the number of deleted levels.
      */
-    public static int deleteAsMuchAsPossible(ZooKeeper zk, String path, List<ACL> acl) {
+    public static int deletePathKeepRootLevels(ZooKeeper zk, String path, int keepMinLevels) {
         if (path.startsWith("/")) {
             path = path.substring(1);
         }
@@ -116,20 +127,17 @@ public class Util {
         // We are happy if only the first two deletions went through. The other deletions are just cleaning up if
         // there are no more coordinates on the same rootPath.
         int deletedNodes = 0;
-        Vector<String> paths = new Vector<String>();
+        List<String> paths = new ArrayList<String>();
         String incrementalPath = "";
         for (String p : parts) {
             incrementalPath += "/" + p;
             paths.add(incrementalPath);
         }
 
-        for (int counter = paths.size() - 1; counter >= 0; counter--) {
-            String deletePath = paths.elementAt(counter);
-            Integer version = getVersionForDeletion(zk, deletePath, acl);
-            if (version == null || version < 0) {
-                throw new CloudnameException(new RuntimeException("Could not get version for path " + deletePath));
-            }
-            if (existAndHasChildren(zk, deletePath, acl)) {
+        for (int counter = paths.size() - 1; counter >= keepMinLevels; counter--) {
+            String deletePath = paths.get(counter);
+            int version = getVersionForDeletion(zk, deletePath);
+            if (hasChildren(zk, deletePath)) {
                 return deletedNodes;
             }
             try {

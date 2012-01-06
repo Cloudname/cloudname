@@ -26,12 +26,17 @@ public interface Cloudname {
      * throw an exception if the coordinate has already been defined.
      *
      * @param coordinate the coordinate we wish to create
+     * @throws CloudnameException.CoordinateExist if coordinate exists.
      */
     public void createCoordinate(Coordinate coordinate);
 
     /**
-     * Deletes a coordinate in the persistent service store. It will fail if the coordinate is claimed.
+     * Deletes a coordinate in the persistent service store. It will throw an exception if the coordinate is claimed.
      * @param coordinate the coordinate we wish to destroy.
+     * @throws CloudnameException.CoordinateIsClaimed if the coordinate is claimed.
+     * @throws CloudnameException.CoordinateHasConfig is there is config that should be deleted before
+     * coordinate is destroyed.
+     * @throws CloudnameException.CoordinateNotFound if coordinate does not exist.
      */
     public void destroyCoordinate(Coordinate coordinate);
     

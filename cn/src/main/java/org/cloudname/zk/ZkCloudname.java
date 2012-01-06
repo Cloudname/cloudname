@@ -108,6 +108,9 @@ public class ZkCloudname implements Cloudname, Watcher {
         // that's ok -- so a more correct name for this method would
         // be ensureCoordinate(), but that might confuse developers.
         String root = ZkCoordinatePath.getRoot(coordinate);
+        if (Util.exist(zk, root)) {
+            throw new CloudnameException.CoordinateExist();
+        }
         try {
             Util.mkdir(zk, root, Ids.OPEN_ACL_UNSAFE);
         } catch (KeeperException e) {
@@ -133,25 +136,28 @@ public class ZkCloudname implements Cloudname, Watcher {
      */
     @Override
     public void destroyCoordinate(Coordinate coordinate) {
-        List<ACL> acl = null;
         String statusPath = ZkCoordinatePath.getStatusPath(coordinate);
         String configPath = ZkCoordinatePath.getConfigPath(coordinate, null);
+        String rootPath = ZkCoordinatePath.getRoot(coordinate);
 
+        if (! Util.exist(zk, rootPath)) {
+            throw new CloudnameException.CoordinateNotFound();
+        }
+        
         // Do this early to raise the error before anything is deleted. However, there might be a raise condition
         // if someone claims while we delete configPath and instance (root) node.
-        if (Util.existAndHasChildren(zk, configPath, null)) {
+        if (Util.exist(zk, configPath) && Util.hasChildren(zk, configPath)) {
             throw new CloudnameException.CoordinateHasConfig();
         }
 
-        // Check that it is not claimed.
-        Integer statusVersion = Util.getVersionForDeletion(zk, statusPath, acl);
-        if (statusVersion != null) {
+        if (Util.exist(zk, statusPath)) {
             throw new CloudnameException.CoordinateIsClaimed();
         }
 
         // Delete config, the instance node, and continue with as much as possible.
         // We might have a raise condition if someone is creating a coordinate with a shared path in parallel.
-        int deletedNodes = Util.deleteAsMuchAsPossible(zk, configPath, acl);
+        // We want to keep 3 levels of nodes (/cn/%CELL%/%USER%).
+        int deletedNodes = Util.deletePathKeepRootLevels(zk, configPath, 3);
         if (deletedNodes == 0) {
             throw new CloudnameException(
                     new RuntimeException("Did not manage to delete config node:" + configPath));
