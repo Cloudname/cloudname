@@ -11,6 +11,8 @@ import org.apache.zookeeper.WatchedEvent;
 import org.apache.zookeeper.Watcher;
 import org.apache.zookeeper.ZooKeeper;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.CountDownLatch;
 
 import org.junit.*;
@@ -89,10 +91,16 @@ public class ZkCloudnameTest {
         assertTrue(pathExists("/cn/cell/user/service/1/config"));
         assertFalse(pathExists("/cn/cell/user/service/1/status"));
 
-        // Claiming the coordinate creates the status node
+        // Claiming the coordinateFlag creates the status node
         ServiceHandle handle = cn.claim(c);
         assertNotNull(handle);
         assertTrue(pathExists("/cn/cell/user/service/1/status"));
+
+        List<String> nodes = new ArrayList<String>();
+        cn.listRecursively(nodes);
+        assertEquals(2, nodes.size());
+        assertEquals(nodes.get(0), "/cn/cell/user/service/1/config");
+        assertEquals(nodes.get(1), "/cn/cell/user/service/1/status");
 
         // Try to set the status to something else
         String msg = "Hamster getting quite eager now";
@@ -133,14 +141,14 @@ public class ZkCloudnameTest {
         // connection and thus should kill all ephemeral nodes.
         cn.close();
 
-        // But the coordinate and its persistent subnodes should
+        // But the coordinateFlag and its persistent subnodes should
         assertTrue(pathExists("/cn/cell/user/service/1"));
-    //    assertTrue(pathExists("/cn/cell/user/service/1/endpoints"));
+        assertFalse(pathExists("/cn/cell/user/service/1/endpoints"));
         assertTrue(pathExists("/cn/cell/user/service/1/config"));
     }
 
     /**
-     * Try to claim coordinate twice
+     * Try to claim coordinateFlag twice
      */
     @Test (expected = CloudnameException.AlreadyClaimed.class)
     public void testDoubleClaim() throws Exception {
@@ -152,13 +160,47 @@ public class ZkCloudnameTest {
     }
 
     /**
-     * Claim non-existing coordinate
+     * Claim non-existing coordinateFlag
      */
     @Test (expected = CloudnameException.CoordinateNotFound.class)
     public void testCoordinateNotFound() throws Exception {
         Coordinate c = Coordinate.parse("3.service.user.cell");
         ZkCloudname cn = new ZkCloudname.Builder().setConnectString("localhost:" + zkport).build().connect();
         cn.claim(c);
+    }
+
+    @Test
+    public void testDestroyBasic() throws Exception {
+        Coordinate c = Coordinate.parse("1.service.user.cell");
+        ZkCloudname cn = new ZkCloudname.Builder().setConnectString("localhost:" + zkport).build().connect();
+        cn.createCoordinate(c);
+        assertTrue(pathExists("/cn/cell/user/service/1/config"));
+        cn.destroyCoordinate(c);
+        assertFalse(pathExists("/cn/cell/user/service"));
+        assertTrue(pathExists("/cn/cell/user"));
+    }
+
+    @Test
+    public void testDestroyTwoInstances() throws Exception {
+        Coordinate c1 = Coordinate.parse("1.service.user.cell");
+        Coordinate c2 = Coordinate.parse("2.service.user.cell");
+        ZkCloudname cn = new ZkCloudname.Builder().setConnectString("localhost:" + zkport).build().connect();
+        cn.createCoordinate(c1);
+        cn.createCoordinate(c2);
+        assertTrue(pathExists("/cn/cell/user/service/1/config"));
+        assertTrue(pathExists("/cn/cell/user/service/2/config"));
+        cn.destroyCoordinate(c1);
+        assertFalse(pathExists("/cn/cell/user/service/1"));
+        assertTrue(pathExists("/cn/cell/user/service/2/config"));
+    }
+
+    @Test (expected = CloudnameException.CoordinateIsClaimed.class)
+    public void testDestroyClaimed() throws Exception {
+        Coordinate c = Coordinate.parse("1.service.user.cell");
+        ZkCloudname cn = new ZkCloudname.Builder().setConnectString("localhost:" + zkport).build().connect();
+        cn.createCoordinate(c);
+        ServiceHandle handle = cn.claim(c);
+        cn.destroyCoordinate(c);
     }
 
     private boolean pathExists(String path) throws Exception {

@@ -24,7 +24,7 @@ import java.util.Map;
 import java.util.logging.Logger;
 
 /**
- * This class keeps track of serviceStatus and endpoints for a coordinate.
+ * This class keeps track of serviceStatus and endpoints for a coordinateFlag.
  * It has an inner class for building an instance (Builder).
  *
  * TODO(dybdahl): Add support for claiming an existing node. This could be used for
