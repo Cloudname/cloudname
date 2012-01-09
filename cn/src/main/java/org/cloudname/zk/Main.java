@@ -105,16 +105,15 @@ public class Main {
                 System.err.println("Deleted coordinate.");
                 break;
             case STATUS:
+                Coordinate c = Coordinate.parse(coordinateFlag);
                 ServiceStatus status = cloudname.getStatus(Coordinate.parse(coordinateFlag));
                 System.err.println("Status:\n" + status.getState().toString() + " " + status.getMessage());
-                Coordinate c = Coordinate.parse(coordinateFlag);
-                ServiceStatus status = cloudname.getStatus(c);
-                System.err.println("Status:\n" + status.getState().toString() + " " + status.getMessage());
-                List<Endpoint> endpoints = resolver.resolve(String.valueOf(c.getInstance()) + "." + c.getService()
+                List<Endpoint> endpoints = resolver.resolve("all." + c.getService()
                         + "." + c.getUser() + "." + c.getCell());
                 System.err.println("Endpoints:");
                 for (Endpoint endpoint : endpoints) {
-                    System.err.println(endpoint.toString());
+                    System.err.println(endpoint.getName() + "-->" + endpoint.getHost() + ":" + endpoint.getPort()
+                    + " protocol:" + endpoint.getProtocol());
                 }
                 break;
             case LIST:
