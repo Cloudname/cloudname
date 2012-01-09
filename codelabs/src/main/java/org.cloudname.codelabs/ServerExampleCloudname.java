@@ -36,7 +36,7 @@ public class ServerExampleCloudname {
     public  void runServer() throws IOException {
         port = Net.getFreePort();
         Cloudname cloudName = new ZkCloudname.Builder().setConnectString("127.0.0.1:5454").build().connect();
-        Coordinate coordinate = Coordinate.parse(String.format("%s.hello-word.somebody.aa", instance));
+        Coordinate coordinate = Coordinate.parse(String.format("%s.hello.somebody.aa", instance));
         ServiceHandle handle = cloudName.claim(coordinate);
         Endpoint endpoint = new Endpoint(coordinate, "info", "localhost", port, "http", null);
         handle.putEndpoint(endpoint);
