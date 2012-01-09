@@ -1,6 +1,7 @@
 package org.cloudname.zk;
 
 import org.cloudname.Coordinate;
+import org.cloudname.Endpoint;
 import org.cloudname.Resolver;
 import org.cloudname.ServiceStatus;
 import org.cloudname.flags.Flag;
@@ -93,20 +94,26 @@ public class Main {
         System.err.println("Connected to ZooKeeper.");
 
         Resolver resolver = cloudname.getResolver();
-        Coordinate c = Coordinate.parse(coordinateFlag);
-
+         
         switch (operation) {
             case CREATE:
-                cloudname.createCoordinate(c);
+                cloudname.createCoordinate(Coordinate.parse(coordinateFlag));
                 System.err.println("Created coordinate.");
                 break;
             case DELETE:
-                cloudname.destroyCoordinate(c);
+                cloudname.destroyCoordinate(Coordinate.parse(coordinateFlag));
                 System.err.println("Deleted coordinate.");
                 break;
             case STATUS:
+                Coordinate c = Coordinate.parse(coordinateFlag);
                 ServiceStatus status = cloudname.getStatus(c);
-                System.err.println("Status:\n" + status.getState().toString());
+                System.err.println("Status:\n" + status.getState().toString() + " " + status.getMessage());
+                List<Endpoint> endpoints = resolver.resolve(String.valueOf(c.getInstance()) + "." + c.getService()
+                        + "." + c.getUser() + "." + c.getCell());
+                System.err.println("Endpoints:");
+                for (Endpoint endpoint : endpoints) {
+                    System.err.println(endpoint.toString());
+                }
                 break;
             case LIST:
                 List<String> nodeList = new ArrayList<String>();
