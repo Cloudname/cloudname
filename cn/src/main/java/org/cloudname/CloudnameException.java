@@ -46,6 +46,53 @@ public class CloudnameException extends RuntimeException {
         }
     }
 
+    /**
+     * The endpoint the user tried to access does not exist.
+     */
+    public static class EndpointDoesNotExist extends CloudnameException {
+        public EndpointDoesNotExist() {
+            super();
+        }
+
+        public EndpointDoesNotExist(Throwable t) {
+            super(t);
+        }
+    }
+
+    /**
+     * The coordinate exists, and it was assumed it did not.
+     */
+    public static class CoordinateExist  extends CloudnameException {
+        public CoordinateExist() {
+            super();
+        }
+    }
+
+    /**
+     * The coordinate the user tried to destroy is claimed.
+     */
+    public static class CoordinateIsClaimed extends CloudnameException {
+        public CoordinateIsClaimed() {
+            super();
+        }
+
+        public CoordinateIsClaimed(Throwable t) {
+            super(t);
+        }
+    }
+
+    /**
+     * The coordinate the user tried to destroy has config nodes.
+     */
+    public static class CoordinateHasConfig extends CloudnameException {
+        public CoordinateHasConfig() {
+            super();
+        }
+
+        public CoordinateHasConfig(Throwable t) {
+            super(t);
+        }
+    }
 
     public CloudnameException() {
         super();
