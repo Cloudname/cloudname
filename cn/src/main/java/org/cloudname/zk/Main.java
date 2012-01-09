@@ -21,7 +21,7 @@ public class Main {
     @Flag(name="zooKeeperFlag", description="A list of host:port for connecting to ZooKeeper.", required=false)
     public static String zooKeeperFlag = null;
 
-    @Flag(name="cordinateFøag", description="The coordinateFlag to work on.", required=false)
+    @Flag(name="cordinateFlag", description="The coordinateFlag to work on.", required=false)
     public static String coordinateFlag = null;
 
     @Flag(name="operationFlag",
