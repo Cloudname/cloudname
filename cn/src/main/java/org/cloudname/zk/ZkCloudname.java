@@ -225,7 +225,7 @@ public class ZkCloudname implements Cloudname, Watcher {
     /**
      *  This class builds parameters for ZkCloudname.
      */
-    static class Builder {
+    public static class Builder {
         private String connectString;
 
         public Builder setConnectString(String connectString) {

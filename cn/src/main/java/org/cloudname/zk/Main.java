@@ -21,7 +21,7 @@ public class Main {
     @Flag(name="zooKeeperFlag", description="A list of host:port for connecting to ZooKeeper.", required=false)
     public static String zooKeeperFlag = null;
 
-    @Flag(name="cordinateFlag", description="The coordinateFlag to work on.", required=false)
+    @Flag(name="coordinateFlag", description="The coordinateFlag to work on.", required=false)
     public static String coordinateFlag = null;
 
     @Flag(name="operationFlag",
@@ -93,20 +93,19 @@ public class Main {
         System.err.println("Connected to ZooKeeper.");
 
         Resolver resolver = cloudname.getResolver();
-        Coordinate c = Coordinate.parse(coordinateFlag);
 
         switch (operation) {
             case CREATE:
-                cloudname.createCoordinate(c);
+                cloudname.createCoordinate(Coordinate.parse(coordinateFlag));
                 System.err.println("Created coordinate.");
                 break;
             case DELETE:
-                cloudname.destroyCoordinate(c);
+                cloudname.destroyCoordinate(Coordinate.parse(coordinateFlag));
                 System.err.println("Deleted coordinate.");
                 break;
             case STATUS:
-                ServiceStatus status = cloudname.getStatus(c);
-                System.err.println("Status:\n" + status.getState().toString());
+                ServiceStatus status = cloudname.getStatus(Coordinate.parse(coordinateFlag));
+                System.err.println("Status:\n" + status.getState().toString() + " " + status.getMessage());
                 break;
             case LIST:
                 List<String> nodeList = new ArrayList<String>();

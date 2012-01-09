@@ -24,10 +24,36 @@
                 <version>1.4.4</version>
                 <executions>
                     <execution>
+                        <id>1</id>
                         <configuration>
                             <!-- Optional, default is false -->
                             <attachToBuild>true</attachToBuild>
                             <mainClass>org.cloudname.codelabs.SimpleZooKeeper</mainClass>
+                            <filename>SimpleZooKeeper.jar</filename>
+                        </configuration>
+                        <goals>
+                            <goal>one-jar</goal>
+                        </goals>
+                    </execution>
+                    <execution >
+                        <id>2</id>
+                        <configuration>
+                            <!-- Optional, default is false -->
+                            <attachToBuild>true</attachToBuild>
+                            <mainClass>org.cloudname.codelabs.ServerExample</mainClass>
+                            <filename>ServerExample.jar</filename>
+                        </configuration>
+                        <goals>
+                            <goal>one-jar</goal>
+                        </goals>
+                    </execution>
+                    <execution >
+                        <id>3</id>
+                        <configuration>
+                            <!-- Optional, default is false -->
+                            <attachToBuild>true</attachToBuild>
+                            <mainClass>org.cloudname.codelabs.ServerExampleCloudname</mainClass>
+                            <filename>ServerExampleCloudname.jar</filename>
                         </configuration>
                         <goals>
                             <goal>one-jar</goal>
@@ -43,6 +69,11 @@
         <dependency>
             <groupId>org.cloudname</groupId>
             <artifactId>testtools</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.cloudname</groupId>
+            <artifactId>cn</artifactId>
         </dependency>
 
         <dependency>

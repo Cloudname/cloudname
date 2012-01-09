@@ -61,7 +61,7 @@
                             <!-- Optional, default is false -->
                             <attachToBuild>true</attachToBuild>
                             <mainClass>org.cloudname.zk.Main</mainClass>
-                            <filename>cloudname-${project.version}.jar</filename>
+                            <filename>ZkTool.jar</filename>
                         </configuration>
                         <goals>
                             <goal>one-jar</goal>
