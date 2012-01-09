@@ -12,13 +12,33 @@ public class SimpleZooKeeper {
     private static int zkport = 5454;
 
     /**
+     * Delete directory with content.
+     * @param path to be deleted.
+     */
+    static public void deleteDirectory(File path) {
+        for(File f : path.listFiles())
+        {
+            if(f.isDirectory()) {
+                deleteDirectory(f);
+                f.delete();
+            } else {
+                f.delete();
+            }
+        }
+        path.delete();
+    }
+
+    /**
      * Deletes and recreates a temp dir. Sets deleteOnExit().
      * @return
      */
     public static File createTempDir() {
         File baseDir = new File(System.getProperty("java.io.tmpdir"));
         File tempDir = new File(baseDir, "SimpleZooKeeper");
-        tempDir.delete();
+        if (tempDir.exists()) {
+            System.err.println("Deleting old instance on startup.");
+            deleteDirectory(tempDir);
+        }
         tempDir.mkdir();
         tempDir.deleteOnExit();
         return tempDir;
@@ -33,7 +53,12 @@ public class SimpleZooKeeper {
                 zkport = Integer.parseInt(args[0]);
             }
             ezk = new EmbeddedZooKeeper(rootDir, zkport);
-            ezk.init();
+            try {
+                ezk.init();
+            } catch (Exception e) {
+                e.printStackTrace();
+                return;
+            }
             System.out.println("SimpleZooKeeper running on port " + zkport);
             Thread.sleep(Long.MAX_VALUE);
         }
