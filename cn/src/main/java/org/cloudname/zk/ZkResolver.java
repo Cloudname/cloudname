@@ -210,7 +210,7 @@ public class ZkResolver implements Resolver {
         this.zk = builder.getZooKeeper();
         this.strategies = builder.getStrategies();
     }
-
+    
     @Override
     public List<Endpoint> resolve(String addressExperssion) {
         Parameters parameters = new Parameters(addressExperssion);

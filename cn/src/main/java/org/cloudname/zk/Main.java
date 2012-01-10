@@ -9,6 +9,8 @@ import org.cloudname.flags.Flags;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 
 /**
@@ -63,6 +65,15 @@ public class Main {
             return Operation.NOT_VALID;
         }
     }
+
+    // Matches coordinate of type:
+    // instance.service.user.cell
+    public static final Pattern instanceConfigPattern
+            = Pattern.compile("\\/cn\\/([a-z][a-z-_]*)\\/" // cell
+            + "([a-z][a-z0-9-_]*)\\/" // user
+            + "([a-z][a-z0-9-_]*)\\/" // service 
+            + "(\\d+)\\/config\\z"); // instance
+         
     
     public static void main(String[] args) throws Exception {
         // Parse the flags.
@@ -120,7 +131,13 @@ public class Main {
                 List<String> nodeList = new ArrayList<String>();
                 cloudname.listRecursively(nodeList);
                 for (String node : nodeList) {
-                    System.err.println(node);
+                    Matcher m = instanceConfigPattern.matcher(node);
+
+                    // We only parse config paths, and we convert these to Cloudname coordinates to not confuse
+                    // the user.
+                    if (m.matches()) {
+                        System.out.println(String.format("%s.%s.%s.%s", m.group(4), m.group(3),m.group(2),m.group(1)));
+                    }
                 }
                 break;
             default:

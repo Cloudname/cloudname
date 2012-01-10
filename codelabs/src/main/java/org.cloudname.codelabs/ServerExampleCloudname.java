@@ -12,33 +12,45 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
 
-
+/**
+ * A class that has a web server responding to /info. It has a instance number that it publishes.
+ */
 public class ServerExampleCloudname {
     private int port;
     private int instance;
 
+    /**
+     * Constructor
+     * @param instance
+     */
     ServerExampleCloudname(int instance) {
         this.instance = instance;
     }
 
+    /**
+     * Handler for HTTP requests on /info.
+     */
     class InfoHandler implements HttpHandler {
         public void handle(HttpExchange t) throws IOException {
             InputStream is = t.getRequestBody();
-            String response = String.format("I am serving from port %s. I am instance %s", Integer.toString(port),
-                    Integer.toString(instance));
+            String response = String.format("Port %s, instance %s", Integer.toString(port), Integer.toString(instance));
             t.sendResponseHeaders(200, response.length());
-            OutputStream os = t.getResponseBody();
-            os.write(response.getBytes());
-            os.close();
+            OutputStream outputStream = t.getResponseBody();
+            outputStream.write(response.getBytes());
+            outputStream.close();
         }
     }
 
+    /**
+     * Method to set-up and start the web server.
+     * @throws IOException
+     */
     public  void runServer() throws IOException {
         port = Net.getFreePort();
         Cloudname cloudName = new ZkCloudname.Builder().setConnectString("127.0.0.1:5454").build().connect();
         Coordinate coordinate = Coordinate.parse(String.format("%s.hello.somebody.aa", instance));
         ServiceHandle handle = cloudName.claim(coordinate);
-        Endpoint endpoint = new Endpoint(coordinate, "info", "localhost", port, "http", null);
+        Endpoint endpoint = new Endpoint(coordinate, "info", "127.0.0.1", port, "http", null);
         handle.putEndpoint(endpoint);
         handle.setStatus(new ServiceStatus(ServiceState.RUNNING, "I am alive."));
         System.err.println("I think that port " + Integer.toString(port) + " is free and will use it.");
@@ -48,11 +60,11 @@ public class ServerExampleCloudname {
         server.start();
     }
 
+    /**
+     * @param args The first and only argument is the instance number
+     * @throws IOException
+     */
     public static void main(String[] args) throws IOException {
-        if (args.length != 1) {
-            System.err.println("Please specify which instance I am (int)");
-            return;
-        }
         ServerExampleCloudname server = new ServerExampleCloudname(Integer.parseInt(args[0]));
         server.runServer();
     }

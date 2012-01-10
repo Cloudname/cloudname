@@ -59,6 +59,18 @@
                             <goal>one-jar</goal>
                         </goals>
                     </execution>
+                    <execution >
+                        <id>4</id>
+                        <configuration>
+                            <!-- Optional, default is false -->
+                            <attachToBuild>true</attachToBuild>
+                            <mainClass>org.cloudname.codelabs.ClientExample</mainClass>
+                            <filename>ClientExample.jar</filename>
+                        </configuration>
+                        <goals>
+                            <goal>one-jar</goal>
+                        </goals>
+                    </execution>
                 </executions>
             </plugin>
         </plugins>
