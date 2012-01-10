@@ -218,6 +218,10 @@ public class ZkCloudname implements Cloudname, Watcher {
 
     }
 
+    /**
+     * List the sub-nodes in ZooKeeper owned by Cloudname.
+     * @param nodeList
+     */
     public void listRecursively(List<String> nodeList) {
         Util.listRecursively(zk, ZkCoordinatePath.getCloudnameRoot(), null, nodeList);
     }

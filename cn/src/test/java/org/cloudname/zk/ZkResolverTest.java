@@ -20,7 +20,7 @@ import static org.junit.Assert.*;
 /**
  * This class contains the unit tests for the ZkResolver class.
  *
- * TODO(borud): add tests for when the input is a coordinateFlag.
+ * TODO(borud): add tests for when the input is a coordinate.
  *
  * @author borud
  */

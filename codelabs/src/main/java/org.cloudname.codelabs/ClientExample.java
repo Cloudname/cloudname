@@ -13,7 +13,7 @@ import java.net.URL;
 import java.util.List;
 
 /**
- * Simple wget that pulls a string from a server specified by using coordinate + endpoint.
+ * Simple wget that pulls a string from a server specified by coordinate + endpoint.
  * @author dybdahl
  */
 public class ClientExample {

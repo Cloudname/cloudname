@@ -91,7 +91,7 @@ public class ZkCloudnameTest {
         assertTrue(pathExists("/cn/cell/user/service/1/config"));
         assertFalse(pathExists("/cn/cell/user/service/1/status"));
 
-        // Claiming the coordinateFlag creates the status node
+        // Claiming the coordinate creates the status node
         ServiceHandle handle = cn.claim(c);
         assertNotNull(handle);
         assertTrue(pathExists("/cn/cell/user/service/1/status"));
@@ -141,14 +141,14 @@ public class ZkCloudnameTest {
         // connection and thus should kill all ephemeral nodes.
         cn.close();
 
-        // But the coordinateFlag and its persistent subnodes should
+        // But the coordinate and its persistent subnodes should
         assertTrue(pathExists("/cn/cell/user/service/1"));
         assertFalse(pathExists("/cn/cell/user/service/1/endpoints"));
         assertTrue(pathExists("/cn/cell/user/service/1/config"));
     }
 
     /**
-     * Try to claim coordinateFlag twice
+     * Try to claim coordinate twice
      */
     @Test (expected = CloudnameException.AlreadyClaimed.class)
     public void testDoubleClaim() throws Exception {
@@ -160,7 +160,7 @@ public class ZkCloudnameTest {
     }
 
     /**
-     * Claim non-existing coordinateFlag
+     * Claim non-existing coordinate
      */
     @Test (expected = CloudnameException.CoordinateNotFound.class)
     public void testCoordinateNotFound() throws Exception {

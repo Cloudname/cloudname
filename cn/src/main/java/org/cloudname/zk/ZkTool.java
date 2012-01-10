@@ -20,7 +20,7 @@ import java.util.regex.Pattern;
  *   --coordinateFlag the coordinateFlag to perform operationFlag on
  * @author dybdahl
  */
-public class Main {
+public class ZkTool {
     @Flag(name="zooKeeperFlag", description="A list of host:port for connecting to ZooKeeper.", required=false)
     public static String zooKeeperFlag = null;
 
@@ -55,6 +55,12 @@ public class Main {
          * Print the coordinates in zookeeper
          */
         LIST;
+
+        /**
+         * Converts a string with an text operation to the enum Operation.
+         * @param operationString
+         * @return Operation if there is a matching operation, else NOT_VALID.
+         */
         public static Operation getOperation(String operationString) {
             operationString = operationString.toUpperCase();
             for (Operation operation : Operation.values()) {
@@ -66,8 +72,9 @@ public class Main {
         }
     }
 
-    // Matches coordinate of type:
-    // instance.service.user.cell
+    /**
+     * Matches coordinate of type: cell.user.service.instance.config.
+     */
     public static final Pattern instanceConfigPattern
             = Pattern.compile("\\/cn\\/([a-z][a-z-_]*)\\/" // cell
             + "([a-z][a-z0-9-_]*)\\/" // user
@@ -78,7 +85,7 @@ public class Main {
     public static void main(String[] args) throws Exception {
         // Parse the flags.
         Flags flags = new Flags()
-                .loadOpts(Main.class)
+                .loadOpts(ZkTool.class)
                 .parse(args);
 
         // Check if we wish to print out help text

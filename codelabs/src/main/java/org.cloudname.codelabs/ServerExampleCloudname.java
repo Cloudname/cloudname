@@ -52,7 +52,7 @@ public class ServerExampleCloudname {
         ServiceHandle handle = cloudName.claim(coordinate);
         Endpoint endpoint = new Endpoint(coordinate, "info", "127.0.0.1", port, "http", null);
         handle.putEndpoint(endpoint);
-        handle.setStatus(new ServiceStatus(ServiceState.RUNNING, "I am alive."));
+        handle.setStatus(new ServiceStatus(ServiceState.RUNNING, "I am alive and kicking."));
         System.err.println("I think that port " + Integer.toString(port) + " is free and will use it.");
         HttpServer server = HttpServer.create(new InetSocketAddress(port), 45 /*backlog*/);
         server.createContext("/info", new InfoHandler());

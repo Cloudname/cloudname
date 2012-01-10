@@ -19,7 +19,7 @@ public class ServerExample {
 
     /**
      * Constructor
-     * @param instance
+     * @param instance number for this instance.
      */
     ServerExample(int instance) {
         this.instance = instance;

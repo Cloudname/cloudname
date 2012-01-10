@@ -56,7 +56,7 @@ public class Util {
      * @param zk
      * @param path starts from this path
      * @param acl
-     * @param nodeList target list
+     * @param nodeList put sub-nodes in this list
      */
     public static void listRecursively(ZooKeeper zk, String path, List<ACL> acl, List<String> nodeList) {
         List<String> children = null;
@@ -77,7 +77,7 @@ public class Util {
     }
     
     /**
-     * Figures out if there are sub nodes under the path. If the path does not exist, returns false.
+     * Figures out if there are sub-nodes under the path. If the path does not exist, returns false.
      * @param zk
      * @param path
      * @return true iff the node exists and has children.
