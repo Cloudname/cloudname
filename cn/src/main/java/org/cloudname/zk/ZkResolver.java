@@ -224,9 +224,15 @@ public class ZkResolver implements Resolver {
         }
         List<Endpoint> endpoints = new ArrayList<Endpoint>();
         for (Integer instance : instances) {
-            String path = ZkCoordinatePath.getStatusPath(parameters.getCell(), parameters.getUser(),
+            String statusPath = ZkCoordinatePath.getStatusPath(parameters.getCell(), parameters.getUser(),
                     parameters.getService(), instance);
-            ZkStatusAndEndpoints statusAndEndpoints = new ZkStatusAndEndpoints.Builder(zk, path).load().build();
+            if (! Util.exist(zk, statusPath)) {
+                continue;
+            }
+            ZkStatusAndEndpoints statusAndEndpoints = new ZkStatusAndEndpoints.Builder(zk, statusPath).load().build();
+            if (statusAndEndpoints.getServiceStatus().getState() != ServiceState.RUNNING) {
+                continue;
+            }
             if (parameters.getEndpointName() == "") {
                 statusAndEndpoints.returnAllEndpoints(endpoints);
             } else {
