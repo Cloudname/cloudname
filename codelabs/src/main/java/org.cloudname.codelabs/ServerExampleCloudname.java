@@ -14,6 +14,7 @@ import java.net.InetSocketAddress;
 
 /**
  * A class that has a web server responding to /info. It has a instance number that it publishes.
+ * @author dybdahl
  */
 public class ServerExampleCloudname {
     private int port;

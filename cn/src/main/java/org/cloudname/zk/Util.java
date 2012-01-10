@@ -77,7 +77,7 @@ public class Util {
     }
     
     /**
-     * Figures out if there are sub-nodes under the path. If the path does not exist, returns false.
+     * Figures out if there are sub-nodes under the path.
      * @param zk
      * @param path
      * @return true iff the node exists and has children.
