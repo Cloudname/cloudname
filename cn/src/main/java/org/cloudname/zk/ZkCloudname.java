@@ -9,6 +9,7 @@ import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.ZooDefs.Ids;
 import org.apache.zookeeper.KeeperException;
 
+import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
 
 import java.util.concurrent.CountDownLatch;
@@ -56,27 +57,38 @@ public class ZkCloudname implements Cloudname, Watcher {
 
     /**
      * Connect to ZooKeeper instance.
-     *
-     * TODO(borud): if the ZooKeeper server is not there this method
-     *   will hang forever.  It should probably time out or produce an
-     *   exception.
-     *
+     * @param waitTime timeout for establishing connection
+     * @param waitUnit imeout for establishing connection
+     * @throws org.cloudname.CloudnameException.CouldNotConnectToStorage if connection can not be established
+     * @return
      */
-    public ZkCloudname connect() {
+    public ZkCloudname connectWithTimeout(long waitTime, TimeUnit waitUnit) {
 
         try {
             zk = new ZooKeeper(connectString, SESSION_TIMEOUT, this);
-            connectedSignal.await();
+            if (! connectedSignal.await(waitTime, waitUnit)) {
+                throw new CloudnameException.CouldNotConnectToStorage(new RuntimeException(
+                        "Connecting to ZooKeeper timed out."));
+            }
             log.info("Connected to ZooKeeper " + connectString);
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            throw new CloudnameException.CouldNotConnectToStorage(e);
         } catch (InterruptedException e) {
-            throw new RuntimeException(e);
+            throw new CloudnameException.CouldNotConnectToStorage(e);
         }
 
         return this;
     }
 
+    /**
+     * Connect to ZooKeeper instance.
+     * @return
+     */
+    public ZkCloudname connect() {
+        // We wait up to 100 years.
+        return connectWithTimeout(365 * 100, TimeUnit.DAYS);
+    }
+    
     @Override
     public void process(WatchedEvent event) {
         log.fine("Got event " + event.toString());

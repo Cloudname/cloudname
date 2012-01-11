@@ -59,6 +59,12 @@ public class CloudnameException extends RuntimeException {
         }
     }
 
+    public static class CouldNotConnectToStorage extends CloudnameException {
+        public CouldNotConnectToStorage(Throwable t) {
+            super(t);
+        }
+    }
+
     public CloudnameException() {
         super();
     }

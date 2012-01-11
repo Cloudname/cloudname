@@ -21,6 +21,7 @@ import org.cloudname.testtools.Net;
 import org.cloudname.testtools.zookeeper.EmbeddedZooKeeper;
 
 import java.io.File;
+import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
 
 /**
@@ -71,6 +72,16 @@ public class ZkCloudnameTest {
     @After
     public void tearDown() throws Exception {
         zk.close();
+    }
+
+    /**
+     * Tests that timeout on connecting to ZooKeeper works.
+     */
+    @Test (expected = CloudnameException.CouldNotConnectToStorage.class)
+    public void testTimeout() throws Exception {
+        int deadPort = Net.getFreePort();
+        new ZkCloudname.Builder().setConnectString("localhost:" + deadPort).build()
+                .connectWithTimeout(1, TimeUnit.NANOSECONDS);
     }
 
     /**
