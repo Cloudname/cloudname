@@ -44,7 +44,7 @@ public class LogCat {
     public void catStream(InputStream input) throws Exception {
         RecordReader reader = new RecordReader(input);
         try {
-            Timber.LogEvent logEvent = reader.read();
+            Timber.LogEvent logEvent = null;
             while ((logEvent = reader.read()) != null) {
                 System.out.println(formatter.format(logEvent));
             }

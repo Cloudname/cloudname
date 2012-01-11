@@ -146,10 +146,6 @@ public class Slot {
             }
 
             currentFile = findNextSlotFile();
-            if (null == currentFile) {
-                // TODO(borud) create an exception for this
-                throw new RuntimeException("Was unable to get next slot file");
-            }
 
             // Pick up number of bytes in file
             numBytesInFile = currentFile.length();
