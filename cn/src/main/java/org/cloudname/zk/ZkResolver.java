@@ -18,19 +18,19 @@ import java.util.regex.Matcher;
  *
  * @author borud
  */
-public class ZkResolver implements Resolver {
+public final class ZkResolver implements Resolver {
 
     private static final Logger log = Logger.getLogger(ZkResolver.class.getName());
 
     private ZooKeeper zk;
 
-    Map<String, ResolverStrategy> strategies;
+    private Map<String, ResolverStrategy> strategies;
 
     public static class Builder {
 
-        Map<String, ResolverStrategy> strategies = new HashMap<String, ResolverStrategy>();
+        private Map<String, ResolverStrategy> strategies = new HashMap<String, ResolverStrategy>();
         private ZooKeeper zk;
-        
+
         public Builder(ZooKeeper zk) {
             this.zk = zk;
         }
@@ -43,18 +43,18 @@ public class ZkResolver implements Resolver {
         public Map<String, ResolverStrategy> getStrategies() {
             return strategies;
         }
-        
+
         public ZooKeeper getZooKeeper() {
             return zk;
         }
-        
+
         public ZkResolver build() {
             return new ZkResolver(this);
         }
 
     }
-    
-    
+
+
     // Matches coordinate with endpoint of the form:
     // endpoint.instance.service.user.cell
     public static final Pattern endpointPattern
@@ -73,7 +73,7 @@ public class ZkResolver implements Resolver {
                          + "([a-z][a-z0-9-_]*)\\." // user
                          + "([a-z][a-z0-9-_]*)\\z"); // cell
 
-    // Parses abstract addresses of the form:
+    // Parses abstract coordinate of the form:
     // endpoint.strategy.service.user.cell.
     public static final Pattern endpointStrategyPattern
         = Pattern.compile( "^([a-z][a-z0-9-_]*)\\." // endpoint
@@ -86,7 +86,7 @@ public class ZkResolver implements Resolver {
     /**
      * Inner class to keep track of parameters parsed from addressExpression.
      */
-    class Parameters {
+    static class Parameters {
         private String endpointName = null;
         private Integer instance = null;
         private String service = null;
@@ -100,13 +100,13 @@ public class ZkResolver implements Resolver {
          */
         public Parameters(String addressExpression) {
             log.info("Resolving " + addressExpression);
-            
+
             if (! (trySetEndPointPattern(addressExpression) ||
-                    trySetStrategyPattern(addressExpression) ||
-                    trySetEndpointStrategyPattern(addressExpression))) {
+                   trySetStrategyPattern(addressExpression) ||
+                   trySetEndpointStrategyPattern(addressExpression))) {
                 throw new IllegalStateException("Could not parse addressExpression:" + addressExpression);
             }
- 
+
         }
 
         /**
@@ -214,14 +214,21 @@ public class ZkResolver implements Resolver {
     @Override
     public List<Endpoint> resolve(String addressExperssion) {
         Parameters parameters = new Parameters(addressExperssion);
-               
+
+        // TODO(borud): add some comments on the decision logic.  I'm
+        // not sure I am too fond of the check for negative values to
+        // have some particular semantics.  That smells like a problem
+        // waiting to happen.
         List<Integer> instances = new ArrayList<Integer>();
         if (parameters.getInstance() > -1) {
             instances.add(parameters.getInstance());
         } else {
-            instances = getInstances(ZkCoordinatePath.coordinateWithoutInstanceAsPath(parameters.getCell(),
-                    parameters.getUser(), parameters.getService()));
+            instances = getInstances(
+                ZkCoordinatePath.coordinateWithoutInstanceAsPath(parameters.getCell(),
+                                                                 parameters.getUser(),
+                                                                 parameters.getService()));
         }
+
         List<Endpoint> endpoints = new ArrayList<Endpoint>();
         for (Integer instance : instances) {
             String path = ZkCoordinatePath.getStatusPath(parameters.getCell(), parameters.getUser(),
@@ -240,7 +247,7 @@ public class ZkResolver implements Resolver {
         return strategy.order(strategy.filter(endpoints));
     }
 
- 
+
     private List<Integer> getInstances(String path) {
         List<Integer> paths = new ArrayList<Integer>();
         try {

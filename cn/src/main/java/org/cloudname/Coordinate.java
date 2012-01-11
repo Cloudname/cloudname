@@ -158,7 +158,7 @@ public class Coordinate {
         }
 
         Coordinate c = (Coordinate) o;
-        return ((instance == instance)
+        return ((instance == c.instance)
                 && service.equals(c.service)
                 && user.equals(c.user)
                 && cell.equals(c.cell));

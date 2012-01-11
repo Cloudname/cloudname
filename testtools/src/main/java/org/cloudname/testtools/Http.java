@@ -36,15 +36,20 @@ public class Http {
         urlConnection.setUseCaches(false);
         urlConnection.connect();
 
-        InputStreamReader in = new InputStreamReader(urlConnection.getInputStream());
-        char[] cbuf = new char[HTTP_BUFFER_LEN];
-        StringBuilder buff = new StringBuilder();
+        InputStreamReader in = null;
+        try {
+            in = new InputStreamReader(urlConnection.getInputStream());
+            char[] cbuf = new char[HTTP_BUFFER_LEN];
+            StringBuilder buff = new StringBuilder();
 
-        int readLen = 0;
-        while((readLen = in.read(cbuf, 0, HTTP_BUFFER_LEN)) > 0) {
-            buff.append(cbuf, 0, readLen);
+            int readLen = 0;
+            while((readLen = in.read(cbuf, 0, HTTP_BUFFER_LEN)) > 0) {
+                buff.append(cbuf, 0, readLen);
+            }
+
+            return buff.toString();
+        } finally {
+            in.close();
         }
-
-        return buff.toString();
     }
 }
