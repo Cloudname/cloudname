@@ -45,6 +45,7 @@ public class ZkCloudname implements Cloudname, Watcher {
     // Instance variables
     private ZooKeeper zk;
     private String connectString;
+    private ZkConnectionListener connectionListener;
 
     // Latches that count down when ZooKeeper is connected
     private final CountDownLatch connectedSignal = new CountDownLatch(1);
@@ -52,6 +53,7 @@ public class ZkCloudname implements Cloudname, Watcher {
 
     private ZkCloudname(Builder builder) {
         connectString = builder.getConnectString();
+        connectionListener = builder.getConnectionListener();
     }
 
     /**
@@ -178,6 +180,7 @@ public class ZkCloudname implements Cloudname, Watcher {
      */
     static class Builder {
         private String connectString;
+        private ZkConnectionListener connectionListener = null;
 
         public Builder setConnectString(String connectString) {
             this.connectString = connectString;
@@ -193,11 +196,26 @@ public class ZkCloudname implements Cloudname, Watcher {
             return this;
         }
 
+        public Builder registerConnectionListener(ZkConnectionListener connectionListener) {
+            this.connectionListener = connectionListener;
+            return this;
+        }
+
+        public ZkConnectionListener getConnectionListener() {
+            return connectionListener;
+        }
+
         public String getConnectString() {
             return connectString;
         }
 
         public ZkCloudname build() {
+            if (connectionListener == null) {
+                throw new RuntimeException("You need register a connection listener before you can build.");
+            }
+            if (connectString.isEmpty()) {
+                throw new RuntimeException("You need to specify connection string before you can build.");
+            }
             return new ZkCloudname(this);
         }
     }

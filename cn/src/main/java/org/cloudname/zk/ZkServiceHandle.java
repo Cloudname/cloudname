@@ -1,5 +1,6 @@
 package org.cloudname.zk;
 
+import org.apache.zookeeper.Watcher;
 import org.cloudname.*;
 
 import java.util.ArrayList;
@@ -71,5 +72,17 @@ public class ZkServiceHandle implements ServiceHandle {
     @Override
     public String toString() {
         return "StatusEndpoint instance: "+ statusAndEndpoints.toString();
+    }
+
+    public ZkStatusAndEndpoints.StateError verifyStatusAndEndpoints() {
+        return statusAndEndpoints.verifyState();
+    }
+
+    public void recoverStatusAndEndpoints() {
+        statusAndEndpoints.recover();
+    }
+    
+    public void registerWatcher(Watcher watcher) {
+        statusAndEndpoints.registerWatcher(watcher);
     }
 }

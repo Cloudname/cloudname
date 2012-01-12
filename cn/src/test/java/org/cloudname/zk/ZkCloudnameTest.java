@@ -49,7 +49,7 @@ public class ZkCloudnameTest {
         zkport = Net.getFreePort();
 
         log.info("EmbeddedZooKeeper rootDir=" + rootDir.getCanonicalPath()
-                 + ", port=" + zkport
+                + ", port=" + zkport
         );
 
         // Set up and initialize the embedded ZooKeeper
@@ -79,7 +79,8 @@ public class ZkCloudnameTest {
     @Test
     public void testSimple() throws Exception {
         Coordinate c = Coordinate.parse("1.service.user.cell");
-        ZkCloudname cn = new ZkCloudname.Builder().setConnectString("localhost:" + zkport).build().connect();
+        ZkCloudname cn = new ZkCloudname.Builder().setConnectString("localhost:" + zkport)
+                .registerConnectionListener(new DieOnHardErrorConnectionListener()).build().connect();
 
         assertFalse(pathExists("/cn/cell/user/service/1"));
         cn.createCoordinate(c);
@@ -145,7 +146,8 @@ public class ZkCloudnameTest {
     @Test (expected = CloudnameException.AlreadyClaimed.class)
     public void testDoubleClaim() throws Exception {
         Coordinate c = Coordinate.parse("2.service.user.cell");
-        ZkCloudname cn = new ZkCloudname.Builder().setConnectString("localhost:" + zkport).build().connect();
+        ZkCloudname cn = new ZkCloudname.Builder().setConnectString("localhost:" + zkport)
+                .registerConnectionListener(new DieOnHardErrorConnectionListener()).build().connect();
         cn.createCoordinate(c);
         cn.claim(c);
         cn.claim(c);
@@ -157,7 +159,8 @@ public class ZkCloudnameTest {
     @Test (expected = CloudnameException.CoordinateNotFound.class)
     public void testCoordinateNotFound() throws Exception {
         Coordinate c = Coordinate.parse("3.service.user.cell");
-        ZkCloudname cn = new ZkCloudname.Builder().setConnectString("localhost:" + zkport).build().connect();
+        ZkCloudname cn = new ZkCloudname.Builder().setConnectString("localhost:" + zkport)
+                .registerConnectionListener(new DieOnHardErrorConnectionListener()).build().connect();
         cn.claim(c);
     }
 

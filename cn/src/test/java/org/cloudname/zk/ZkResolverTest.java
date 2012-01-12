@@ -58,7 +58,8 @@ public class ZkResolverTest {
         });
         connectedLatch.await();
         coordinate = Coordinate.parse("1.service.user.cell");
-        cn = new ZkCloudname.Builder().setConnectString("localhost:" + zkport).build().connect();
+        cn = new ZkCloudname.Builder().setConnectString("localhost:" + zkport).registerConnectionListener(
+                new DieOnHardErrorConnectionListener()).build().connect();
         cn.createCoordinate(coordinate);
         ServiceHandle handle = cn.claim(coordinate);
         handle.putEndpoint(new Endpoint(coordinate, "foo", "localhost", 1234, "http", "data"));

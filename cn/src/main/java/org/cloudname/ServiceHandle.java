@@ -1,5 +1,6 @@
 package org.cloudname;
 
+import javax.mail.event.ConnectionListener;
 import java.util.List;
 
 /**
@@ -55,7 +56,7 @@ public interface ServiceHandle {
      * being created.
      */
     public void registerConfigListener(ConfigListener listener);
-    
+
     /**
      * Close the service handle and free up the coordinate so it can
      * be claimed by others.  After close() has been called all

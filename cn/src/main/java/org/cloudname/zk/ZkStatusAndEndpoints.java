@@ -1,9 +1,6 @@
 package org.cloudname.zk;
 
-import org.apache.zookeeper.CreateMode;
-import org.apache.zookeeper.KeeperException;
-import org.apache.zookeeper.ZooDefs;
-import org.apache.zookeeper.ZooKeeper;
+import org.apache.zookeeper.*;
 import org.apache.zookeeper.data.Stat;
 import org.cloudname.CloudnameException;
 import org.cloudname.Endpoint;
@@ -18,6 +15,7 @@ import org.codehaus.jackson.type.TypeReference;
 import java.io.IOException;
 import java.io.StringWriter;
 import java.io.UnsupportedEncodingException;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -269,6 +267,52 @@ public class ZkStatusAndEndpoints {
         }
     }
 
+    public enum StateError {
+        OK,
+        NOT_LOADING,
+        CORRUPT_STATE,
+        WRONG_STATE
+    }
+    
+    public StateError verifyState() {
+        Stat stat = new Stat();
+        byte[] loadedState = new byte[0];
+        try {
+            loadedState = zk.getData(path, false /*watcher*/, stat);
+        } catch (KeeperException e) {
+          return StateError.NOT_LOADING;
+        } catch (InterruptedException e) {
+           return StateError.NOT_LOADING;  
+        }
+        byte[] currentState = new byte[0];
+        try {
+            currentState = serialize(serviceStatus, endpointsByName).getBytes(Util.CHARSET_NAME);
+        } catch (UnsupportedEncodingException e) {
+            return StateError.CORRUPT_STATE;
+        }
+        if (Arrays.equals(loadedState, currentState)) {
+            return StateError.OK;
+        } else {
+            return StateError.WRONG_STATE;
+        }
+
+    }
+    
+    public void recover() {
+        writeStatusEndpoint();
+    }
+    
+    
+    public void registerWatcher(Watcher watcher) {
+        try {
+            zk.exists(path, watcher);
+        } catch (KeeperException e) {
+            throw new CloudnameException(e);
+        } catch (InterruptedException e) {
+            throw new CloudnameException(e);
+        }
+    }
+    
     /**
      * This class can build ZkStatusAndEndpoints.
      * If you want to create an instance that first claims the coordinate it can be done like this:
@@ -424,6 +468,9 @@ public class ZkStatusAndEndpoints {
             // been meddling with the serviceStatus node.  In which case we
             // must complain loudly.
             try {
+                // TODO(borud, dybdahl): Consider if we need to re-read the content of the zookeeper. Can it
+                // possible change between create and exists? Can we use version number to detect this or is that
+                // depending on implementation details of ZooKeeper?
                 Stat stat = zk.exists(path, false);
                 lastStatusVersion = stat.getVersion();
             } catch (KeeperException e) {
