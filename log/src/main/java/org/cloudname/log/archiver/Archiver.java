@@ -116,18 +116,6 @@ public class Archiver {
     }
 
     /**
-     * Return the name of the Archiver.  Currently just returns the class name.
-     *
-     * TODO(borud): This is a leftover from when this was a plugin in
-     *   Timber.  We should probably remove this method.
-     *
-     * @return the name of the archiver.
-     */
-    public String getName() {
-        return Archiver.class.getName();
-    }
-
-    /**
      * @return the slot a Timber.LogEvent belongs in.
      */
     private Slot getSlot(Timber.LogEvent event) {
