@@ -2,10 +2,7 @@ package org.cloudname.zk;
 
 import org.apache.zookeeper.*;
 import org.apache.zookeeper.data.Stat;
-import org.cloudname.CloudnameException;
-import org.cloudname.Endpoint;
-import org.cloudname.ServiceState;
-import org.cloudname.ServiceStatus;
+import org.cloudname.*;
 import org.codehaus.jackson.JsonFactory;
 import org.codehaus.jackson.JsonGenerator;
 import org.codehaus.jackson.JsonParser;
@@ -15,10 +12,7 @@ import org.codehaus.jackson.type.TypeReference;
 import java.io.IOException;
 import java.io.StringWriter;
 import java.io.UnsupportedEncodingException;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.logging.Logger;
 
 /**
@@ -31,7 +25,20 @@ import java.util.logging.Logger;
  * @author dybdahl
  */
 public class ZkStatusAndEndpoints {
+
+    public void registerCoordinateListener(CoordinateListener coordinateListener) {
+        synchronized (this) {
+            coordinateListenerList.add(coordinateListener);
+        }
+        sendCoordinateEvents(verifyState());
+    }
     
+    public synchronized void sendCoordinateEvents(CoordinateListener.Event event) {
+        for (CoordinateListener listener : coordinateListenerList) {
+            listener.onConfigEvent(event);
+        }
+    }
+
     enum State {
         /**
          * We don't know the state.
@@ -56,6 +63,8 @@ public class ZkStatusAndEndpoints {
     private final ObjectMapper objectMapper;
     private ServiceStatus serviceStatus;
     private final Map<String, Endpoint> endpointsByName;
+    // Make it thread safe
+    private List<CoordinateListener> coordinateListenerList = new ArrayList<CoordinateListener>();
 
     /**
      * We keep this private, the correct way to build an instance is to use the Builder.
@@ -267,35 +276,28 @@ public class ZkStatusAndEndpoints {
         }
     }
 
-    public enum StateError {
-        OK,
-        NOT_LOADING,
-        CORRUPT_STATE,
-        WRONG_STATE
-    }
     
-    public StateError verifyState() {
+    public CoordinateListener.Event verifyState() {
         Stat stat = new Stat();
         byte[] loadedState = new byte[0];
         try {
             loadedState = zk.getData(path, false /*watcher*/, stat);
         } catch (KeeperException e) {
-          return StateError.NOT_LOADING;
+          return CoordinateListener.Event.LOST_CONNECTION_TO_STORAGE;
         } catch (InterruptedException e) {
-           return StateError.NOT_LOADING;  
+           return CoordinateListener.Event.LOST_CONNECTION_TO_STORAGE;
         }
         byte[] currentState = new byte[0];
         try {
             currentState = serialize(serviceStatus, endpointsByName).getBytes(Util.CHARSET_NAME);
         } catch (UnsupportedEncodingException e) {
-            return StateError.CORRUPT_STATE;
+            return CoordinateListener.Event.COORDINATE_CORRUPTED;
         }
         if (Arrays.equals(loadedState, currentState)) {
-            return StateError.OK;
+            return CoordinateListener.Event.COORDINATE_CONFIRMED;
         } else {
-            return StateError.WRONG_STATE;
+            return CoordinateListener.Event.LOST_OWNERSHIP;
         }
-
     }
     
     public void recover() {
@@ -312,7 +314,83 @@ public class ZkStatusAndEndpoints {
             throw new CloudnameException(e);
         }
     }
-    
+
+    /**
+     * Loads the coordinate from ZooKeeper.
+     * @return this.
+     */
+    public ZkStatusAndEndpoints load() {
+        if (state != ZkStatusAndEndpoints.State.UNKNOWN) {
+            throw new IllegalStateException("Does not make sense to load when something is already set.");
+        }
+        Stat stat = new Stat();
+        try {
+            byte[] data = zk.getData(path, false /*watcher*/, stat);
+
+            serviceStatus = deserialize(new String(data, Util.CHARSET_NAME), objectMapper, endpointsByName);
+
+
+        } catch (KeeperException e) {
+            throw new CloudnameException(e);
+
+        } catch (InterruptedException e) {
+            throw new CloudnameException(e);
+
+        } catch (UnsupportedEncodingException e) {
+            throw new CloudnameException(e);
+        }
+        state = State.LOADED;
+
+        return this;
+    }
+
+    /**
+     * Claims a coordinate.
+     * @return this.
+     */
+    public ZkStatusAndEndpoints claim() {
+        if (state != State.UNKNOWN) {
+            throw new IllegalStateException("Does not make sense to claim when something is already loaded.");
+        }
+        try {
+            zk.create(
+                    path, serialize(serviceStatus, endpointsByName).getBytes(Util.CHARSET_NAME), ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.EPHEMERAL);
+        } catch (KeeperException.NodeExistsException e) {
+            log.info("Coordinate already claimed  (" + path + ")");
+            throw new CloudnameException.AlreadyClaimed(e);
+        } catch (KeeperException.NoNodeException e) {
+            log.info("Coordinate does not exist  (" + path + ")");
+            throw new CloudnameException.CoordinateNotFound(e);
+        } catch (KeeperException e) {
+            throw new CloudnameException(e);
+        } catch (InterruptedException e) {
+            throw new CloudnameException(e);
+        } catch (UnsupportedEncodingException e) {
+            // This is not supposed to be happening since CHARSET_NAME
+            // should always be "UTF-8".
+            throw new CloudnameException(e);
+        }
+
+        // Stat the serviceStatus node so we have the version.  If later
+        // we try to operate on the serviceStatus node and we do not have
+        // the correct version this can mean that someone else has
+        // been meddling with the serviceStatus node.  In which case we
+        // must complain loudly.
+        try {
+            // TODO(borud, dybdahl): Consider if we need to re-read the content of the zookeeper. Can it
+            // possible change between create and exists? Can we use version number to detect this or is that
+            // depending on implementation details of ZooKeeper?
+            Stat stat = zk.exists(path, new ConnectionWatcher(this));
+            lastStatusVersion = stat.getVersion();
+        } catch (KeeperException e) {
+            throw new CloudnameException(e);
+        } catch (InterruptedException e) {
+            throw new CloudnameException(e);
+        }
+        state = State.CLAIMED;
+        return this;
+    }
+
     /**
      * This class can build ZkStatusAndEndpoints.
      * If you want to create an instance that first claims the coordinate it can be done like this:
@@ -400,86 +478,7 @@ public class ZkStatusAndEndpoints {
          * @return this.
          */
         public ZkStatusAndEndpoints build() {
-            if (state == ZkStatusAndEndpoints.State.UNKNOWN) {
-                throw new IllegalStateException("Call load or claim before building.");
-            }
             return new ZkStatusAndEndpoints(this);
-        }
-
-        /**
-         * Loads the coordinate from ZooKeeper.
-         * @return this.
-         */
-        public Builder load() {
-            if (state != ZkStatusAndEndpoints.State.UNKNOWN) {
-                throw new IllegalStateException("Does not make sense to load when something is already set.");
-            }
-            Stat stat = new Stat();
-            try {
-                byte[] data = zk.getData(path, false /*watcher*/, stat);
-
-                serviceStatus = deserialize(new String(data, Util.CHARSET_NAME), objectMapper, endpointsByName);
-
-
-            } catch (KeeperException e) {
-                throw new CloudnameException(e);
-
-            } catch (InterruptedException e) {
-                throw new CloudnameException(e);
-
-            } catch (UnsupportedEncodingException e) {
-                throw new CloudnameException(e);
-            }
-            state = State.LOADED;
-
-            return this;
-        }
-
-        /**
-         * Claims a coordinate.
-         * @return this.
-         */
-        public Builder claim() {
-            if (state != State.UNKNOWN) {
-                throw new IllegalStateException("Does not make sense to claim when something is already loaded.");
-            }
-            try {
-                zk.create(
-                        path, serialize(serviceStatus, endpointsByName).getBytes(Util.CHARSET_NAME), ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.EPHEMERAL);
-            } catch (KeeperException.NodeExistsException e) {
-                log.info("Coordinate already claimed  (" + path + ")");
-                throw new CloudnameException.AlreadyClaimed(e);
-            } catch (KeeperException.NoNodeException e) {
-                log.info("Coordinate does not exist  (" + path + ")");
-                throw new CloudnameException.CoordinateNotFound(e);
-            } catch (KeeperException e) {
-                throw new CloudnameException(e);
-            } catch (InterruptedException e) {
-                throw new CloudnameException(e);
-            } catch (UnsupportedEncodingException e) {
-                // This is not supposed to be happening since CHARSET_NAME
-                // should always be "UTF-8".
-                throw new CloudnameException(e);
-            }
-
-            // Stat the serviceStatus node so we have the version.  If later
-            // we try to operate on the serviceStatus node and we do not have
-            // the correct version this can mean that someone else has
-            // been meddling with the serviceStatus node.  In which case we
-            // must complain loudly.
-            try {
-                // TODO(borud, dybdahl): Consider if we need to re-read the content of the zookeeper. Can it
-                // possible change between create and exists? Can we use version number to detect this or is that
-                // depending on implementation details of ZooKeeper?
-                Stat stat = zk.exists(path, false);
-                lastStatusVersion = stat.getVersion();
-            } catch (KeeperException e) {
-                throw new CloudnameException(e);
-            } catch (InterruptedException e) {
-                throw new CloudnameException(e);
-            }
-            state = State.CLAIMED;
-            return this;
         }
     }
 }

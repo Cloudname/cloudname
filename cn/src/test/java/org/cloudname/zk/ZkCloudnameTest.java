@@ -79,8 +79,7 @@ public class ZkCloudnameTest {
     @Test
     public void testSimple() throws Exception {
         Coordinate c = Coordinate.parse("1.service.user.cell");
-        ZkCloudname cn = new ZkCloudname.Builder().setConnectString("localhost:" + zkport)
-                .registerConnectionListener(new DieOnHardErrorConnectionListener()).build().connect();
+        ZkCloudname cn = new ZkCloudname.Builder().setConnectString("localhost:" + zkport).build().connect();
 
         assertFalse(pathExists("/cn/cell/user/service/1"));
         cn.createCoordinate(c);
@@ -110,7 +109,7 @@ public class ZkCloudnameTest {
         handle.removeEndpoint("bar");
 
         ZkStatusAndEndpoints statusAndEndpoints = new ZkStatusAndEndpoints.Builder(
-                zk, "/cn/cell/user/service/1/status").load().build();
+                zk, "/cn/cell/user/service/1/status").build().load();
         assertEquals(null, statusAndEndpoints.getEndpoint("bar"));
 
         Endpoint endpointFoo = statusAndEndpoints.getEndpoint("foo");
@@ -146,8 +145,7 @@ public class ZkCloudnameTest {
     @Test (expected = CloudnameException.AlreadyClaimed.class)
     public void testDoubleClaim() throws Exception {
         Coordinate c = Coordinate.parse("2.service.user.cell");
-        ZkCloudname cn = new ZkCloudname.Builder().setConnectString("localhost:" + zkport)
-                .registerConnectionListener(new DieOnHardErrorConnectionListener()).build().connect();
+        ZkCloudname cn = new ZkCloudname.Builder().setConnectString("localhost:" + zkport).build().connect();
         cn.createCoordinate(c);
         cn.claim(c);
         cn.claim(c);
@@ -159,11 +157,19 @@ public class ZkCloudnameTest {
     @Test (expected = CloudnameException.CoordinateNotFound.class)
     public void testCoordinateNotFound() throws Exception {
         Coordinate c = Coordinate.parse("3.service.user.cell");
-        ZkCloudname cn = new ZkCloudname.Builder().setConnectString("localhost:" + zkport)
-                .registerConnectionListener(new DieOnHardErrorConnectionListener()).build().connect();
+        ZkCloudname cn = new ZkCloudname.Builder().setConnectString("localhost:" + zkport).build().connect();
         cn.claim(c);
     }
 
+    bla
+    Test :
+      registrer en callback
+        test for delete ZooKeeper
+        test for delete coordinate int ZooKeeper
+        test for corrupt data int ZooKeeper
+        test for modification in zookeeper. (stop, start, ny claim fra annen node?, eller fake status node)
+        test for zookeper død, register så riktig data, hvilken even kommer da?
+    
     private boolean pathExists(String path) throws Exception {
         return (null != zk.exists(path, false));
     }

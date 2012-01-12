@@ -58,6 +58,13 @@ public interface ServiceHandle {
     public void registerConfigListener(ConfigListener listener);
 
     /**
+     * After registering a new listener, a new event is triggered which include current state, even without change
+     * of state.
+     * @param listener
+     */
+    public void registerCoordinateListener(CoordinateListener listener);
+
+    /**
      * Close the service handle and free up the coordinate so it can
      * be claimed by others.  After close() has been called all
      * operations on this instance of the service handle will result

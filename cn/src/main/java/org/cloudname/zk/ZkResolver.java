@@ -226,7 +226,7 @@ public class ZkResolver implements Resolver {
         for (Integer instance : instances) {
             String path = ZkCoordinatePath.getStatusPath(parameters.getCell(), parameters.getUser(),
                     parameters.getService(), instance);
-            ZkStatusAndEndpoints statusAndEndpoints = new ZkStatusAndEndpoints.Builder(zk, path).load().build();
+            ZkStatusAndEndpoints statusAndEndpoints = new ZkStatusAndEndpoints.Builder(zk, path).build().load();
             if (parameters.getEndpointName() == "") {
                 statusAndEndpoints.returnAllEndpoints(endpoints);
             } else {

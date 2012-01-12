@@ -2,6 +2,7 @@ package org.cloudname.zk;
 
 import org.apache.zookeeper.WatchedEvent;
 import org.apache.zookeeper.Watcher;
+import org.cloudname.CoordinateListener;
 
 /**
  * Created by IntelliJ IDEA.
@@ -12,52 +13,36 @@ import org.apache.zookeeper.Watcher;
  */
 public class ConnectionWatcher implements Watcher {
 
-    private ZkConnectionListener listener;
-    private ZkServiceHandle serviceHandle;
+    private ZkStatusAndEndpoints statusAndEndpoints;
 
-    public ConnectionWatcher(ZkConnectionListener listener, ZkServiceHandle serviceHandle) {
-        this.listener = listener;
-        this.serviceHandle = serviceHandle;
+    public ConnectionWatcher(ZkStatusAndEndpoints statusAndEndpoints) {
+        this.statusAndEndpoints = statusAndEndpoints;
     }
 
-    class Callbackrunner extends Thread {
-        ZkConnectionListener listener;
+    class CallbackRunner extends Thread {
+        CoordinateListener listener;
         org.apache.zookeeper.WatchedEvent event;
-        ZkServiceHandle serviceHandle;
+        ZkStatusAndEndpoints statusAndEndpoints;
         ConnectionWatcher watcher;
 
-        public Callbackrunner(ZkConnectionListener listener, WatchedEvent event, ZkServiceHandle serviceHandle, ConnectionWatcher watcher) {
+        public CallbackRunner(WatchedEvent event, ZkStatusAndEndpoints statusAndEndpoints, ConnectionWatcher watcher) {
             this.event = event;
-            this.listener = listener;
-            this.serviceHandle = serviceHandle;
+            this.statusAndEndpoints = statusAndEndpoints;
             this.watcher = watcher;
         }
 
         public void run() {
+            if (listener == null) {
+                return;
+            }
             if (event.getState() == Event.KeeperState.SyncConnected ||
                     event.getType() == Event.EventType.NodeDeleted ||
                     (event.getType() == Event.EventType.None &&
                             (event.getState() == Event.KeeperState.Disconnected
                                     || event.getState() == Event.KeeperState.Expired
                                     || event.getState() == Event.KeeperState.AuthFailed))) {
-                // TODO(dybdahl, borud): Try to reconnect, if ok, ignore error.
-                ZkStatusAndEndpoints.StateError error = serviceHandle.verifyStatusAndEndpoints();
-                switch (error) {
-                    case OK:
-                        listener.connectionOk();
-                        break;
-                    case NOT_LOADING:
-                    case CORRUPT_STATE:
-                        listener.lostConnectionToZooKeeper();
-                        serviceHandle.recoverStatusAndEndpoints();
-                        break;
-                    case WRONG_STATE:
-                        if (listener.recreateCoordinateAfterTotalBlackout()) {
-
-                        }
-                        break;
-                }
-                serviceHandle.registerWatcher(watcher);
+                statusAndEndpoints.sendCoordinateEvents(statusAndEndpoints.verifyState());
+                statusAndEndpoints.registerWatcher(watcher);
             }
         }
     }
@@ -65,7 +50,7 @@ public class ConnectionWatcher implements Watcher {
     @Override public void process(WatchedEvent event) {
         // Run the callback in a new thread to avoid deadlocks. Who knows what thread is calling this method and if
         // it can be blocked or not.
-        Callbackrunner runner = new Callbackrunner(listener, event, serviceHandle, this);
+        CallbackRunner runner = new CallbackRunner(event, statusAndEndpoints, this);
         runner.start();
     }
 }
