@@ -22,7 +22,7 @@ public class ZkResolver implements Resolver {
 
     private static final Logger log = Logger.getLogger(ZkResolver.class.getName());
 
-    private ZooKeeper zk;
+    private final ZooKeeper zk;
 
     Map<String, ResolverStrategy> strategies;
 
@@ -212,8 +212,8 @@ public class ZkResolver implements Resolver {
     }
 
     @Override
-    public List<Endpoint> resolve(String addressExperssion) {
-        Parameters parameters = new Parameters(addressExperssion);
+    public List<Endpoint> resolve(String addressExpression) {
+        Parameters parameters = new Parameters(addressExpression);
                
         List<Integer> instances = new ArrayList<Integer>();
         if (parameters.getInstance() > -1) {
