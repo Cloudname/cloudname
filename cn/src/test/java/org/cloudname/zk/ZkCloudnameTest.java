@@ -75,7 +75,7 @@ public class ZkCloudnameTest {
     }
 
     /**
-     * Tests that timeout on connecting to ZooKeeper works.
+     * Tests that the time-out mechanism on connecting to ZooKeeper works.
      */
     @Test (expected = CloudnameException.CouldNotConnectToStorage.class)
     public void testTimeout() throws Exception {

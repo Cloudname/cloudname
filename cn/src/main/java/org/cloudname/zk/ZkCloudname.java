@@ -45,7 +45,7 @@ public class ZkCloudname implements Cloudname, Watcher {
 
     // Instance variables
     private ZooKeeper zk;
-    private String connectString;
+    private final String connectString;
 
     // Latches that count down when ZooKeeper is connected
     private final CountDownLatch connectedSignal = new CountDownLatch(1);
@@ -56,9 +56,9 @@ public class ZkCloudname implements Cloudname, Watcher {
     }
 
     /**
-     * Connect to ZooKeeper instance.
-     * @param waitTime timeout for establishing connection
-     * @param waitUnit imeout for establishing connection
+     * Connect to ZooKeeper instance with time-out value.
+     * @param waitTime time-out value for establishing connection.
+     * @param waitUnit time unit for time-out when establishing connection.
      * @throws org.cloudname.CloudnameException.CouldNotConnectToStorage if connection can not be established
      * @return
      */
@@ -67,8 +67,8 @@ public class ZkCloudname implements Cloudname, Watcher {
         try {
             zk = new ZooKeeper(connectString, SESSION_TIMEOUT, this);
             if (! connectedSignal.await(waitTime, waitUnit)) {
-                throw new CloudnameException.CouldNotConnectToStorage(new RuntimeException(
-                        "Connecting to ZooKeeper timed out."));
+                throw new CloudnameException.CouldNotConnectToStorage(
+                        "Connecting to ZooKeeper timed out.");
             }
             log.info("Connected to ZooKeeper " + connectString);
         } catch (IOException e) {
@@ -81,7 +81,7 @@ public class ZkCloudname implements Cloudname, Watcher {
     }
 
     /**
-     * Connect to ZooKeeper instance.
+     * Connect to ZooKeeper instance with long time-out, however, it might fail fast.
      * @return
      */
     public ZkCloudname connect() {

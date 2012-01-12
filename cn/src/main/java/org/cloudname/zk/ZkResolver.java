@@ -22,7 +22,7 @@ public class ZkResolver implements Resolver {
 
     private static final Logger log = Logger.getLogger(ZkResolver.class.getName());
 
-    private ZooKeeper zk;
+    private final ZooKeeper zk;
 
     Map<String, ResolverStrategy> strategies;
 
