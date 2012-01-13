@@ -9,6 +9,7 @@ import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.ZooDefs.Ids;
 import org.apache.zookeeper.KeeperException;
 
+import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
 
 import java.util.concurrent.CountDownLatch;
@@ -44,7 +45,7 @@ public class ZkCloudname implements Cloudname, Watcher {
 
     // Instance variables
     private ZooKeeper zk;
-    private String connectString;
+    private final String connectString;
 
     // Latches that count down when ZooKeeper is connected
     private final CountDownLatch connectedSignal = new CountDownLatch(1);
@@ -55,28 +56,39 @@ public class ZkCloudname implements Cloudname, Watcher {
     }
 
     /**
-     * Connect to ZooKeeper instance.
-     *
-     * TODO(borud): if the ZooKeeper server is not there this method
-     *   will hang forever.  It should probably time out or produce an
-     *   exception.
-     *
+     * Connect to ZooKeeper instance with time-out value.
+     * @param waitTime time-out value for establishing connection.
+     * @param waitUnit time unit for time-out when establishing connection.
+     * @throws org.cloudname.CloudnameException.CouldNotConnectToStorage if connection can not be established
+     * @return
      */
-    public ZkCloudname connect() {
+    public ZkCloudname connectWithTimeout(long waitTime, TimeUnit waitUnit) {
 
         try {
             zk = new ZooKeeper(connectString, SESSION_TIMEOUT, this);
-            connectedSignal.await();
+            if (! connectedSignal.await(waitTime, waitUnit)) {
+                throw new CloudnameException.CouldNotConnectToStorage(
+                        "Connecting to ZooKeeper timed out.");
+            }
             log.info("Connected to ZooKeeper " + connectString);
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            throw new CloudnameException.CouldNotConnectToStorage(e);
         } catch (InterruptedException e) {
-            throw new RuntimeException(e);
+            throw new CloudnameException.CouldNotConnectToStorage(e);
         }
 
         return this;
     }
 
+    /**
+     * Connect to ZooKeeper instance with long time-out, however, it might fail fast.
+     * @return
+     */
+    public ZkCloudname connect() {
+        // We wait up to 100 years.
+        return connectWithTimeout(365 * 100, TimeUnit.DAYS);
+    }
+    
     @Override
     public void process(WatchedEvent event) {
         log.fine("Got event " + event.toString());
