@@ -1,16 +1,13 @@
 package org.cloudname.zk;
 
-import org.cloudname.Coordinate;
-import org.cloudname.CloudnameException;
-import org.cloudname.ServiceHandle;
-import org.cloudname.ServiceStatus;
-import org.cloudname.ServiceState;
-import org.cloudname.Endpoint;
+import org.cloudname.*;
 
 import org.apache.zookeeper.WatchedEvent;
 import org.apache.zookeeper.Watcher;
 import org.apache.zookeeper.ZooKeeper;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.CountDownLatch;
 
 import org.junit.*;
@@ -172,14 +169,97 @@ public class ZkCloudnameTest {
         cn.claim(c);
     }
 
-    bla
-    Test :
-      registrer en callback
-        test for delete ZooKeeper
-        test for delete coordinate int ZooKeeper
-        test for corrupt data int ZooKeeper
-        test for modification in zookeeper. (stop, start, ny claim fra annen node?, eller fake status node)
-        test for zookeper død, register så riktig data, hvilken even kommer da?
+    class UnitTestCoordinateListener implements CoordinateListener {
+
+        final public List<Event> events = new ArrayList<Event>();
+
+        CountDownLatch latch;
+
+        UnitTestCoordinateListener(CountDownLatch latch) {
+            this.latch = latch;
+        }
+
+        @Override
+        public void onConfigEvent(Event event, String message) {
+            events.add(event);
+            latch.countDown();
+        }
+    }
+
+    private UnitTestCoordinateListener setUpListenerEnvironment(CountDownLatch connectedLatch) {
+        Coordinate c = Coordinate.parse("1.service.user.cell");
+        ZkCloudname cn = new ZkCloudname.Builder().setConnectString("localhost:" + zkport).build().connect();
+        cn.createCoordinate(c);
+        ServiceHandle handle = cn.claim(c);
+        UnitTestCoordinateListener listener = new UnitTestCoordinateListener(connectedLatch);
+        handle.registerCoordinateListener(listener);
+        return listener;
+    }
+
+    @Test
+    public void testCoordinateListenerInitialEvent() throws  Exception {
+        final CountDownLatch connectedLatch = new CountDownLatch(1);
+        UnitTestCoordinateListener listener = setUpListenerEnvironment(connectedLatch);
+        assertTrue(connectedLatch.await(2, TimeUnit.SECONDS));
+        assertEquals(1, listener.events.size());
+        assertEquals(CoordinateListener.Event.COORDINATE_OK, listener.events.get(0));
+    }
+
+    @Test
+    public void testCoordinateListenerConnectionDies() throws  Exception {
+
+        final CountDownLatch connectedLatch = new CountDownLatch(2);
+        UnitTestCoordinateListener listener = setUpListenerEnvironment(connectedLatch);
+        log.info("Killing zookeeper");
+        ezk.shutdown();
+        assertTrue(connectedLatch.await(20, TimeUnit.SECONDS));
+        assertEquals(2, listener.events.size());
+        assertEquals(CoordinateListener.Event.COORDINATE_OK, listener.events.get(0));
+        assertEquals(CoordinateListener.Event.LOST_CONNECTION_TO_STORAGE, listener.events.get(1));
+    }
+
+    @Test
+    public void testCoordinateListenerCoordinateLost() throws  Exception {
+        final CountDownLatch connectedLatch = new CountDownLatch(2);
+        UnitTestCoordinateListener listener = setUpListenerEnvironment(connectedLatch);
+        log.info("Deleting coordinate");
+        zk.delete("/cn/cell/user/service/1/status", -1);
+        assertTrue(connectedLatch.await(20, TimeUnit.SECONDS));
+        assertEquals(2, listener.events.size());
+        assertEquals(CoordinateListener.Event.COORDINATE_OK, listener.events.get(0));
+        assertEquals(CoordinateListener.Event.COORDINATE_VANISHED, listener.events.get(1));
+    }
+
+    @Test
+    public void testCoordinateListenerCoordinateCorrupted() throws  Exception {
+        final CountDownLatch connectedLatch = new CountDownLatch(2);
+        UnitTestCoordinateListener listener = setUpListenerEnvironment(connectedLatch);
+        log.info("Corrupting coordinate.");
+        String source = "sdfgsdfgsfgdsdfgsdfgsdfg";
+        byte[] byteArray = source.getBytes("UTF-16LE");
+
+        zk.setData("/cn/cell/user/service/1/status", byteArray, -1);
+        assertTrue(connectedLatch.await(20, TimeUnit.SECONDS));
+        assertEquals(2, listener.events.size());
+        assertEquals(CoordinateListener.Event.COORDINATE_OK, listener.events.get(0));
+        assertEquals(CoordinateListener.Event.COORDINATE_CORRUPTED, listener.events.get(1));
+    }
+
+    @Test
+    public void testCoordinateListenerCoordinateOutOfSync() throws  Exception {
+        final CountDownLatch connectedLatch = new CountDownLatch(2);
+        UnitTestCoordinateListener listener = setUpListenerEnvironment(connectedLatch);
+
+        log.info("Writing different coordinate.");
+        String source = "\"{\\\"state\\\":\\\"STARTING\\\",\\\"message\\\":\\\"Lost hamster.\\\"}\" {}";
+        byte[] byteArray = source.getBytes(Util.CHARSET_NAME);
+
+        zk.setData("/cn/cell/user/service/1/status", byteArray, -1);
+        assertTrue(connectedLatch.await(20, TimeUnit.SECONDS));
+        assertEquals(2, listener.events.size());
+        assertEquals(CoordinateListener.Event.COORDINATE_OK, listener.events.get(0));
+        assertEquals(CoordinateListener.Event.COORDINATE_OUT_OF_SYNC, listener.events.get(1));
+    }
     
     private boolean pathExists(String path) throws Exception {
         return (null != zk.exists(path, false));

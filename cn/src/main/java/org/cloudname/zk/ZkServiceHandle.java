@@ -78,12 +78,4 @@ public class ZkServiceHandle implements ServiceHandle {
     public String toString() {
         return "StatusEndpoint instance: "+ statusAndEndpoints.toString();
     }
-
-    public void recoverStatusAndEndpoints() {
-        statusAndEndpoints.recover();
-    }
-    
-    public void registerWatcher(Watcher watcher) {
-        statusAndEndpoints.registerWatcher(watcher);
-    }
 }

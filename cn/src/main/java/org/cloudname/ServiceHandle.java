@@ -60,6 +60,8 @@ public interface ServiceHandle {
     /**
      * After registering a new listener, a new event is triggered which include current state, even without change
      * of state.
+     * Don't call the cloudname library, do any heavy lifting, or do any IO operation from this callback thread.
+     * That might deadlock as there is no guarantee what kind of thread that runs the callback.
      * @param listener
      */
     public void registerCoordinateListener(CoordinateListener listener);

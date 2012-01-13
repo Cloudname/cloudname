@@ -24,18 +24,16 @@ import java.util.logging.Logger;
  *
  * @author dybdahl
  */
-public class ZkStatusAndEndpoints {
+public class ZkStatusAndEndpoints implements Watcher {
 
     public void registerCoordinateListener(CoordinateListener coordinateListener) {
-        synchronized (this) {
-            coordinateListenerList.add(coordinateListener);
-        }
-        sendCoordinateEvents(verifyState());
+        coordinateListenerList.add(coordinateListener);
+        sendCoordinateEvents(verifyState(), "Initial message triggered by registerCoordinateListener().");
     }
     
-    public synchronized void sendCoordinateEvents(CoordinateListener.Event event) {
+    public void sendCoordinateEvents(CoordinateListener.Event event, String message) {
         for (CoordinateListener listener : coordinateListenerList) {
-            listener.onConfigEvent(event);
+            listener.onConfigEvent(event, message);
         }
     }
 
@@ -63,8 +61,8 @@ public class ZkStatusAndEndpoints {
     private final ObjectMapper objectMapper;
     private ServiceStatus serviceStatus;
     private final Map<String, Endpoint> endpointsByName;
-    // Make it thread safe
-    private List<CoordinateListener> coordinateListenerList = new ArrayList<CoordinateListener>();
+    private List<CoordinateListener> coordinateListenerList =
+                Collections.synchronizedList(new ArrayList<CoordinateListener>());
 
     /**
      * We keep this private, the correct way to build an instance is to use the Builder.
@@ -78,6 +76,39 @@ public class ZkStatusAndEndpoints {
         this.state = builder.getState();
         this.endpointsByName = builder.getEndpointsByName();
         this.serviceStatus = builder.getServiceStatus();
+    }
+
+    @Override public void process(WatchedEvent event) {
+        log.info("Got an event from ZooKeeper " + event.toString());
+
+        if (event.getType() == Event.EventType.None &&
+                        (event.getState() == Event.KeeperState.Disconnected
+                                || event.getState() == Event.KeeperState.Expired
+                                || event.getState() == Event.KeeperState.AuthFailed)) {
+            sendCoordinateEvents(CoordinateListener.Event.LOST_CONNECTION_TO_STORAGE, event.toString());
+            return;
+        }
+        
+        if (event.getType() == Event.EventType.NodeDeleted) {
+            sendCoordinateEvents(CoordinateListener.Event.COORDINATE_VANISHED, event.toString());
+            return;
+        }
+        
+        if (event.getState() == Event.KeeperState.SyncConnected ||
+                event.getType() == Event.EventType.NodeDeleted ||
+                (event.getType() == Event.EventType.None &&
+                        (event.getState() == Event.KeeperState.Disconnected
+                                || event.getState() == Event.KeeperState.Expired
+                                || event.getState() == Event.KeeperState.AuthFailed))) {
+            log.info("Signing up for more events.");
+            registerWatcher();
+            log.info("Checking state of coordinate and sending event: " + path);
+            sendCoordinateEvents(verifyState(), event.toString());
+        } else {
+            log.info("Signing up for more events.");
+            registerWatcher();
+            log.info("Ignored event from ZooKeeper.");
+        }
     }
 
     /**
@@ -230,21 +261,14 @@ public class ZkStatusAndEndpoints {
      * @param endpointsByName This map is populated with the endpoints.
      * @return the ServiceStatus in the data.                                             ´
      */
-    private static ServiceStatus deserialize(String data, ObjectMapper objectMapper, Map<String, Endpoint> endpointsByName) {
+    public static ServiceStatus deserialize(String data, ObjectMapper objectMapper, Map<String, Endpoint> endpointsByName) throws IOException {
 
         JsonFactory jsonFactory = new JsonFactory();
-        try {
-
-            JsonParser jp = jsonFactory.createJsonParser(data);
-            String statusString = objectMapper.readValue(jp, new TypeReference <String>() {});
-            endpointsByName.clear();
-            endpointsByName.putAll((Map<String, Endpoint>)objectMapper.readValue(jp, new TypeReference <Map<String, Endpoint>>() {}));
-            return ServiceStatus.fromJson(statusString);
-
-        } catch (IOException e) {
-            throw new CloudnameException(e);
-
-        }
+        JsonParser jp = jsonFactory.createJsonParser(data);
+        String statusString = objectMapper.readValue(jp, new TypeReference <String>() {});
+        endpointsByName.clear();
+        endpointsByName.putAll((Map<String, Endpoint>)objectMapper.readValue(jp, new TypeReference <Map<String, Endpoint>>() {}));
+        return ServiceStatus.fromJson(statusString);
     }
 
     /**
@@ -278,8 +302,9 @@ public class ZkStatusAndEndpoints {
 
     
     public CoordinateListener.Event verifyState() {
+
         Stat stat = new Stat();
-        byte[] loadedState = new byte[0];
+        byte[] loadedState;
         try {
             loadedState = zk.getData(path, false /*watcher*/, stat);
         } catch (KeeperException e) {
@@ -287,27 +312,37 @@ public class ZkStatusAndEndpoints {
         } catch (InterruptedException e) {
            return CoordinateListener.Event.LOST_CONNECTION_TO_STORAGE;
         }
-        byte[] currentState = new byte[0];
+
+        if (zk.getSessionId() != stat.getEphemeralOwner()) {
+            return CoordinateListener.Event.NOT_OWNER;
+        }
+        
+        Map<String, Endpoint> endpointsByNameLoaded = new HashMap<String, Endpoint>();
+        try {
+             deserialize(new String(loadedState, Util.CHARSET_NAME), new ObjectMapper(), endpointsByNameLoaded);
+        } catch (UnsupportedEncodingException e) {
+            return CoordinateListener.Event.COORDINATE_CORRUPTED;
+        } catch (IOException e) {
+            return CoordinateListener.Event.COORDINATE_CORRUPTED;
+        }
+
+
+        byte[] currentState;
         try {
             currentState = serialize(serviceStatus, endpointsByName).getBytes(Util.CHARSET_NAME);
         } catch (UnsupportedEncodingException e) {
             return CoordinateListener.Event.COORDINATE_CORRUPTED;
         }
         if (Arrays.equals(loadedState, currentState)) {
-            return CoordinateListener.Event.COORDINATE_CONFIRMED;
+            return CoordinateListener.Event.COORDINATE_OK;
         } else {
-            return CoordinateListener.Event.LOST_OWNERSHIP;
+            return CoordinateListener.Event.COORDINATE_OUT_OF_SYNC;
         }
     }
     
-    public void recover() {
-        writeStatusEndpoint();
-    }
-    
-    
-    public void registerWatcher(Watcher watcher) {
+    public void registerWatcher() {
         try {
-            zk.exists(path, watcher);
+            zk.exists(path, this);
         } catch (KeeperException e) {
             throw new CloudnameException(e);
         } catch (InterruptedException e) {
@@ -332,11 +367,11 @@ public class ZkStatusAndEndpoints {
 
         } catch (KeeperException e) {
             throw new CloudnameException(e);
-
         } catch (InterruptedException e) {
             throw new CloudnameException(e);
-
         } catch (UnsupportedEncodingException e) {
+            throw new CloudnameException(e);
+        } catch (IOException e) {
             throw new CloudnameException(e);
         }
         state = State.LOADED;
@@ -380,7 +415,7 @@ public class ZkStatusAndEndpoints {
             // TODO(borud, dybdahl): Consider if we need to re-read the content of the zookeeper. Can it
             // possible change between create and exists? Can we use version number to detect this or is that
             // depending on implementation details of ZooKeeper?
-            Stat stat = zk.exists(path, new ConnectionWatcher(this));
+            Stat stat = zk.exists(path, this);
             lastStatusVersion = stat.getVersion();
         } catch (KeeperException e) {
             throw new CloudnameException(e);

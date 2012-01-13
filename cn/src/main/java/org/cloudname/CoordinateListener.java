@@ -1,19 +1,44 @@
 package org.cloudname;
 
 /**
- * Created by IntelliJ IDEA.
- * User: dybdahl
- * Date: 11.01.12
- * Time: 08:47
- * To change this template use File | Settings | File Templates.
+ * Interface for listening to status on a claimed coordinate.
+ * @author dybdahl
  */
 public interface CoordinateListener {
+    /**
+     * Events that can be triggered when monitoring a coordinate.
+     */
     public enum Event {
-        LOST_OWNERSHIP,
+
+        /**
+         * Everything is fine.
+         */
+        COORDINATE_OK,
+
+        /**
+         * This is the last event. You need to reconnect.
+         */
         LOST_CONNECTION_TO_STORAGE,
-        COORDINATE_CONFIRMED,
+
+        /**
+         * This is the last event. You need to claim again.
+         */
         COORDINATE_VANISHED,
-        COORDINATE_CORRUPTED
+
+        /**
+         * Problems with parsing the data in ZooKeeper.
+         */
+        COORDINATE_CORRUPTED,
+
+        /**
+         * The data in the storage and memory is out of sync, system is corrupted.
+         */
+        COORDINATE_OUT_OF_SYNC,
+
+        /**
+         * No longer the owner of the coordinate.
+         */
+        NOT_OWNER
     }
-    public void onConfigEvent(Event event);
+    public void onConfigEvent(Event event, String message);
 }
