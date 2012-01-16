@@ -1,6 +1,10 @@
 package org.cloudname.codelabs;
 
+import org.cloudname.flags.Flag;
+import org.cloudname.flags.Flags;
 import org.cloudname.testtools.zookeeper.EmbeddedZooKeeper;
+import org.cloudname.zk.ZkTool;
+
 import java.io.File;
 
 /**
@@ -9,7 +13,8 @@ import java.io.File;
  */
 public class SimpleZooKeeper {
     private static EmbeddedZooKeeper ezk;
-    private static int zkport = 5454;
+    @Flag(name="zkport", description="The port to use for serving zookeeper..")
+    public static int zkport = 5454;
 
     /**
      * Delete directory with content.
@@ -45,22 +50,25 @@ public class SimpleZooKeeper {
     }
 
     public static void main(String[] args) throws Exception {
-        if (args.length > 1) {
-            System.err.println("Max one argument, and if specified, the argument is port number.");
-        } else {
-            File rootDir =  createTempDir();
-            if (args.length == 1) {
-                zkport = Integer.parseInt(args[0]);
-            }
-            ezk = new EmbeddedZooKeeper(rootDir, zkport);
-            try {
-                ezk.init();
-            } catch (Exception e) {
-                e.printStackTrace();
-                return;
-            }
-            System.out.println("SimpleZooKeeper running on port " + zkport);
-            Thread.sleep(Long.MAX_VALUE);
+        // Parse the flags.
+        Flags flags = new Flags()
+                .loadOpts(SimpleZooKeeper.class)
+                .parse(args);
+
+        // Check if we wish to print out help text
+        if (flags.helpFlagged()) {
+            flags.printHelp(System.out);
+            return;
         }
+        File rootDir =  createTempDir();
+        ezk = new EmbeddedZooKeeper(rootDir, zkport);
+        try {
+            ezk.init();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return;
+        }
+        System.out.println("SimpleZooKeeper running on port " + zkport);
+        Thread.sleep(Long.MAX_VALUE);
     }
 }

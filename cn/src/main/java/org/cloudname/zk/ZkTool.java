@@ -19,24 +19,20 @@ import java.util.regex.Pattern;
  * @author dybdahl
  */
 public class ZkTool {
-    @Flag(name="zooKeeperFlag", description="A list of host:port for connecting to ZooKeeper.", required=false)
+    @Flag(name="zooKeeper", description="A list of host:port for connecting to ZooKeeper.")
     public static String zooKeeperFlag = null;
 
-    @Flag(name="coordinateFlag", description="The coordinateFlag to work on.", required=false)
+    @Flag(name="coordinate", description="The coordinate to work on.")
     public static String coordinateFlag = null;
 
-    @Flag(name="operationFlag",
-          description="The operationFlag to do on coordinateFlag (create, delete, status, list).", required=true)
-    public static String operationFlag = null;
+    @Flag(name="operation", options = Operation.class,
+          description="The operationFlag to do on coordinate.", required=true)
+    public static Operation operationFlag = null;
 
     /**
      *   The possible operations to do on a coordinate.
      */  
-    enum Operation {
-        /**
-         * Invalid operation specified by the user.
-         */
-        NOT_VALID,
+    public enum Operation {
         /**
          * Create a new coordinate.
          */
@@ -53,21 +49,6 @@ public class ZkTool {
          * Print the coordinates in zookeeper
          */
         LIST;
-
-        /**
-         * Converts a string with an text operation to the enum Operation.
-         * @param operationString
-         * @return Operation if there is a matching operation, else NOT_VALID.
-         */
-        public static Operation getOperation(String operationString) {
-            operationString = operationString.toUpperCase();
-            for (Operation operation : Operation.values()) {
-                if (operation.name().equals(operationString)) {
-                    return operation;
-                }
-            }
-            return Operation.NOT_VALID;
-        }
     }
 
     /**
@@ -91,12 +72,6 @@ public class ZkTool {
             flags.printHelp(System.out);
             return;
         }
-
-        Operation operation = Operation.getOperation(operationFlag);
-        if (operation == Operation.NOT_VALID) {
-            System.err.println("Unknown operation: " + operation);
-            return;
-        }
         
         ZkCloudname.Builder builder = new ZkCloudname.Builder();
         if (zooKeeperFlag == null) {
@@ -111,7 +86,7 @@ public class ZkTool {
 
         Resolver resolver = cloudname.getResolver();
 
-        switch (operation) {
+        switch (operationFlag) {
             case CREATE:
                 cloudname.createCoordinate(Coordinate.parse(coordinateFlag));
                 System.err.println("Created coordinate.");
