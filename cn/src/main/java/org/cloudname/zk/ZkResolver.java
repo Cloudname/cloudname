@@ -256,4 +256,3 @@ public class ZkResolver implements Resolver {
         return paths;
     }
 }
-

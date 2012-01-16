@@ -16,17 +16,17 @@ public interface CoordinateListener {
         COORDINATE_OK,
 
         /**
-         * This is the last event. You need to reconnect.
+         * Connection lost to storage, no more events will occur.
          */
         LOST_CONNECTION_TO_STORAGE,
 
         /**
-         * This is the last event. You need to claim again.
+         * Coordinate ownership is list, nobody owns it. No more events will occur.
          */
         COORDINATE_VANISHED,
 
         /**
-         * Problems with parsing the data in ZooKeeper.
+         * Problems with parsing the data in ZooKeeper for this coordinate.
          */
         COORDINATE_CORRUPTED,
 
@@ -40,5 +40,11 @@ public interface CoordinateListener {
          */
         NOT_OWNER
     }
+
+    /**
+     * Implement this function to receive the events.
+     * @param event
+     * @param message some message associated with the event.
+     */
     public void onConfigEvent(Event event, String message);
 }

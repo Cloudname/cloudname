@@ -147,8 +147,7 @@ public class ZkCloudname implements Cloudname, Watcher {
         String statusPath = ZkCoordinatePath.getStatusPath(coordinate);
         log.info("Claiming " + coordinate.asString() + " (" + statusPath + ")");
 
-        ZkStatusAndEndpoints statusAndEndpoints = new ZkStatusAndEndpoints.Builder(
-                zk, statusPath).build().claim();
+        ZkStatusAndEndpoints statusAndEndpoints = new ZkStatusAndEndpoints.Builder(zk, statusPath).build().claim();
         // If we have come thus far we have succeeded in creating the
         // CN_STATUS_NAME node within the service coordinate directory
         // in ZooKeeper and we can give the client a ServiceHandle.
@@ -164,8 +163,7 @@ public class ZkCloudname implements Cloudname, Watcher {
     @Override
     public ServiceStatus getStatus(Coordinate coordinate) {
         String statusPath = ZkCoordinatePath.getStatusPath(coordinate);
-        ZkStatusAndEndpoints statusAndEndpoints = new ZkStatusAndEndpoints.Builder(
-                zk, statusPath).build().load();
+        ZkStatusAndEndpoints statusAndEndpoints = new ZkStatusAndEndpoints.Builder(zk, statusPath).build().load();
         return statusAndEndpoints.getServiceStatus();
     }
 
@@ -186,7 +184,6 @@ public class ZkCloudname implements Cloudname, Watcher {
 
     }
 
-
     /**
      *  This class builds parameters for ZkCloudname.
      */
@@ -206,8 +203,6 @@ public class ZkCloudname implements Cloudname, Watcher {
             this.connectString = "z1:2181,z2:2181,z3:2181";
             return this;
         }
-
-
 
         public String getConnectString() {
             return connectString;

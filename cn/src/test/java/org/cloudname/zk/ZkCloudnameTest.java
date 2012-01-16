@@ -46,8 +46,7 @@ public class ZkCloudnameTest {
         File rootDir = temp.newFolder("zk-test");
         zkport = Net.getFreePort();
 
-        log.info("EmbeddedZooKeeper rootDir=" + rootDir.getCanonicalPath()
-                + ", port=" + zkport
+        log.info("EmbeddedZooKeeper rootDir=" + rootDir.getCanonicalPath() + ", port=" + zkport
         );
 
         // Set up and initialize the embedded ZooKeeper
@@ -169,11 +168,14 @@ public class ZkCloudnameTest {
         cn.claim(c);
     }
 
+    /**
+     * A coordinate listener that stores events and calls a latch.
+     */
     class UnitTestCoordinateListener implements CoordinateListener {
 
         final public List<Event> events = new ArrayList<Event>();
 
-        CountDownLatch latch;
+        final private CountDownLatch latch;
 
         UnitTestCoordinateListener(CountDownLatch latch) {
             this.latch = latch;
@@ -186,6 +188,11 @@ public class ZkCloudnameTest {
         }
     }
 
+    /**
+     * Sets up a claimed coordinate and a connection listener.
+     * @param connectedLatch
+     * @return
+     */
     private UnitTestCoordinateListener setUpListenerEnvironment(CountDownLatch connectedLatch) {
         Coordinate c = Coordinate.parse("1.service.user.cell");
         ZkCloudname cn = new ZkCloudname.Builder().setConnectString("localhost:" + zkport).build().connect();
@@ -235,10 +242,10 @@ public class ZkCloudnameTest {
         final CountDownLatch connectedLatch = new CountDownLatch(2);
         UnitTestCoordinateListener listener = setUpListenerEnvironment(connectedLatch);
         log.info("Corrupting coordinate.");
-        String source = "sdfgsdfgsfgdsdfgsdfgsdfg";
-        byte[] byteArray = source.getBytes("UTF-16LE");
+        String garbage = "sdfgsdfgsfgdsdfgsdfgsdfg";
+        byte[] garbageBytes = garbage.getBytes("UTF-16LE");
 
-        zk.setData("/cn/cell/user/service/1/status", byteArray, -1);
+        zk.setData("/cn/cell/user/service/1/status", garbageBytes, -1);
         assertTrue(connectedLatch.await(20, TimeUnit.SECONDS));
         assertEquals(2, listener.events.size());
         assertEquals(CoordinateListener.Event.COORDINATE_OK, listener.events.get(0));
