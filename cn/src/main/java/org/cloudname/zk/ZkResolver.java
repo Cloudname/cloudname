@@ -22,17 +22,17 @@ public class ZkResolver implements Resolver {
 
     private static final Logger log = Logger.getLogger(ZkResolver.class.getName());
 
-    private final ZooKeeper zk;
+    private final ZkCloudname.ZooKeeperKeeper zk;
 
     Map<String, ResolverStrategy> strategies;
 
     public static class Builder {
 
         Map<String, ResolverStrategy> strategies = new HashMap<String, ResolverStrategy>();
-        private ZooKeeper zk;
+        private ZkCloudname.ZooKeeperKeeper zk;
         
-        public Builder(ZooKeeper zk) {
-            this.zk = zk;
+        public Builder(ZkCloudname.ZooKeeperKeeper keeper) {
+            this.zk = keeper;
         }
 
         public Builder addStrategy(ResolverStrategy strategy) {
@@ -44,7 +44,7 @@ public class ZkResolver implements Resolver {
             return strategies;
         }
         
-        public ZooKeeper getZooKeeper() {
+        public ZkCloudname.ZooKeeperKeeper getZooKeeperKeeper() {
             return zk;
         }
         
@@ -207,7 +207,7 @@ public class ZkResolver implements Resolver {
      * @param builder
      */
     private ZkResolver(Builder builder) {
-        this.zk = builder.getZooKeeper();
+        this.zk = builder.getZooKeeperKeeper();
         this.strategies = builder.getStrategies();
     }
 
@@ -230,7 +230,10 @@ public class ZkResolver implements Resolver {
             if (parameters.getEndpointName() == "") {
                 statusAndEndpoints.returnAllEndpoints(endpoints);
             } else {
-                endpoints.add(statusAndEndpoints.getEndpoint(parameters.getEndpointName()));
+                Endpoint e =  statusAndEndpoints.getEndpoint(parameters.getEndpointName());
+                if (e != null) {
+                    endpoints.add(e);
+                }
             }
         }
         if (parameters.getStrategy() == "") {
@@ -244,7 +247,7 @@ public class ZkResolver implements Resolver {
     private List<Integer> getInstances(String path) {
         List<Integer> paths = new ArrayList<Integer>();
         try {
-            List<String> children = zk.getChildren(path, false /* watcher */);
+            List<String> children = zk.getZooKeeper().getChildren(path, false /* watcher */);
             for (String child : children) {
                 paths.add(Integer.parseInt(child));
             }

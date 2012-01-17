@@ -55,6 +55,42 @@ public class ZkCloudname implements Cloudname, Watcher {
         connectString = builder.getConnectString();
     }
 
+    public class ZooKeeperKeeper {
+        private ZooKeeper localZooKeeper;
+        
+        public ZooKeeperKeeper(ZooKeeper zooKeeper) {
+            this.localZooKeeper = zooKeeper;
+        }
+
+        public synchronized ZooKeeper getZooKeeper() {
+            return localZooKeeper;
+        }
+
+        // TODO To coursed grain lock
+        public synchronized boolean reconnect() {
+
+            if (localZooKeeper.getState() == ZooKeeper.States.CONNECTED) {
+                log.info("Asked to reconnect, don't bother, I am already connected.");
+                return true;
+            } else {
+                // Grab the latest zookeeper instance.
+                localZooKeeper = zk;
+            }
+            if (localZooKeeper.getState() == ZooKeeper.States.CONNECTED) {
+                // Already recreated connection by some other process, just using that.
+                return true;
+            }
+            connect();
+            localZooKeeper = zk;
+            if (zk.getState() == ZooKeeper.States.CONNECTED) {
+                log.info("Managed to reconnect to ZooKeeper.");
+                return true;
+            }
+            log.info("Could not reconnect");
+            return false;
+        }
+    }
+    
     /**
      * Connect to ZooKeeper instance with time-out value.
      * @param waitTime time-out value for establishing connection.
@@ -88,7 +124,38 @@ public class ZkCloudname implements Cloudname, Watcher {
         // We wait up to 100 years.
         return connectWithTimeout(365 * 100, TimeUnit.DAYS);
     }
-    
+
+    /**
+     * When calling this function, the zookeeper state should be either connected or closed.
+     * @return
+     */
+    public synchronized boolean resolveConnectionProblems() {
+        switch (zk.getState()) {
+
+            case CONNECTING:
+            case ASSOCIATING:
+            case AUTH_FAILED:
+                throw new RuntimeException("ZooKeeper in wrong state, giving up." + zk.toString());
+            case CONNECTED:
+                return true;
+            case CLOSED:
+                break;
+            default:
+                throw new RuntimeException("ZooKeeper in unknown unexpected state, giving up." + zk.toString());
+        }
+        // TODO(borud, dybdahl): Make this timeout configurable.
+        try {
+            connectWithTimeout(10, TimeUnit.MINUTES);
+        } catch (CloudnameException.CouldNotConnectToStorage e)  {
+            return false;
+        }
+        return true;
+    }
+
+    public ZooKeeper getZooKeeper() {
+        return zk;
+    }
+
     @Override
     public void process(WatchedEvent event) {
         log.fine("Got event " + event.toString());
@@ -147,23 +214,23 @@ public class ZkCloudname implements Cloudname, Watcher {
         String statusPath = ZkCoordinatePath.getStatusPath(coordinate);
         log.info("Claiming " + coordinate.asString() + " (" + statusPath + ")");
 
-        ZkStatusAndEndpoints statusAndEndpoints = new ZkStatusAndEndpoints.Builder(zk, statusPath).build().claim();
+        ZkStatusAndEndpoints statusAndEndpoints = new ZkStatusAndEndpoints.Builder(new ZooKeeperKeeper(zk), statusPath).build().claim();
         // If we have come thus far we have succeeded in creating the
         // CN_STATUS_NAME node within the service coordinate directory
         // in ZooKeeper and we can give the client a ServiceHandle.
 
         return new ZkServiceHandle(coordinate, statusAndEndpoints);
     }
-
+    
     @Override
     public Resolver getResolver() {
-        return new ZkResolver.Builder(zk).addStrategy(new StrategyAll()).addStrategy(new StrategyAny()).build();
+        return new ZkResolver.Builder(new ZooKeeperKeeper(zk)).addStrategy(new StrategyAll()).addStrategy(new StrategyAny()).build();
     }
 
     @Override
     public ServiceStatus getStatus(Coordinate coordinate) {
         String statusPath = ZkCoordinatePath.getStatusPath(coordinate);
-        ZkStatusAndEndpoints statusAndEndpoints = new ZkStatusAndEndpoints.Builder(zk, statusPath).build().load();
+        ZkStatusAndEndpoints statusAndEndpoints = new ZkStatusAndEndpoints.Builder(new ZooKeeperKeeper(zk), statusPath).build().load();
         return statusAndEndpoints.getServiceStatus();
     }
 

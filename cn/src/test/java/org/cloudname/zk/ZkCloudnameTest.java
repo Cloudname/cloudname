@@ -114,12 +114,14 @@ public class ZkCloudnameTest {
 
         // Remove one of them
         handle.removeEndpoint("bar");
+                                   
+        List<Endpoint> endpointList = cn.getResolver().resolve("bar.1.service.user.cell");
+        assertEquals(0, endpointList.size());
 
-        ZkStatusAndEndpoints statusAndEndpoints = new ZkStatusAndEndpoints.Builder(
-                zk, "/cn/cell/user/service/1/status").build().load();
-        assertEquals(null, statusAndEndpoints.getEndpoint("bar"));
+        endpointList = cn.getResolver().resolve("foo.1.service.user.cell");
+        assertEquals(1, endpointList.size());
+        Endpoint endpointFoo = endpointList.get(0);
 
-        Endpoint endpointFoo = statusAndEndpoints.getEndpoint("foo");
         String fooData = endpointFoo.getName();
         assertEquals("foo", fooData);
         assertEquals("foo", endpointFoo.getName());
@@ -177,14 +179,17 @@ public class ZkCloudnameTest {
 
         final private CountDownLatch latch;
 
+        public Action returnAction = Action.DO_NOTHING;
+        
         UnitTestCoordinateListener(CountDownLatch latch) {
             this.latch = latch;
         }
 
         @Override
-        public void onConfigEvent(Event event, String message) {
+        public Action onConfigEvent(Event event, String message) {
             events.add(event);
             latch.countDown();
+            return returnAction;
         }
     }
 
@@ -267,7 +272,24 @@ public class ZkCloudnameTest {
         assertEquals(CoordinateListener.Event.COORDINATE_OK, listener.events.get(0));
         assertEquals(CoordinateListener.Event.COORDINATE_OUT_OF_SYNC, listener.events.get(1));
     }
-    
+
+    @Test
+    public void testCoordinateListenerConnectionDiesReconnect() throws  Exception {
+
+        final CountDownLatch connectedLatch = new CountDownLatch(3);
+        UnitTestCoordinateListener listener = setUpListenerEnvironment(connectedLatch);
+        listener.returnAction = CoordinateListener.Action.DIE_IF_PANIC_AUTO_RECOVERY_FAILS;
+        log.info("Killing zookeeper");
+        ezk.shutdown();
+        Thread.sleep(30000);
+        ezk.init();
+        assertTrue(connectedLatch.await(20, TimeUnit.SECONDS));
+        assertEquals(3, listener.events.size());
+        assertEquals(CoordinateListener.Event.COORDINATE_OK, listener.events.get(0));
+        assertEquals(CoordinateListener.Event.LOST_CONNECTION_TO_STORAGE, listener.events.get(1));
+        assertEquals(CoordinateListener.Event.COORDINATE_OK, listener.events.get(2));
+    }
+
     private boolean pathExists(String path) throws Exception {
         return (null != zk.exists(path, false));
     }

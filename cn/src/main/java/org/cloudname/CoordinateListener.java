@@ -42,9 +42,32 @@ public interface CoordinateListener {
     }
 
     /**
-     * Implement this function to receive the events.
+     * The action that can be taken in case of events. Panic auto recovery is more desperate than normal auto recovery.
+     * E.g. in ZooKeeper implementation it will try to create the coordinate if it does not exist.
+     */
+    public enum Action {
+        /**
+         * Just continue.
+         */
+        DO_NOTHING,
+        /**
+         * System.exit is called.
+         */
+        DIE_NOW,
+        /**
+         * Try auto recovery, if it fails, die.
+         */
+        DIE_IF_NORMAL_AUTO_RECOVERY_FAILS,
+        /**
+         * Try panic auto recovery, if it fails, die.
+         */
+        DIE_IF_PANIC_AUTO_RECOVERY_FAILS,
+    }
+
+    /**
+     * Implement this function to receive the events and trigger action.
      * @param event
      * @param message some message associated with the event.
      */
-    public void onConfigEvent(Event event, String message);
+    public Action onConfigEvent(Event event, String message);
 }

@@ -35,7 +35,7 @@ public class ZkStatusAndEndpoints implements Watcher {
      */
     public static class Builder {
         private ZkStatusAndEndpoints.State state = ZkStatusAndEndpoints.State.EMPTY;
-        private ZooKeeper zk = null;
+        private ZkCloudname.ZooKeeperKeeper zk = null;
         private String path = null;
         private int lastStatusVersion = -1000;
         private ServiceStatus serviceStatus = new ServiceStatus(ServiceState.UNASSIGNED,
@@ -48,16 +48,12 @@ public class ZkStatusAndEndpoints implements Watcher {
          * @param zk The ZooKeeper instance to use.
          * @param path The serviceStatus/endpoints path of the coordinate to claim or load.
          */
-        Builder(ZooKeeper zk, String path) {
+        Builder(ZkCloudname.ZooKeeperKeeper zk, String path) {
             this.zk = zk;
             this.path = path;
         }
 
-        /**
-         * Returns the ZooKeeper instance.
-         * @return ZooKeeper.
-         */
-        public ZooKeeper getZooKeeper() {
+        ZkCloudname.ZooKeeperKeeper getZooKeeperKeeper() {
             return zk;
         }
 
@@ -139,7 +135,7 @@ public class ZkStatusAndEndpoints implements Watcher {
     private static final Logger log = Logger.getLogger(ZkStatusAndEndpoints.class.getName());
 
     private State state;
-    private final ZooKeeper zk;
+    private final ZkCloudname.ZooKeeperKeeper zk;
     private final String path;
     private int lastStatusVersion;
     private final ObjectMapper objectMapper;
@@ -219,7 +215,10 @@ public class ZkStatusAndEndpoints implements Watcher {
                 log.info("endpoint does not exist: " +  name);
                 throw new CloudnameException.EndpointDoesNotExist();
             }
-            endpointsByName.remove(name);
+            //endpointsByName.remove(endpointsByName.get(name));
+            if (null == endpointsByName.remove(name)) {
+                throw new CloudnameException.EndpointDoesNotExist();
+            }
         }
         writeStatusEndpoint();
     }
@@ -232,18 +231,14 @@ public class ZkStatusAndEndpoints implements Watcher {
         if (state != State.CLAIMED) {
             throw new IllegalStateException("This instance did not own the claim to this coordinate.");
         }
-        // The nodes that are removed here are ephemeral nodes and
-        // we could just let zk remove them, but on the off chance
-        // that a single process would try to claim more than one
-        // coordinate we provide more explicit cleanup.
         try {
-            zk.delete(path, lastStatusVersion);
-
-        } catch (KeeperException e) {
-            throw new CloudnameException(e);
+            zk.getZooKeeper().delete(path, lastStatusVersion);
         } catch (InterruptedException e) {
-            throw new CloudnameException(e);
+            e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
+        } catch (KeeperException e) {
+            e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
         }
+
         serviceStatus = new ServiceStatus(ServiceState.UNASSIGNED,
                 "No service state has been assigned");
         state = State.LOADED;
@@ -315,8 +310,41 @@ public class ZkStatusAndEndpoints implements Watcher {
      * @param message
      */
     private void sendCoordinateEvents(CoordinateListener.Event event, String message) {
+        boolean dieNow = false;
+        boolean softRecover = false;
+        boolean hardRecovery = false;
         for (CoordinateListener listener : coordinateListenerList) {
-            listener.onConfigEvent(event, message);
+            switch (listener.onConfigEvent(event, message)) {
+                case DO_NOTHING:
+                    continue;
+                case DIE_NOW:
+                    dieNow = true;
+                    continue;
+                case DIE_IF_NORMAL_AUTO_RECOVERY_FAILS:
+                    softRecover = true;
+                    break;
+                case DIE_IF_PANIC_AUTO_RECOVERY_FAILS:
+                    hardRecovery = true;
+                    break;
+            }
+        }
+        
+        // Calculate die time
+        
+        if (dieNow) {
+            System.exit(1);
+        }
+        if (hardRecovery || softRecover) {
+            if (!zk.reconnect()) {
+                log.log(Level.SEVERE, "Did not manage to reconnect to ZooKeeper, exiting process.");
+                System.exit(0);
+            }
+        }
+        if (hardRecovery) {
+            // recreate coordinate if needed
+        }
+        if (hardRecovery || softRecover) {
+            // try write coordinate, claim coordinate
         }
     }
 
@@ -330,7 +358,7 @@ public class ZkStatusAndEndpoints implements Watcher {
         }
         Stat stat = new Stat();
         try {
-            byte[] data = zk.getData(path, false /*watcher*/, stat);
+            byte[] data = zk.getZooKeeper().getData(path, false /*watcher*/, stat);
 
             serviceStatus = deserialize(new String(data, Util.CHARSET_NAME), objectMapper, endpointsByName);
 
@@ -358,7 +386,7 @@ public class ZkStatusAndEndpoints implements Watcher {
             throw new IllegalStateException("Does not make sense to claim when something is already loaded.");
         }
         try {
-            zk.create(
+            zk.getZooKeeper().create(
                     path, serialize(serviceStatus, endpointsByName).getBytes(Util.CHARSET_NAME), ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.EPHEMERAL);
         } catch (KeeperException.NodeExistsException e) {
             log.info("Coordinate already claimed  (" + path + ")");
@@ -385,7 +413,7 @@ public class ZkStatusAndEndpoints implements Watcher {
             // TODO(borud, dybdahl): Consider if we need to re-read the content of the zookeeper. Can it
             // possible change between create and exists? Can we use version number to detect this or is that
             // depending on implementation details of ZooKeeper?
-            Stat stat = zk.exists(path, this);
+            Stat stat = zk.getZooKeeper().exists(path, this);
             lastStatusVersion = stat.getVersion();
         } catch (KeeperException e) {
             throw new CloudnameException(e);
@@ -401,7 +429,7 @@ public class ZkStatusAndEndpoints implements Watcher {
      * @param builder Contains the data for the instance.
      */
     private ZkStatusAndEndpoints(Builder builder) {
-        this.zk = builder.getZooKeeper();
+        this.zk = builder.getZooKeeperKeeper();
         this.path = builder.getPath();
         this.objectMapper = builder.getObjectMapper();
         this.lastStatusVersion = builder.getLastStatusVersion();
@@ -420,14 +448,14 @@ public class ZkStatusAndEndpoints implements Watcher {
         Stat stat = new Stat();
         byte[] loadedState;
         try {
-            loadedState = zk.getData(path, false /*watcher*/, stat);
+            loadedState = zk.getZooKeeper().getData(path, false /*watcher*/, stat);
         } catch (KeeperException e) {
             return CoordinateListener.Event.LOST_CONNECTION_TO_STORAGE;
         } catch (InterruptedException e) {
             return CoordinateListener.Event.LOST_CONNECTION_TO_STORAGE;
         }
 
-        if (zk.getSessionId() != stat.getEphemeralOwner()) {
+        if (zk.getZooKeeper().getSessionId() != stat.getEphemeralOwner()) {
             return CoordinateListener.Event.NOT_OWNER;
         }
 
@@ -457,7 +485,7 @@ public class ZkStatusAndEndpoints implements Watcher {
 
     private void registerWatcher() {
         try {
-            zk.exists(path, this);
+            zk.getZooKeeper().exists(path, this);
         } catch (KeeperException e) {
             throw new CloudnameException(e);
         } catch (InterruptedException e) {
@@ -524,7 +552,7 @@ public class ZkStatusAndEndpoints implements Watcher {
         }
         try {
 
-            Stat stat = zk.setData(path,
+            Stat stat = zk.getZooKeeper().setData(path,
                     serialize(serviceStatus, endpointsByName).getBytes(Util.CHARSET_NAME),
                     lastStatusVersion);
             lastStatusVersion = stat.getVersion();
