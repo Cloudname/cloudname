@@ -65,7 +65,26 @@ public class FlagsTest {
         flags.printHelp(baos);
         assertTrue(baos.size() > 0);
     }
-    
+
+    /**
+     * Boolean flags should be set to true if no parameter is set, or parameter is set to true.
+     * False otherwise.
+     */
+    @Test
+    public void testBooleanFlag() {
+        Flags flags = new Flags()
+        .loadOpts(FlagsAllLegalFields.class)
+        .parse(new String[] {"--boolean", "--Boolean"});
+
+        assertEquals(true, FlagsAllLegalFields.bool);
+        assertEquals(true, FlagsAllLegalFields.bool2);
+
+        flags.parse(new String[] {"--boolean", "false", "--Boolean=false"});
+
+        assertEquals(false, FlagsAllLegalFields.bool);
+        assertEquals(false, FlagsAllLegalFields.bool2);
+    }
+
     /**
      * Test that printing help does not crash on various cases.
      */
