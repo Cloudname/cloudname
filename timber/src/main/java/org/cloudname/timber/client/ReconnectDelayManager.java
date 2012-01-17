@@ -176,8 +176,6 @@ public class ReconnectDelayManager {
             addressMap.putIfAbsent(address, item);
         }
 
-        assert(null != item);
-
         return item.getReconnectDelayMs();
     }
 }
