@@ -55,6 +55,41 @@ public class CloudnameException extends RuntimeException {
         }
     }
 
+    /**
+     * The coordinate exists, and it was assumed it did not.
+     */
+    public static class CoordinateExist  extends CloudnameException {
+        public CoordinateExist() {
+            super();
+        }
+    }
+
+    /**
+     * The coordinate the user tried to destroy is claimed.
+     */
+    public static class CoordinateIsClaimed extends CloudnameException {
+        public CoordinateIsClaimed() {
+            super();
+        }
+
+        public CoordinateIsClaimed(Throwable t) {
+            super(t);
+        }
+    }
+
+    /**
+     * The coordinate the user tried to destroy has config nodes.
+     */
+    public static class CoordinateHasConfig extends CloudnameException {
+        public CoordinateHasConfig() {
+            super();
+        }
+
+        public CoordinateHasConfig(Throwable t) {
+            super(t);
+        }
+    }
+
     public static class CouldNotConnectToStorage extends CloudnameException {
         public CouldNotConnectToStorage(Throwable t) {
             super(t);
