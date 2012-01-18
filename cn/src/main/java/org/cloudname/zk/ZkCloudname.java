@@ -90,7 +90,7 @@ public class ZkCloudname implements Cloudname, Watcher {
         // We wait up to 100 years.
         return connectWithTimeout(365 * 100, TimeUnit.DAYS);
     }
-    
+
     @Override
     public void process(WatchedEvent event) {
         log.fine("Got event " + event.toString());
@@ -156,7 +156,7 @@ public class ZkCloudname implements Cloudname, Watcher {
         if (! Util.exist(zk, rootPath)) {
             throw new CloudnameException.CoordinateNotFound();
         }
-        
+
         // Do this early to raise the error before anything is deleted. However, there might be a raise condition
         // if someone claims while we delete configPath and instance (root) node.
         if (Util.exist(zk, configPath) && Util.hasChildren(zk, configPath)) {
@@ -253,7 +253,7 @@ public class ZkCloudname implements Cloudname, Watcher {
         //                       Connect to one node and read from a magic path
         //                       how many zookeepers that are running and build
         //                       the path based on this information.
-        public Builder autoConnect() {
+        public Builder setDefaultConnectString() {
             this.connectString = "z1:2181,z2:2181,z3:2181";
             return this;
         }
