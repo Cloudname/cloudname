@@ -277,7 +277,8 @@ public class Flags {
 
                     case BOOLEAN:
                             Object value = optionSet.valueOf(optionSpec);
-                            holder.getField().set(holder.getField().getClass(), (value == null) ? true : value);
+                            holder.getField().set(holder.getField().getClass(),
+                                (value == null) ? true : value);
                         break;
 
                     case ENUM:
