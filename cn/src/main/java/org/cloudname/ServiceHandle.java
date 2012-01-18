@@ -14,7 +14,7 @@ public interface ServiceHandle {
      * Set the status of this service.
      *
      * @param status the new status.
-     * @throws CoordinateException if problems with the coordinate.
+     * @throws CoordinateMissingException if coordinate does not exist.
      * @throws CloudnameException if problems talking with storage.
      */
     public void setStatus(ServiceStatus status)
@@ -26,7 +26,7 @@ public interface ServiceHandle {
      * endpoint you first have to remove it.
      *
      * @param endpoint the endpoint data.
-     * @throws CoordinateException if problems with the coordinate.
+     * @throws CoordinateMissingException if coordinate does not exist.
      * @throws CloudnameException if problems talking with storage.
      * @throws EndpointException if problems with endpoint, e.g. already present.
      */
@@ -35,8 +35,9 @@ public interface ServiceHandle {
 
     /**
      * Same as putEndpoints, but takes a list.
+     *
      * @param endpoints the endpoints data.
-     * @throws CoordinateException if problems with the coordinate.
+     * @throws CoordinateMissingException if coordinate is missing.
      * @throws CloudnameException if problems talking with storage.
      * @throws EndpointException if problems with endpoint, e.g. already present.
      */
@@ -56,8 +57,9 @@ public interface ServiceHandle {
 
     /**
      * Same as removeEndpoint() but takes a list of names.
+     *
      * @param names
-     * @throws CoordinateException if problems with the coordinate.
+     * @throws CoordinateMissingException if coordinate is missing.
      * @throws CloudnameException if problems talking with storage.
      * @throws EndpointException if problems with endpoint, e.g. non-existing.
      */
@@ -80,6 +82,7 @@ public interface ServiceHandle {
      * of state.
      * Don't call the cloudname library, do any heavy lifting, or do any IO operation from this callback thread.
      * That might deadlock as there is no guarantee what kind of thread that runs the callback.
+     *
      * @param listener
      * @throws CloudnameException if problems talking with storage.
      */

@@ -45,5 +45,4 @@ public class StrategyAny implements ResolverStrategy {
     public String getName() {
         return "any";
     }
-
 }

@@ -66,15 +66,14 @@ public class ZkCloudname implements Cloudname, Watcher {
 
         try {
             zk = new ZooKeeper(connectString, SESSION_TIMEOUT, this);
-            try {
-                if (! connectedSignal.await(waitTime, waitUnit)) {
-                    throw new CloudnameException("Connecting to ZooKeeper timed out.");
-                }
-            } catch (InterruptedException e) {
-                throw new CloudnameException(e);
+
+            if (! connectedSignal.await(waitTime, waitUnit)) {
+                throw new CloudnameException("Connecting to ZooKeeper timed out.");
             }
             log.info("Connected to ZooKeeper " + connectString);
         } catch (IOException e) {
+            throw new CloudnameException(e);
+        } catch (InterruptedException e) {
             throw new CloudnameException(e);
         }
         return this;
