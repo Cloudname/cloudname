@@ -34,6 +34,7 @@ public interface Resolver {
      * endpoints may be subject to ranking criteria.
      *
      * @param address the address of the endpoint(s).
+     * @throws CloudnameException if problems talking with storage.
      */
-    public List<Endpoint> resolve(String address);
+    public List<Endpoint> resolve(String address) throws CloudnameException;
 }

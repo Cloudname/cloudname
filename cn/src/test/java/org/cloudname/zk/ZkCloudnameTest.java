@@ -6,6 +6,7 @@ import org.apache.zookeeper.WatchedEvent;
 import org.apache.zookeeper.Watcher;
 import org.apache.zookeeper.ZooKeeper;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
@@ -73,11 +74,16 @@ public class ZkCloudnameTest {
     /**
      * Tests that the time-out mechanism on connecting to ZooKeeper works.
      */
-    @Test (expected = CloudnameException.CouldNotConnectToStorage.class)
-    public void testTimeout() throws Exception {
+    @Test
+    public void testTimeout() throws IOException, InterruptedException {
         int deadPort = Net.getFreePort();
-        new ZkCloudname.Builder().setConnectString("localhost:" + deadPort).build()
-                .connectWithTimeout(1, TimeUnit.NANOSECONDS);
+        try {
+            new ZkCloudname.Builder().setConnectString("localhost:" + deadPort).build()
+                    .connectWithTimeout(1, TimeUnit.NANOSECONDS);
+            fail("Expected time-out exception.");
+        } catch (CloudnameException e) {
+            // Expected.
+        }
     }
 
     /**
@@ -155,23 +161,38 @@ public class ZkCloudnameTest {
     /**
      * Try to claim coordinate twice
      */
-    @Test (expected = CloudnameException.AlreadyClaimed.class)
-    public void testDoubleClaim() throws Exception {
+    @Test
+    public void testDoubleClaim() throws CloudnameException, InterruptedException {
         Coordinate c = Coordinate.parse("2.service.user.cell");
-        ZkCloudname cn = new ZkCloudname.Builder().setConnectString("localhost:" + zkport).build().connect();
-        cn.createCoordinate(c);
-        cn.claim(c);
-        cn.claim(c);
+        ZkCloudname cn = null;
+        try {
+            cn = new ZkCloudname.Builder().setConnectString("localhost:" + zkport).build().connect();
+        } catch (CloudnameException e) {
+            fail("connecting to localhost failed.");
+        }
+        try {
+            cn.createCoordinate(c);
+            cn.claim(c);
+            cn.claim(c);
+            fail("Should have thrown exception.");
+        } catch (CoordinateException e) {
+            // Expected.
+        }
     }
+
 
     /**
      * Claim non-existing coordinate
      */
-    @Test (expected = CloudnameException.CoordinateNotFound.class)
-    public void testCoordinateNotFound() throws Exception {
+    @Test
+    public void testCoordinateNotFound() throws CloudnameException, InterruptedException {
         Coordinate c = Coordinate.parse("3.service.user.cell");
         ZkCloudname cn = new ZkCloudname.Builder().setConnectString("localhost:" + zkport).build().connect();
-        cn.claim(c);
+        try {
+            cn.claim(c);
+            fail("Expected coordinate not found thrown.");
+        } catch (CoordinateException e) {
+        }
     }
 
     /**
@@ -199,10 +220,14 @@ public class ZkCloudnameTest {
      * @param connectedLatch
      * @return
      */
-    private UnitTestCoordinateListener setUpListenerEnvironment(CountDownLatch connectedLatch) {
+    private UnitTestCoordinateListener setUpListenerEnvironment(CountDownLatch connectedLatch) throws Exception {
         Coordinate c = Coordinate.parse("1.service.user.cell");
         ZkCloudname cn = new ZkCloudname.Builder().setConnectString("localhost:" + zkport).build().connect();
-        cn.createCoordinate(c);
+        try {
+            cn.createCoordinate(c);
+        } catch (CoordinateException e) {
+            fail(e.toString());
+        }
         ServiceHandle handle = cn.claim(c);
         UnitTestCoordinateListener listener = new UnitTestCoordinateListener(connectedLatch);
         handle.registerCoordinateListener(listener);
@@ -299,13 +324,17 @@ public class ZkCloudnameTest {
         assertTrue(pathExists("/cn/cell/user/service/2/config"));
     }
 
-    @Test (expected = CloudnameException.CoordinateIsClaimed.class)
+    @Test
     public void testDestroyClaimed() throws Exception {
         Coordinate c = Coordinate.parse("1.service.user.cell");
         ZkCloudname cn = new ZkCloudname.Builder().setConnectString("localhost:" + zkport).build().connect();
         cn.createCoordinate(c);
         ServiceHandle handle = cn.claim(c);
-        cn.destroyCoordinate(c);
+        try {
+            cn.destroyCoordinate(c);
+            fail("Expected exception to happen");
+        } catch (CoordinateException e) {
+        }
     }
 
     private boolean pathExists(String path) throws Exception {

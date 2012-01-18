@@ -212,23 +212,31 @@ public class ZkResolver implements Resolver {
     }
     
     @Override
-    public List<Endpoint> resolve(String addressExpression) {
+    public List<Endpoint> resolve(String addressExpression) throws CloudnameException {
         Parameters parameters = new Parameters(addressExpression);
                
         List<Integer> instances = new ArrayList<Integer>();
         if (parameters.getInstance() > -1) {
             instances.add(parameters.getInstance());
         } else {
-            instances = getInstances(ZkCoordinatePath.coordinateWithoutInstanceAsPath(parameters.getCell(),
-                    parameters.getUser(), parameters.getService()));
+            try {
+                instances = getInstances(ZkCoordinatePath.coordinateWithoutInstanceAsPath(parameters.getCell(),
+                        parameters.getUser(), parameters.getService()));
+            } catch (InterruptedException e) {
+                throw new CloudnameException(e);
+            }
         }
         List<Endpoint> endpoints = new ArrayList<Endpoint>();
         for (Integer instance : instances) {
             String statusPath = ZkCoordinatePath.getStatusPath(parameters.getCell(), parameters.getUser(),
                     parameters.getService(), instance);
 
-            if (! Util.exist(zk, statusPath)) {
-                continue;
+            try {
+                if (! Util.exist(zk, statusPath)) {
+                    continue;
+                }
+            } catch (InterruptedException e) {
+                throw new CloudnameException(e);
             }
             ZkStatusAndEndpoints statusAndEndpoints = new ZkStatusAndEndpoints.Builder(zk, statusPath).build().load();
             if (statusAndEndpoints.getServiceStatus().getState() != ServiceState.RUNNING) {
@@ -248,7 +256,7 @@ public class ZkResolver implements Resolver {
     }
 
  
-    private List<Integer> getInstances(String path) {
+    private List<Integer> getInstances(String path) throws CloudnameException, InterruptedException {
         List<Integer> paths = new ArrayList<Integer>();
         try {
             List<String> children = zk.getChildren(path, false /* watcher */);
@@ -256,8 +264,6 @@ public class ZkResolver implements Resolver {
                 paths.add(Integer.parseInt(child));
             }
         } catch (KeeperException e) {
-            throw new CloudnameException(e);
-        } catch (InterruptedException e) {
             throw new CloudnameException(e);
         }
         return paths;

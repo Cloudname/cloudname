@@ -1,6 +1,5 @@
 package org.cloudname.zk;
 
-import org.apache.zookeeper.KeeperException;
 import org.cloudname.*;
 import org.cloudname.flags.Flag;
 import org.cloudname.flags.Flags;
@@ -99,13 +98,9 @@ public class ZkTool {
                 Coordinate c = Coordinate.parse(coordinateFlag);
                 String statusPath = ZkCoordinatePath.getStatusPath(c);
                 ServiceStatus status;
-                try {
-                    status = cloudname.getStatus(c);
-                } catch (CloudnameException e) {
-                    System.err.println("Problems loading status node: " + statusPath);
-                    System.err.println("Is the instance running?");
-                    return;
-                }
+
+                status = cloudname.getStatus(c);
+
                 System.err.println("Status:\n" + status.getState().toString() + " " + status.getMessage());
                 List<Endpoint> endpoints = resolver.resolve("all." + c.getService()
                         + "." + c.getUser() + "." + c.getCell());
