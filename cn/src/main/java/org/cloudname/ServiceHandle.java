@@ -1,5 +1,6 @@
 package org.cloudname;
 
+import javax.mail.event.ConnectionListener;
 import java.util.List;
 
 /**
@@ -55,7 +56,16 @@ public interface ServiceHandle {
      * being created.
      */
     public void registerConfigListener(ConfigListener listener);
-    
+
+    /**
+     * After registering a new listener, a new event is triggered which include current state, even without change
+     * of state.
+     * Don't call the cloudname library, do any heavy lifting, or do any IO operation from this callback thread.
+     * That might deadlock as there is no guarantee what kind of thread that runs the callback.
+     * @param listener
+     */
+    public void registerCoordinateListener(CoordinateListener listener);
+
     /**
      * Close the service handle and free up the coordinate so it can
      * be claimed by others.  After close() has been called all

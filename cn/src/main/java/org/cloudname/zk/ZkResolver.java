@@ -226,10 +226,11 @@ public class ZkResolver implements Resolver {
         for (Integer instance : instances) {
             String statusPath = ZkCoordinatePath.getStatusPath(parameters.getCell(), parameters.getUser(),
                     parameters.getService(), instance);
+
             if (! Util.exist(zk, statusPath)) {
                 continue;
             }
-            ZkStatusAndEndpoints statusAndEndpoints = new ZkStatusAndEndpoints.Builder(zk, statusPath).load().build();
+            ZkStatusAndEndpoints statusAndEndpoints = new ZkStatusAndEndpoints.Builder(zk, statusPath).build().load();
             if (statusAndEndpoints.getServiceStatus().getState() != ServiceState.RUNNING) {
                 continue;
             }
@@ -262,4 +263,3 @@ public class ZkResolver implements Resolver {
         return paths;
     }
 }
-

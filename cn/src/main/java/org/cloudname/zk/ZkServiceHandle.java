@@ -63,6 +63,11 @@ public class ZkServiceHandle implements ServiceHandle {
     }
 
     @Override
+    public void registerCoordinateListener(CoordinateListener listener) {
+        statusAndEndpoints.registerCoordinateListener(listener);
+    }
+
+    @Override
     public void close() {
         statusAndEndpoints.releaseClaim();
         statusAndEndpoints = null;
