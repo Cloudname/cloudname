@@ -223,7 +223,8 @@ public class ZkStatusAndEndpoints {
      * @param endpointsByName This map is populated with the endpoints.
      * @return the ServiceStatus in the data.                                             ´
      */
-    private static ServiceStatus deserialize(String data, ObjectMapper objectMapper, Map<String, Endpoint> endpointsByName) {
+    private static ServiceStatus deserialize(
+            String data, ObjectMapper objectMapper, Map<String, Endpoint> endpointsByName) {
 
         JsonFactory jsonFactory = new JsonFactory();
         try {
@@ -231,7 +232,8 @@ public class ZkStatusAndEndpoints {
             JsonParser jp = jsonFactory.createJsonParser(data);
             String statusString = objectMapper.readValue(jp, new TypeReference <String>() {});
             endpointsByName.clear();
-            endpointsByName.putAll((Map<String, Endpoint>)objectMapper.readValue(jp, new TypeReference <Map<String, Endpoint>>() {}));
+            endpointsByName.putAll((Map<String, Endpoint>)objectMapper.readValue(
+                        jp, new TypeReference <Map<String, Endpoint>>() {}));
             return ServiceStatus.fromJson(statusString);
 
         } catch (IOException e) {
@@ -401,7 +403,8 @@ public class ZkStatusAndEndpoints {
             }
             try {
                 zk.create(
-                        path, serialize(serviceStatus, endpointsByName).getBytes(Util.CHARSET_NAME), ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.EPHEMERAL);
+                        path, serialize(serviceStatus, endpointsByName).getBytes(Util.CHARSET_NAME),
+                        ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.EPHEMERAL);
             } catch (KeeperException.NodeExistsException e) {
                 log.info("Coordinate already claimed  (" + path + ")");
                 throw new CloudnameException.AlreadyClaimed(e);
