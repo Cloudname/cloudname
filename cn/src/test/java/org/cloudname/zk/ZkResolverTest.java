@@ -3,7 +3,6 @@ package org.cloudname.zk;
 import java.io.File;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
-import java.util.regex.Matcher;
 
 import org.apache.zookeeper.WatchedEvent;
 import org.apache.zookeeper.Watcher;

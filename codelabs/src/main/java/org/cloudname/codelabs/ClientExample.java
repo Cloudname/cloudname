@@ -1,6 +1,7 @@
 package org.cloudname.codelabs;
 
 import org.cloudname.Cloudname;
+import org.cloudname.CloudnameException;
 import org.cloudname.Endpoint;
 import org.cloudname.Resolver;
 import org.cloudname.zk.ZkCloudname;
@@ -22,7 +23,7 @@ public class ClientExample {
      * Args has one parameter that is instance number.
      * @param args
      */
-    public static void main(String[] args) throws IOException {
+    public static void main(String[] args) throws IOException, CloudnameException {
         Cloudname cloudName = new ZkCloudname.Builder().setConnectString("127.0.0.1:5454").build().connect();
         Resolver resolver = cloudName.getResolver();
 
