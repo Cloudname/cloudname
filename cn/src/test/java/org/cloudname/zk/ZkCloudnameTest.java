@@ -11,6 +11,8 @@ import org.apache.zookeeper.WatchedEvent;
 import org.apache.zookeeper.Watcher;
 import org.apache.zookeeper.ZooKeeper;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.CountDownLatch;
 
 import org.junit.*;
@@ -104,6 +106,12 @@ public class ZkCloudnameTest {
         ServiceHandle handle = cn.claim(c);
         assertNotNull(handle);
         assertTrue(pathExists("/cn/cell/user/service/1/status"));
+
+        List<String> nodes = new ArrayList<String>();
+        cn.listRecursively(nodes);
+        assertEquals(2, nodes.size());
+        assertEquals(nodes.get(0), "/cn/cell/user/service/1/config");
+        assertEquals(nodes.get(1), "/cn/cell/user/service/1/status");
 
         // Try to set the status to something else
         String msg = "Hamster getting quite eager now";

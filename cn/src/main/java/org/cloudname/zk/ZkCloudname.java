@@ -9,6 +9,7 @@ import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.ZooDefs.Ids;
 import org.apache.zookeeper.KeeperException;
 
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 import java.util.logging.Logger;
@@ -117,10 +118,12 @@ public class ZkCloudname implements Cloudname, Watcher {
         // blindly, meaning that if the path already exists, then
         // that's ok -- so a more correct name for this method would
         // be ensureCoordinate(), but that might confuse developers.
-        String root = ZkCoordinatePath.getRoot(coordinate);
+        String root = ZkCoordinatePath.getCoordinateRoot(coordinate);
+
         if (Util.exist(zk, root)) {
             throw new CloudnameException.CoordinateExist();
         }
+
         try {
             Util.mkdir(zk, root, Ids.OPEN_ACL_UNSAFE);
         } catch (KeeperException e) {
@@ -148,7 +151,7 @@ public class ZkCloudname implements Cloudname, Watcher {
     public void destroyCoordinate(Coordinate coordinate) {
         String statusPath = ZkCoordinatePath.getStatusPath(coordinate);
         String configPath = ZkCoordinatePath.getConfigPath(coordinate, null);
-        String rootPath = ZkCoordinatePath.getRoot(coordinate);
+        String rootPath = ZkCoordinatePath.getCoordinateRoot(coordinate);
 
         if (! Util.exist(zk, rootPath)) {
             throw new CloudnameException.CoordinateNotFound();
@@ -227,11 +230,18 @@ public class ZkCloudname implements Cloudname, Watcher {
 
     }
 
+    /**
+     * List the sub-nodes in ZooKeeper owned by Cloudname.
+     * @param nodeList
+     */
+    public void listRecursively(List<String> nodeList) {
+        Util.listRecursively(zk, ZkCoordinatePath.getCloudnameRoot(), null, nodeList);
+    }
 
     /**
      *  This class builds parameters for ZkCloudname.
      */
-    static class Builder {
+    public static class Builder {
         private String connectString;
 
         public Builder setConnectString(String connectString) {

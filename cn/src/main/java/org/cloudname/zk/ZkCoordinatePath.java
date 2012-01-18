@@ -17,12 +17,15 @@ public class ZkCoordinatePath {
     private static final String CN_STATUS_NAME = "status";
     private static final String CN_CONFIG_NAME = "config";
 
+    public static String getCloudnameRoot() {
+        return CN_PATH_PREFIX;
+    }
     /**
      * Builds the root path of a coordinate.
      * @param coordinate
      * @return the path of the coordinate in ZooKeeper (/cn/%cell%/%user%/%service%/%instance%).
      */
-    public static String getRoot(Coordinate coordinate) {
+    public static String getCoordinateRoot(Coordinate coordinate) {
         return coordinateAsPath(coordinate.getCell(), coordinate.getUser(), coordinate.getService(),
                 coordinate.getInstance());
     }
@@ -33,7 +36,7 @@ public class ZkCoordinatePath {
      * @return full status path (/cn/%cell%/%user%/%service%/%instance%/status)
      */
     public static String getStatusPath(Coordinate coordinate) {
-        return getRoot(coordinate) + "/" + CN_STATUS_NAME;
+        return getCoordinateRoot(coordinate) + "/" + CN_STATUS_NAME;
     }
 
     /**
@@ -45,9 +48,9 @@ public class ZkCoordinatePath {
      */
     public static String getConfigPath(Coordinate coordinate, String name) {
         if (name == null) {
-            return getRoot(coordinate) + "/" + CN_CONFIG_NAME;
+            return getCoordinateRoot(coordinate) + "/" + CN_CONFIG_NAME;
         }
-        return getRoot(coordinate) + "/" +  CN_CONFIG_NAME + "/" + name;
+        return getCoordinateRoot(coordinate) + "/" +  CN_CONFIG_NAME + "/" + name;
     }
 
     /**
