@@ -1,6 +1,5 @@
 package org.cloudname.zk;
 
-import org.apache.zookeeper.Watcher;
 import org.cloudname.*;
 
 import java.util.ArrayList;

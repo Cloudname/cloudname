@@ -36,10 +36,39 @@
       <artifactId>jackson-mapper-asl</artifactId>
     </dependency>
 
+     <dependency>
+      <groupId>org.cloudname</groupId>
+      <artifactId>flags</artifactId>
+      <version>${cn.version}</version>
+    </dependency>
+
     <dependency>
       <groupId>junit</groupId>
       <artifactId>junit</artifactId>
       <scope>test</scope>
     </dependency>
   </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.dstovall</groupId>
+                <artifactId>onejar-maven-plugin</artifactId>
+                <version>1.4.4</version>
+                <executions>
+                    <execution>
+                        <configuration>
+                            <!-- Optional, default is false -->
+                            <attachToBuild>true</attachToBuild>
+                            <mainClass>org.cloudname.zk.ZkTool</mainClass>
+                            <filename>ZkTool.jar</filename>
+                        </configuration>
+                        <goals>
+                            <goal>one-jar</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
 </project>

@@ -29,8 +29,8 @@ public class ZkStatusAndEndpoints implements Watcher {
 
     /**
      * This class can build ZkStatusAndEndpoints.
-     * If you want to create an instance that first claims the coordinate it can be done like this:
-     *   ZkStatusAndEndpoints statusAndEndpoints = new ZkStatusAndEndpoints.Builder(zk, statusPath).claim().build();
+     * If you want to create an instance that claims the coordinate it can be done like this:
+     *   ZkStatusAndEndpoints statusAndEndpoints = new ZkStatusAndEndpoints.Builder(zk, statusPath).build().claim();
      * Instead of claim you can also load the coordinate.
      */
     public static class Builder {
@@ -532,13 +532,16 @@ public class ZkStatusAndEndpoints implements Watcher {
      * @param endpointsByName This map is populated with the endpoints.
      * @return the ServiceStatus in the data.                                             ´
      */
-    private static ServiceStatus deserialize(String data, ObjectMapper objectMapper, Map<String, Endpoint> endpointsByName) throws IOException {
+
+    private static ServiceStatus deserialize(
+            String data, ObjectMapper objectMapper, Map<String, Endpoint> endpointsByName) throws IOException {
 
         JsonFactory jsonFactory = new JsonFactory();
         JsonParser jp = jsonFactory.createJsonParser(data);
         String statusString = objectMapper.readValue(jp, new TypeReference <String>() {});
         endpointsByName.clear();
-        endpointsByName.putAll((Map<String, Endpoint>)objectMapper.readValue(jp, new TypeReference <Map<String, Endpoint>>() {}));
+        endpointsByName.putAll((Map<String, Endpoint>)objectMapper.readValue(jp,
+                new TypeReference <Map<String, Endpoint>>() {}));
         return ServiceStatus.fromJson(statusString);
     }
 

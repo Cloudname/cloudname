@@ -66,7 +66,7 @@ public interface CoordinateListener {
 
     /**
      * Implement this function to receive the events and trigger action.
-     * @param event
+     * @param event the event that happened.
      * @param message some message associated with the event.
      */
     public Action onConfigEvent(Event event, String message);
