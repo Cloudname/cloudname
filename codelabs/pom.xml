@@ -1,0 +1,112 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>org.cloudname</groupId>
+        <artifactId>cloudname-parent</artifactId>
+        <version>2.6-SNAPSHOT</version>
+    </parent>
+
+    <artifactId>codelabs</artifactId>
+    <packaging>jar</packaging>
+
+    <name>Cloudname codelabs</name>
+    <description>Codelabs for learning how to use cloudname.</description>
+    <url>https://github.com/Cloudname/cloudname</url>
+
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.dstovall</groupId>
+                <artifactId>onejar-maven-plugin</artifactId>
+                <version>1.4.4</version>
+                <executions>
+                    <execution>
+                        <id>1</id>
+                        <configuration>
+                            <!-- Optional, default is false -->
+                            <attachToBuild>true</attachToBuild>
+                            <mainClass>org.cloudname.codelabs.SimpleZooKeeper</mainClass>
+                            <filename>SimpleZooKeeper.jar</filename>
+                        </configuration>
+                        <goals>
+                            <goal>one-jar</goal>
+                        </goals>
+                    </execution>
+                    <execution >
+                        <id>2</id>
+                        <configuration>
+                            <!-- Optional, default is false -->
+                            <attachToBuild>true</attachToBuild>
+                            <mainClass>org.cloudname.codelabs.ServerExample</mainClass>
+                            <filename>ServerExample.jar</filename>
+                        </configuration>
+                        <goals>
+                            <goal>one-jar</goal>
+                        </goals>
+                    </execution>
+                    <execution >
+                        <id>3</id>
+                        <configuration>
+                            <!-- Optional, default is false -->
+                            <attachToBuild>true</attachToBuild>
+                            <mainClass>org.cloudname.codelabs.ServerExampleCloudname</mainClass>
+                            <filename>ServerExampleCloudname.jar</filename>
+                        </configuration>
+                        <goals>
+                            <goal>one-jar</goal>
+                        </goals>
+                    </execution>
+                    <execution >
+                        <id>4</id>
+                        <configuration>
+                            <!-- Optional, default is false -->
+                            <attachToBuild>true</attachToBuild>
+                            <mainClass>org.cloudname.codelabs.ClientExample</mainClass>
+                            <filename>ClientExample.jar</filename>
+                        </configuration>
+                        <goals>
+                            <goal>one-jar</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+
+
+    <dependencies>
+        <dependency>
+            <groupId>org.cloudname</groupId>
+            <artifactId>testtools</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.cloudname</groupId>
+            <artifactId>cn</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.apache.zookeeper</groupId>
+            <artifactId>zookeeper</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.codehaus.jackson</groupId>
+            <artifactId>jackson-core-asl</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.codehaus.jackson</groupId>
+            <artifactId>jackson-mapper-asl</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+</project>

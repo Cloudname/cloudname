@@ -101,6 +101,12 @@ public class ZkCloudnameTest {
         assertNotNull(handle);
         assertTrue(pathExists("/cn/cell/user/service/1/status"));
 
+        List<String> nodes = new ArrayList<String>();
+        cn.listRecursively(nodes);
+        assertEquals(2, nodes.size());
+        assertEquals(nodes.get(0), "/cn/cell/user/service/1/config");
+        assertEquals(nodes.get(1), "/cn/cell/user/service/1/status");
+
         // Try to set the status to something else
         String msg = "Hamster getting quite eager now";
         handle.setStatus(new ServiceStatus(ServiceState.STARTING,msg));
@@ -142,7 +148,7 @@ public class ZkCloudnameTest {
 
         // But the coordinate and its persistent subnodes should
         assertTrue(pathExists("/cn/cell/user/service/1"));
-    //    assertTrue(pathExists("/cn/cell/user/service/1/endpoints"));
+        assertFalse(pathExists("/cn/cell/user/service/1/endpoints"));
         assertTrue(pathExists("/cn/cell/user/service/1/config"));
     }
 
@@ -267,7 +273,41 @@ public class ZkCloudnameTest {
         assertEquals(CoordinateListener.Event.COORDINATE_OK, listener.events.get(0));
         assertEquals(CoordinateListener.Event.COORDINATE_OUT_OF_SYNC, listener.events.get(1));
     }
-    
+
+    @Test
+    public void testDestroyBasic() throws Exception {
+        Coordinate c = Coordinate.parse("1.service.user.cell");
+        ZkCloudname cn = new ZkCloudname.Builder().setConnectString("localhost:" + zkport).build().connect();
+        cn.createCoordinate(c);
+        assertTrue(pathExists("/cn/cell/user/service/1/config"));
+        cn.destroyCoordinate(c);
+        assertFalse(pathExists("/cn/cell/user/service"));
+        assertTrue(pathExists("/cn/cell/user"));
+    }
+
+    @Test
+    public void testDestroyTwoInstances() throws Exception {
+        Coordinate c1 = Coordinate.parse("1.service.user.cell");
+        Coordinate c2 = Coordinate.parse("2.service.user.cell");
+        ZkCloudname cn = new ZkCloudname.Builder().setConnectString("localhost:" + zkport).build().connect();
+        cn.createCoordinate(c1);
+        cn.createCoordinate(c2);
+        assertTrue(pathExists("/cn/cell/user/service/1/config"));
+        assertTrue(pathExists("/cn/cell/user/service/2/config"));
+        cn.destroyCoordinate(c1);
+        assertFalse(pathExists("/cn/cell/user/service/1"));
+        assertTrue(pathExists("/cn/cell/user/service/2/config"));
+    }
+
+    @Test (expected = CloudnameException.CoordinateIsClaimed.class)
+    public void testDestroyClaimed() throws Exception {
+        Coordinate c = Coordinate.parse("1.service.user.cell");
+        ZkCloudname cn = new ZkCloudname.Builder().setConnectString("localhost:" + zkport).build().connect();
+        cn.createCoordinate(c);
+        ServiceHandle handle = cn.claim(c);
+        cn.destroyCoordinate(c);
+    }
+
     private boolean pathExists(String path) throws Exception {
         return (null != zk.exists(path, false));
     }

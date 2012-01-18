@@ -24,7 +24,7 @@ public class ZkResolver implements Resolver {
 
     private final ZooKeeper zk;
 
-    Map<String, ResolverStrategy> strategies;
+    private Map<String, ResolverStrategy> strategies;
 
     public static class Builder {
 
@@ -127,7 +127,7 @@ public class ZkResolver implements Resolver {
 
         /**
          * Returns instance if set or negative number if not set.
-         * @return
+         * @return instance number.
          */
         public Integer getInstance() {
             return instance;
@@ -210,7 +210,7 @@ public class ZkResolver implements Resolver {
         this.zk = builder.getZooKeeper();
         this.strategies = builder.getStrategies();
     }
-
+    
     @Override
     public List<Endpoint> resolve(String addressExpression) {
         Parameters parameters = new Parameters(addressExpression);
@@ -224,9 +224,16 @@ public class ZkResolver implements Resolver {
         }
         List<Endpoint> endpoints = new ArrayList<Endpoint>();
         for (Integer instance : instances) {
-            String path = ZkCoordinatePath.getStatusPath(parameters.getCell(), parameters.getUser(),
+            String statusPath = ZkCoordinatePath.getStatusPath(parameters.getCell(), parameters.getUser(),
                     parameters.getService(), instance);
-            ZkStatusAndEndpoints statusAndEndpoints = new ZkStatusAndEndpoints.Builder(zk, path).build().load();
+
+            if (! Util.exist(zk, statusPath)) {
+                continue;
+            }
+            ZkStatusAndEndpoints statusAndEndpoints = new ZkStatusAndEndpoints.Builder(zk, statusPath).build().load();
+            if (statusAndEndpoints.getServiceStatus().getState() != ServiceState.RUNNING) {
+                continue;
+            }
             if (parameters.getEndpointName() == "") {
                 statusAndEndpoints.returnAllEndpoints(endpoints);
             } else {

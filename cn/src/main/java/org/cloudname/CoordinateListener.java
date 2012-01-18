@@ -43,7 +43,7 @@ public interface CoordinateListener {
 
     /**
      * Implement this function to receive the events.
-     * @param event
+     * @param event the event that happened.
      * @param message some message associated with the event.
      */
     public void onConfigEvent(Event event, String message);
