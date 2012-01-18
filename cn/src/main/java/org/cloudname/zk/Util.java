@@ -39,6 +39,8 @@ public class Util {
 
         String createPath = "";
         for (String p : parts) {
+            // Sonar will complain about this.  Usually it would be
+            // right but in this case it isn't.
             createPath += "/" + p;
             try {
                 zk.create(createPath, null, acl, CreateMode.PERSISTENT);
@@ -176,4 +178,4 @@ public class Util {
         }
         return deletedNodes;
     }
- }
+}

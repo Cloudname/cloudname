@@ -32,7 +32,7 @@ public class ServerExample {
     class InfoHandler implements HttpHandler {
         public void handle(HttpExchange t) throws IOException {
             InputStream is = t.getRequestBody();
-            String response = String.format("I am serving from port %s.", Integer.toString(port));
+            String response = String.format("Port %s, instance %s", Integer.toString(port), Integer.toString(instance));
             t.sendResponseHeaders(200, response.length());
             OutputStream os = t.getResponseBody();
             os.write(response.getBytes());

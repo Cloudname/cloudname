@@ -3,12 +3,11 @@ package org.cloudname.codelabs;
 import org.cloudname.flags.Flag;
 import org.cloudname.flags.Flags;
 import org.cloudname.testtools.zookeeper.EmbeddedZooKeeper;
-import org.cloudname.zk.ZkTool;
 
 import java.io.File;
 
 /**
- * A simple app that runs an embedded zookeeper. This is intended for codelabs / testing.
+ * A simple app that runs an embedded zookeeper. This is intended for org2.cloudname.codelabs / testing.
  * @author dybdahl
  */
 public class SimpleZooKeeper {

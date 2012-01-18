@@ -22,7 +22,7 @@ public class ServerExampleCloudname {
 
     /**
      * Constructor
-     * @param instance
+     * @param instance number for this instance.
      */
     ServerExampleCloudname(int instance) {
         this.instance = instance;
@@ -48,13 +48,13 @@ public class ServerExampleCloudname {
      */
     public  void runServer() throws IOException {
         port = Net.getFreePort();
+        System.err.println("I think that port " + Integer.toString(port) + " is free and will use it.");
         Cloudname cloudName = new ZkCloudname.Builder().setConnectString("127.0.0.1:5454").build().connect();
         Coordinate coordinate = Coordinate.parse(String.format("%s.hello.somebody.aa", instance));
         ServiceHandle handle = cloudName.claim(coordinate);
         Endpoint endpoint = new Endpoint(coordinate, "info", "127.0.0.1", port, "http", null);
         handle.putEndpoint(endpoint);
         handle.setStatus(new ServiceStatus(ServiceState.RUNNING, "I am alive and kicking."));
-        System.err.println("I think that port " + Integer.toString(port) + " is free and will use it.");
         HttpServer server = HttpServer.create(new InetSocketAddress(port), 45 /*backlog*/);
         server.createContext("/info", new InfoHandler());
         server.setExecutor(null);
