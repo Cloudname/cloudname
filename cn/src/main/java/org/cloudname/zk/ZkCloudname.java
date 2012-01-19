@@ -35,8 +35,6 @@ import java.io.IOException;
  *  - when the ZkCloudname instance is releaseClaim()d the handles should
  *    perhaps be invalidated.
  *
- *  - The exception handling in this class is just atrocious.
- *
  * @author borud
  */
 public class ZkCloudname implements Cloudname, Watcher {
@@ -82,7 +80,11 @@ public class ZkCloudname implements Cloudname, Watcher {
                 // Already recreated connection by some other process, just using that.
                 return true;
             }
-            connect();
+            try {
+                connect();
+            } catch (CloudnameException e) {
+                return false;
+            }
             localZooKeeper = zk;
             if (zk.getState() == ZooKeeper.States.CONNECTED) {
                 log.info("Managed to reconnect to ZooKeeper.");
@@ -97,32 +99,32 @@ public class ZkCloudname implements Cloudname, Watcher {
      * Connect to ZooKeeper instance with time-out value.
      * @param waitTime time-out value for establishing connection.
      * @param waitUnit time unit for time-out when establishing connection.
-     * @throws org.cloudname.CloudnameException.CouldNotConnectToStorage if connection can not be established
+     * @throws CloudnameException if connection can not be established
      * @return
      */
-    public ZkCloudname connectWithTimeout(long waitTime, TimeUnit waitUnit) {
+    public ZkCloudname connectWithTimeout(long waitTime, TimeUnit waitUnit) throws CloudnameException {
 
         try {
             zk = new ZooKeeper(connectString, SESSION_TIMEOUT, this);
+
             if (! connectedSignal.await(waitTime, waitUnit)) {
-                throw new CloudnameException.CouldNotConnectToStorage(
-                        "Connecting to ZooKeeper timed out.");
+                throw new CloudnameException("Connecting to ZooKeeper timed out.");
             }
             log.info("Connected to ZooKeeper " + connectString);
         } catch (IOException e) {
-            throw new CloudnameException.CouldNotConnectToStorage(e);
+            throw new CloudnameException(e);
         } catch (InterruptedException e) {
-            throw new CloudnameException.CouldNotConnectToStorage(e);
+            throw new CloudnameException(e);
         }
-
         return this;
     }
 
     /**
      * Connect to ZooKeeper instance with long time-out, however, it might fail fast.
-     * @return
+     * @return connected ZkCloudname object
+     * @throws CloudnameException if connection can not be established.
      */
-    public ZkCloudname connect() {
+    public ZkCloudname connect() throws CloudnameException {
         // We wait up to 100 years.
         return connectWithTimeout(365 * 100, TimeUnit.DAYS);
     }
@@ -146,11 +148,13 @@ public class ZkCloudname implements Cloudname, Watcher {
                 throw new RuntimeException("ZooKeeper in unknown unexpected state, giving up." + zk.toString());
         }
         // TODO(borud, dybdahl): Make this timeout configurable.
+
         try {
             connectWithTimeout(10, TimeUnit.MINUTES);
-        } catch (CloudnameException.CouldNotConnectToStorage e)  {
+        } catch (CloudnameException e) {
             return false;
         }
+
         return true;
     }
 
@@ -178,23 +182,29 @@ public class ZkCloudname implements Cloudname, Watcher {
      *
      * Just blindly creates the entire path.  Elements of the path may
      * exist already, but it seems wasteful to
+     * @throws CoordinateExistsException if coordinate already exists-
+     * @throws CloudnameException if problems with zookeeper connection.
      */
     @Override
-    public void createCoordinate(Coordinate coordinate) {
+    public void createCoordinate(Coordinate coordinate) throws CloudnameException, CoordinateExistsException {
         // Create the root path for the coordinate.  We do this
         // blindly, meaning that if the path already exists, then
         // that's ok -- so a more correct name for this method would
         // be ensureCoordinate(), but that might confuse developers.
         String root = ZkCoordinatePath.getCoordinateRoot(coordinate);
 
-        if (Util.exist(zk, root)) {
-            throw new CloudnameException.CoordinateExist();
+        try {
+            if (Util.exist(zk, root)) {
+                throw new CoordinateExistsException("Coordinate already created:" +root);
+            }
+        } catch (InterruptedException e) {
+            throw new CloudnameException(e);
         }
 
         try {
             Util.mkdir(zk, root, Ids.OPEN_ACL_UNSAFE);
-        } catch (KeeperException e) {
-            throw new RuntimeException(e);
+        } catch (InterruptedException e) {
+            throw new CloudnameException(e);
         }
 
         // Create the nodes that represent subdirectories.
@@ -215,36 +225,52 @@ public class ZkCloudname implements Cloudname, Watcher {
      * @param coordinate the coordinate we wish to destroy.
      */
     @Override
-    public void destroyCoordinate(Coordinate coordinate) {
+    public void destroyCoordinate(Coordinate coordinate)
+            throws CoordinateDeletionException, CoordinateMissingException, CloudnameException {
         String statusPath = ZkCoordinatePath.getStatusPath(coordinate);
         String configPath = ZkCoordinatePath.getConfigPath(coordinate, null);
         String rootPath = ZkCoordinatePath.getCoordinateRoot(coordinate);
 
-        if (! Util.exist(zk, rootPath)) {
-            throw new CloudnameException.CoordinateNotFound();
-        }
-        
-        // Do this early to raise the error before anything is deleted. However, there might be a raise condition
-        // if someone claims while we delete configPath and instance (root) node.
-        if (Util.exist(zk, configPath) && Util.hasChildren(zk, configPath)) {
-            throw new CloudnameException.CoordinateHasConfig();
+        try {
+            if (! Util.exist(zk, rootPath)) {
+                throw new CoordinateMissingException("Coordinate not found: " + rootPath);
+            }
+        } catch (InterruptedException e) {
+            throw new CloudnameException(e);
         }
 
-        if (Util.exist(zk, statusPath)) {
-            throw new CloudnameException.CoordinateIsClaimed();
+        // Do this early to raise the error before anything is deleted. However, there might be a race condition
+        // if someone claims while we delete configPath and instance (root) node.
+        try {
+            if (Util.exist(zk, configPath) && Util.hasChildren(zk, configPath)) {
+                throw new CoordinateDeletionException("Coordinate has config node.");
+            }
+        } catch (InterruptedException e) {
+            throw new CloudnameException(e);
+        }
+
+        try {
+            if (Util.exist(zk, statusPath)) {
+                throw new CoordinateDeletionException("Coordinate is claimed.");
+            }
+        } catch (InterruptedException e) {
+            throw new CloudnameException(e);
         }
 
         // Delete config, the instance node, and continue with as much as possible.
         // We might have a raise condition if someone is creating a coordinate with a shared path in parallel.
         // We want to keep 3 levels of nodes (/cn/%CELL%/%USER%).
-        int deletedNodes = Util.deletePathKeepRootLevels(zk, configPath, 3);
+        int deletedNodes = 0;
+        try {
+            deletedNodes = Util.deletePathKeepRootLevels(zk, configPath, 3);
+        } catch (InterruptedException e) {
+            throw new CloudnameException(e);
+        }
         if (deletedNodes == 0) {
-            throw new CloudnameException(
-                    new RuntimeException("Did not manage to delete config node:" + configPath));
+            throw new CoordinateDeletionException("Failed deleting config node, nothing deleted..");
         }
         if (deletedNodes == 1) {
-            throw new CloudnameException(
-                    new RuntimeException("Did not manage to delete instance node:" + configPath));
+            throw new CoordinateDeletionException("Failed deleting instance node.");
         }
     }
 
@@ -256,7 +282,8 @@ public class ZkCloudname implements Cloudname, Watcher {
      * already exists the coordinate has already been claimed.
      */
     @Override
-    public ServiceHandle claim(Coordinate coordinate) {
+    public ServiceHandle claim(Coordinate coordinate)
+            throws CloudnameException, CoordinateMissingException, CoordinateAlreadyClaimedException {
         String statusPath = ZkCoordinatePath.getStatusPath(coordinate);
         log.info("Claiming " + coordinate.asString() + " (" + statusPath + ")");
 
@@ -274,7 +301,7 @@ public class ZkCloudname implements Cloudname, Watcher {
     }
 
     @Override
-    public ServiceStatus getStatus(Coordinate coordinate) {
+    public ServiceStatus getStatus(Coordinate coordinate) throws CloudnameException {
         String statusPath = ZkCoordinatePath.getStatusPath(coordinate);
         ZkStatusAndEndpoints statusAndEndpoints = new ZkStatusAndEndpoints.Builder(new ZooKeeperKeeper(zk), statusPath).build().load();
         return statusAndEndpoints.getServiceStatus();
@@ -283,26 +310,20 @@ public class ZkCloudname implements Cloudname, Watcher {
     /**
      * Close the connection to ZooKeeper.
      */
-    public void close() {
+    public void close() throws InterruptedException {
         if (null == zk) {
             throw new IllegalStateException("Cannot releaseClaim(): Not connected to ZooKeeper");
         }
-
-        try {
-            zk.close();
-            log.info("ZooKeeper session closed for " + connectString);
-        } catch (InterruptedException e) {
-            throw new RuntimeException(e);
-        }
-
+        zk.close();
+        log.info("ZooKeeper session closed for " + connectString);
     }
 
     /**
      * List the sub-nodes in ZooKeeper owned by Cloudname.
      * @param nodeList
      */
-    public void listRecursively(List<String> nodeList) {
-        Util.listRecursively(zk, ZkCoordinatePath.getCloudnameRoot(), null, nodeList);
+    public void listRecursively(List<String> nodeList) throws CloudnameException, InterruptedException {
+        Util.listRecursively(zk, ZkCoordinatePath.getCloudnameRoot(), nodeList);
     }
 
     /**

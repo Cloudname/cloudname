@@ -13,8 +13,12 @@ public interface Cloudname {
      * instance of the service, an exception will be thrown.
      *
      * @param coordinate of the service we wish to claim
+     * @throws CoordinateMissingException if coordinate is missing.
+     * @throws CoordinateAlreadyClaimedException if coordinate is already claimed.
+     * @throws CloudnameException if problems talking with storage.
      */
-    public ServiceHandle claim(Coordinate coordinate);
+    public ServiceHandle claim(Coordinate coordinate)
+            throws CloudnameException, CoordinateMissingException, CoordinateAlreadyClaimedException;
 
     /**
      * Get a resolver instance.
@@ -25,26 +29,31 @@ public interface Cloudname {
      * Create a coordinate in the persistent service store.  Must
      * throw an exception if the coordinate has already been defined.
      *
+     *
      * @param coordinate the coordinate we wish to create
-     * @throws CloudnameException.CoordinateExist if coordinate exists.
+     * @throws CoordinateExistsException if coordinate already exists.
+     * @throws CloudnameException if problems with talking with storage.
      */
-    public void createCoordinate(Coordinate coordinate);
+    public void createCoordinate(Coordinate coordinate)
+            throws CloudnameException, CoordinateExistsException;
 
     /**
      * Deletes a coordinate in the persistent service store. It will throw an exception if the coordinate is claimed.
      * @param coordinate the coordinate we wish to destroy.
-     * @throws CloudnameException.CoordinateIsClaimed if the coordinate is claimed.
-     * @throws CloudnameException.CoordinateHasConfig is there is config that should be deleted before
-     * coordinate is destroyed.
-     * @throws CloudnameException.CoordinateNotFound if coordinate does not exist.
+     * @throws CoordinateMissingException if coordinate does not exist.
+     * @throws CloudnameException if problems talking with storage.
+     * @throws CoordinateDeletionException if problems occurred during deletion.
      */
-    public void destroyCoordinate(Coordinate coordinate);
+    public void destroyCoordinate(Coordinate coordinate)
+            throws CoordinateDeletionException, CoordinateMissingException, CloudnameException;
     
     /**
      * Get the ServiceStatus for a given Coordinate.
      *
      * @param coordinate the coordinate we want to get the status of
      * @return a ServiceStatus instance.
+     * @throws CloudnameException if problems with talking with storage.
      */
-    public ServiceStatus getStatus(Coordinate coordinate);
+    public ServiceStatus getStatus(Coordinate coordinate)
+            throws CloudnameException;
 }

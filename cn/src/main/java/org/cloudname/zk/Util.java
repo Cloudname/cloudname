@@ -6,6 +6,7 @@ import org.apache.zookeeper.ZooKeeper;
 import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.data.ACL;
 import org.apache.zookeeper.KeeperException;
+import org.cloudname.CoordinateMissingException;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -27,10 +28,10 @@ public class Util {
      * will just ignore those.  The result should be a path consisting
      * of ZooKeeper nodes with the names specified by the path and
      * with their data element set to null.
+     * @throws CloudnameException if problems talking with ZooKeeper.
      */
     public static void mkdir(ZooKeeper zk, String path, List<ACL> acl)
-        throws KeeperException
-    {
+            throws CloudnameException, InterruptedException {
         if (path.startsWith("/")) {
             path = path.substring(1);
         }
@@ -46,26 +47,22 @@ public class Util {
                 zk.create(createPath, null, acl, CreateMode.PERSISTENT);
             } catch (KeeperException.NodeExistsException e) {
                 // This is okay.  Ignore.
-            } catch (InterruptedException e) {
-                // This may indicate a problem.
+            } catch (KeeperException e) {
                 throw new CloudnameException(e);
             }
         }
     }
 
     /**
-     * Lists sub nodes
-     * @param zk
+     * Lists sub nodes of a path in a ZooKeeper instance.
      * @param path starts from this path
-     * @param acl
      * @param nodeList put sub-nodes in this list
      */
-    public static void listRecursively(ZooKeeper zk, String path, List<ACL> acl, List<String> nodeList) {
+    public static void listRecursively(ZooKeeper zk, String path, List<String> nodeList)
+            throws CloudnameException, InterruptedException {
         List<String> children = null;
         try {
             children = zk.getChildren(path, false);
-        } catch (InterruptedException e) {
-            throw new CloudnameException(e);
         } catch (KeeperException e) {
             throw new CloudnameException(e);
         }
@@ -74,26 +71,23 @@ public class Util {
             return;
         }
         for (String childPath : children) {
-            listRecursively(zk, path + "/" +childPath, acl, nodeList);
+            listRecursively(zk, path + "/" +childPath, nodeList);
         }
     }
     
     /**
-     * Figures out if there are sub-nodes under the path.
-     * @param zk
-     * @param path
-     * @return true iff the node exists and has children.
+     * Figures out if there are sub-nodes under the path in a ZooKeeper instance.
+     * @return true if the node exists and has children.
+     * @throws CoordinateMissingException if the path does not exist in ZooKeeper.
      */
-    public static boolean hasChildren(ZooKeeper zk, String path)  {
+    public static boolean hasChildren(ZooKeeper zk, String path)
+            throws CloudnameException, CoordinateMissingException, InterruptedException {
         if (! exist(zk, path)) {
-            throw new CloudnameException(
-                    new RuntimeException("Could not get children due to non-existing path " + path));
+            throw new CoordinateMissingException("Could not get children due to non-existing path " + path);
         }
         List<String> children = null;
         try {
             children = zk.getChildren(path, false);
-        } catch (InterruptedException e) {
-            throw new CloudnameException(e);
         } catch (KeeperException e) {
             throw new CloudnameException(e);
         }
@@ -101,17 +95,14 @@ public class Util {
     }
 
     /**
-     * Figures out if a path exists.
-     * @param zk
-     * @param path
+     * Figures out if a path exists in a ZooKeeper instance.
+     * @throws CloudnameException if there are problems taking to the ZooKeeper instance.
      * @return true if the path exists.
      */
-    public static boolean exist(ZooKeeper zk, String path)  {
+    public static boolean exist(ZooKeeper zk, String path) throws CloudnameException, InterruptedException {
         try {
             return zk.exists(path, false) != null;
         } catch (KeeperException e) {
-            throw new CloudnameException(e);
-        } catch (InterruptedException e) {
             throw new CloudnameException(e);
         }
     }
@@ -122,7 +113,7 @@ public class Util {
      * @param path
      * @return version number 
      */
-    public static int getVersionForDeletion(ZooKeeper zk, String path) {
+    public static int getVersionForDeletion(ZooKeeper zk, String path) throws CloudnameException, InterruptedException {
 
         try {
             int version = zk.exists(path, false).getVersion();
@@ -131,8 +122,6 @@ public class Util {
             }
             return version;
         } catch (KeeperException e) {
-            throw new CloudnameException(e);
-        } catch (InterruptedException e) {
             throw new CloudnameException(e);
         }
     }
@@ -144,7 +133,8 @@ public class Util {
      * @param keepMinLevels is the minimum number of levels (depths) to keep in the path.
      * @return the number of deleted levels.
      */
-    public static int deletePathKeepRootLevels(ZooKeeper zk, String path, int keepMinLevels) {
+    public static int deletePathKeepRootLevels(ZooKeeper zk, String path, int keepMinLevels)
+            throws CloudnameException, CoordinateMissingException, InterruptedException {
         if (path.startsWith("/")) {
             path = path.substring(1);
         }
@@ -170,8 +160,6 @@ public class Util {
             try {
                 zk.delete(deletePath, version);
             } catch (KeeperException e) {
-                throw new CloudnameException(e);
-            } catch (InterruptedException e) {
                 throw new CloudnameException(e);
             }
             deletedNodes++;

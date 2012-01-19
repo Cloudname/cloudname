@@ -29,29 +29,32 @@ public class ZkServiceHandle implements ServiceHandle {
     }
 
     @Override
-    public void setStatus(ServiceStatus status) {
+    public void setStatus(ServiceStatus status) throws CloudnameException, CoordinateMissingException {
         statusAndEndpoints.updateStatus(status);
     }
 
     @Override
-    public void putEndpoints(List<Endpoint> endpoints) {
+    public void putEndpoints(List<Endpoint> endpoints)
+            throws EndpointException, CloudnameException, CoordinateMissingException {
         statusAndEndpoints.putEndpoints(endpoints);
     }
 
     @Override
-    public void putEndpoint(Endpoint endpoint) {
+    public void putEndpoint(Endpoint endpoint)
+            throws EndpointException, CloudnameException, CoordinateMissingException {
         List<Endpoint> endpoints = new ArrayList<Endpoint>();
         endpoints.add(endpoint);
         putEndpoints(endpoints);
     }
 
     @Override
-    public void removeEndpoints(List<String> names) {
+    public void removeEndpoints(List<String> names)
+            throws EndpointException, CloudnameException, CoordinateMissingException {
         statusAndEndpoints.removeEndpoints(names);
     }
 
     @Override
-    public void removeEndpoint(String name) {
+    public void removeEndpoint(String name) throws EndpointException, CloudnameException, CoordinateMissingException {
         List<String> names = new ArrayList<String>();
         names.add(name);
         removeEndpoints(names);
@@ -63,13 +66,15 @@ public class ZkServiceHandle implements ServiceHandle {
     }
 
     @Override
-    public void registerCoordinateListener(CoordinateListener listener) {
+    public void registerCoordinateListener(CoordinateListener listener) throws CloudnameException {
         statusAndEndpoints.registerCoordinateListener(listener);
     }
 
     @Override
-    public void close() {
+    public void close() throws CloudnameException {
+
         statusAndEndpoints.releaseClaim();
+
         statusAndEndpoints = null;
     }
 
