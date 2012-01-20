@@ -215,7 +215,6 @@ public class ZkStatusAndEndpoints implements Watcher {
             if (! endpointsByName.containsKey(name)) {
                 throw new EndpointException("endpoint does not exist: " +  name);
             }
-            //endpointsByName.remove(endpointsByName.get(name));
             if (null == endpointsByName.remove(name)) {
                 throw new EndpointException("End point does not exists.");
             }

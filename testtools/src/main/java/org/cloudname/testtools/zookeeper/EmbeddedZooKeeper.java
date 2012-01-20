@@ -70,7 +70,6 @@ public final class EmbeddedZooKeeper {
         cnxnFactory.startup(zk);
     }
 
-
     /**
      * Shut the ZooKeeper instance down.
      */

@@ -11,6 +11,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 
+import org.cloudname.testtools.network.PortForwarder;
 import org.junit.*;
 import org.junit.rules.TemporaryFolder;
 import static org.junit.Assert.*;
@@ -33,6 +34,8 @@ public class ZkCloudnameTest {
     private EmbeddedZooKeeper ezk;
     private ZooKeeper zk;
     private int zkport;
+    private PortForwarder forwarder;
+    private int forwarderPort;
 
     @Rule public TemporaryFolder temp = new TemporaryFolder();
 
@@ -56,8 +59,13 @@ public class ZkCloudnameTest {
 
         // Set up a zookeeper client that we can use for inspection
         final CountDownLatch connectedLatch = new CountDownLatch(1);
-        zk = new ZooKeeper("localhost:" + zkport, 1000, new Watcher() {
+
+        forwarderPort = Net.getFreePort();
+        forwarder = new PortForwarder(forwarderPort, "127.0.0.1", zkport);
+
+        zk = new ZooKeeper("localhost:" + forwarderPort, 1000, new Watcher() {
                 public void process(WatchedEvent event) {
+                    System.err.println("Ggadsfasdjkfasdfasdfasdfasdfasdfasdf" + event.toString());
                     if (event.getState() == Event.KeeperState.SyncConnected) {
                         connectedLatch.countDown();
                     }
@@ -123,7 +131,7 @@ public class ZkCloudnameTest {
         // Publish two endpoints
         handle.putEndpoint(new Endpoint(c, "foo", "localhost", 1234, "http", null));
         handle.putEndpoint(new Endpoint(c, "bar", "localhost", 1235, "http", null));
-
+        handle.setStatus(new ServiceStatus(ServiceState.RUNNING, msg));
         // Remove one of them
         handle.removeEndpoint("bar");
                                    
@@ -214,6 +222,7 @@ public class ZkCloudnameTest {
 
         @Override
         public Action onConfigEvent(Event event, String message) {
+            System.err.println("Got unit test even " + event.toString() + " " + message);
             events.add(event);
             latch.countDown();
             return returnAction;
@@ -311,15 +320,75 @@ public class ZkCloudnameTest {
         UnitTestCoordinateListener listener = setUpListenerEnvironment(connectedLatch);
         listener.returnAction = CoordinateListener.Action.DIE_IF_PANIC_AUTO_RECOVERY_FAILS;
         log.info("Killing zookeeper");
+        assertTrue(zk.getState() == ZooKeeper.States.CONNECTED);
         ezk.shutdown();
-        Thread.sleep(30000);
+        while (zk.getState() != ZooKeeper.States.CONNECTED) {
+            System.out.println("waiting for correct state: " + zk.getState().toString());
+            Thread.sleep(30);
+        }
         ezk.init();
-        assertTrue(connectedLatch.await(20, TimeUnit.SECONDS));
+        assertTrue(connectedLatch.await(6, TimeUnit.SECONDS));
         assertEquals(3, listener.events.size());
         assertEquals(CoordinateListener.Event.COORDINATE_OK, listener.events.get(0));
         assertEquals(CoordinateListener.Event.LOST_CONNECTION_TO_STORAGE, listener.events.get(1));
+
+        // We use the same path for the new ezk, so it reads up the old state, and hence the coordinate is ok.
         assertEquals(CoordinateListener.Event.COORDINATE_OK, listener.events.get(2));
     }
+
+
+    @Test
+    public void testCoordinateListenerConnectionDiesReconnect2() throws  Exception {
+
+
+        final CountDownLatch connectedLatch = new CountDownLatch(1);
+        UnitTestCoordinateListener listener = setUpListenerEnvironment(connectedLatch);
+        listener.returnAction = CoordinateListener.Action.DO_NOTHING;
+        assertTrue(connectedLatch.await(5, TimeUnit.SECONDS));
+
+        log.info("Killing connection");
+        forwarder.disconnect();
+        Thread.sleep(300);
+        //zk.close();
+        /*ezk.shutdown();
+        while (zk.getState() != ZooKeeper.States.CONNECTING) {
+            System.out.println("waiting for CONNECTING state: " + zk.getState().toString());
+            Thread.sleep(300);
+        }
+        File rootDir = temp.newFolder("zk-test2");
+        ezk = new EmbeddedZooKeeper(rootDir, zkport);
+        ezk.init();
+          */
+        Thread.sleep(300);
+        log.info("Recreating connection");
+        Thread.sleep(9600);
+        forwarder = new PortForwarder(forwarderPort, "127.0.0.1", zkport);
+        log.info("Recreating connection -- done");
+        while (zk.getState() == ZooKeeper.States.CONNECTING) {
+            System.out.println("waiting for not CONNECTING state: " + zk.getState().toString());
+            Thread.sleep(300);
+        }
+
+        System.out.println(" 1state: " + zk.getState().toString());
+        Thread.sleep(3000);
+        assertEquals(3, listener.events.size());
+        assertEquals(CoordinateListener.Event.COORDINATE_OK, listener.events.get(0));
+        assertEquals(CoordinateListener.Event.LOST_CONNECTION_TO_STORAGE, listener.events.get(1));
+
+        // We use the same path for the new ezk, so it reads up the old state, and hence the coordinate is ok.
+        assertEquals(CoordinateListener.Event.COORDINATE_OK, listener.events.get(2));
+    }
+
+  /*  File rootDir = temp.newFolder("zk-test");
+    zkport = Net.getFreePort();
+
+    log.info("EmbeddedZooKeeper rootDir=" + rootDir.getCanonicalPath() + ", port=" + zkport
+    );
+
+    // Set up and initialize the embedded ZooKeeper
+    ezk = new EmbeddedZooKeeper(rootDir, zkport);
+    ezk.init();
+    */
 
     @Test
     public void testDestroyBasic() throws Exception {

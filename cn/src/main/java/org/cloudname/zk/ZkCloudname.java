@@ -39,7 +39,7 @@ import java.io.IOException;
  */
 public class ZkCloudname implements Cloudname, Watcher {
 
-    private static final int SESSION_TIMEOUT = 5000;
+    private static final int SESSION_TIMEOUT = 5;
 
     private static final Logger log = Logger.getLogger(ZkCloudname.class.getName());
 
