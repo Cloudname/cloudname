@@ -1,6 +1,5 @@
 package org.cloudname.zk;
 
-import org.apache.zookeeper.KeeperException;
 import org.cloudname.*;
 import org.cloudname.flags.Flag;
 import org.cloudname.flags.Flags;
@@ -31,7 +30,7 @@ public class ZkTool {
 
     /**
      *   The possible operations to do on a coordinate.
-     */  
+     */
     public enum Operation {
         /**
          * Create a new coordinate.
@@ -57,10 +56,10 @@ public class ZkTool {
     public static final Pattern instanceConfigPattern
             = Pattern.compile("\\/cn\\/([a-z][a-z-_]*)\\/" // cell
             + "([a-z][a-z0-9-_]*)\\/" // user
-            + "([a-z][a-z0-9-_]*)\\/" // service 
+            + "([a-z][a-z0-9-_]*)\\/" // service
             + "(\\d+)\\/config\\z"); // instance
-         
-    
+
+
     public static void main(String[] args) throws Exception {
         // Parse the flags.
         Flags flags = new Flags()
@@ -72,11 +71,11 @@ public class ZkTool {
             flags.printHelp(System.out);
             return;
         }
-        
+
         ZkCloudname.Builder builder = new ZkCloudname.Builder();
         if (zooKeeperFlag == null) {
             System.out.println("Connecting to cloudname with auto connect.");
-            builder.autoConnect();
+            builder.setDefaultConnectString();
         } else {
             System.out.println("Connecting to cloudname with ZooKeeper connect string " + zooKeeperFlag);
             builder.setConnectString(zooKeeperFlag);
