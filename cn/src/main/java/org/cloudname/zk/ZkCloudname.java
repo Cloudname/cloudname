@@ -9,9 +9,11 @@ import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.ZooDefs.Ids;
 import org.apache.zookeeper.KeeperException;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import java.util.concurrent.CountDownLatch;
@@ -39,7 +41,7 @@ import java.io.IOException;
  */
 public class ZkCloudname implements Cloudname, Watcher {
 
-    private static final int SESSION_TIMEOUT = 5;
+    private static final int SESSION_TIMEOUT = 5000;
 
     private static final Logger log = Logger.getLogger(ZkCloudname.class.getName());
 
@@ -55,46 +57,7 @@ public class ZkCloudname implements Cloudname, Watcher {
         connectString = builder.getConnectString();
     }
 
-    public class ZooKeeperKeeper {
-        private ZooKeeper localZooKeeper;
-        
-        public ZooKeeperKeeper(ZooKeeper zooKeeper) {
-            this.localZooKeeper = zooKeeper;
-        }
 
-        public synchronized ZooKeeper getZooKeeper() {
-            return localZooKeeper;
-        }
-
-        // TODO To coursed grain lock
-        public synchronized boolean reconnect() {
-
-            if (localZooKeeper.getState() == ZooKeeper.States.CONNECTED) {
-                log.info("Asked to reconnect, don't bother, I am already connected.");
-                return true;
-            } else {
-                // Grab the latest zookeeper instance.
-                localZooKeeper = zk;
-            }
-            if (localZooKeeper.getState() == ZooKeeper.States.CONNECTED) {
-                // Already recreated connection by some other process, just using that.
-                return true;
-            }
-            try {
-                connect();
-            } catch (CloudnameException e) {
-                return false;
-            }
-            localZooKeeper = zk;
-            if (zk.getState() == ZooKeeper.States.CONNECTED) {
-                log.info("Managed to reconnect to ZooKeeper.");
-                return true;
-            }
-            log.info("Could not reconnect");
-            return false;
-        }
-    }
-    
     /**
      * Connect to ZooKeeper instance with time-out value.
      * @param waitTime time-out value for establishing connection.
@@ -133,47 +96,40 @@ public class ZkCloudname implements Cloudname, Watcher {
      * When calling this function, the zookeeper state should be either connected or closed.
      * @return
      */
-    public synchronized boolean resolveConnectionProblems() {
-        switch (zk.getState()) {
-
-            case CONNECTING:
-            case ASSOCIATING:
-            case AUTH_FAILED:
-                throw new RuntimeException("ZooKeeper in wrong state, giving up." + zk.toString());
-            case CONNECTED:
-                return true;
-            case CLOSED:
-                break;
-            default:
-                throw new RuntimeException("ZooKeeper in unknown unexpected state, giving up." + zk.toString());
-        }
-        // TODO(borud, dybdahl): Make this timeout configurable.
-
+    public synchronized void retryConnection() {
+        log.info("Retrying connection to ZooKeeper.");
         try {
-            connectWithTimeout(10, TimeUnit.MINUTES);
-        } catch (CloudnameException e) {
-            return false;
+            zk = new ZooKeeper(connectString, SESSION_TIMEOUT, this);
+        } catch (IOException e) {
+            log.log(Level.SEVERE, "RetryConnection failed for some reason:" + e.getMessage());
         }
-
-        return true;
     }
 
-    public ZooKeeper getZooKeeper() {
-        return zk;
-    }
-
+    List<ZkUserInterface> users = new ArrayList<ZkUserInterface>();
+    
+    private void notifyUsersConnectionDown() {
+        for (ZkUserInterface user : users) {
+            user.zooKeeperDown();
+        }
+    } 
+    
     @Override
     public void process(WatchedEvent event) {
-        log.fine("Got event " + event.toString());
-
+        log.info("Got event in ZkCloudname: " + event.toString());
+        if (event.getState() == Event.KeeperState.Disconnected || event.getState() == Event.KeeperState.Expired) {
+            notifyUsersConnectionDown();
+            retryConnection();
+        }
+        
         // Initial connection to ZooKeeper is completed.
         if (event.getState() == Event.KeeperState.SyncConnected) {
-            if (connectedSignal.getCount() == 0) {
-                // I am not sure if this can ever occur, but until I
-                // know I'll just leave this log message in here.
-                log.info("The connectedSignal count was already zero.  Duplicate Event.KeeperState.SyncConnected");
-            }
+            // The first connection set up is blocking, this will unblock the connection.
             connectedSignal.countDown();
+            // Notify the users that the connection is up.
+            for (ZkUserInterface user : users) {
+                user.newZooKeeperInstance(zk);
+            }
+            return;
         }
     }
 
@@ -287,23 +243,34 @@ public class ZkCloudname implements Cloudname, Watcher {
         String statusPath = ZkCoordinatePath.getStatusPath(coordinate);
         log.info("Claiming " + coordinate.asString() + " (" + statusPath + ")");
 
-        ZkStatusAndEndpoints statusAndEndpoints = new ZkStatusAndEndpoints.Builder(new ZooKeeperKeeper(zk), statusPath).build().claim();
+        ZkStatusAndEndpoints statusAndEndpoints = new ZkStatusAndEndpoints(statusPath);
+        users.add(statusAndEndpoints);
+        statusAndEndpoints.newZooKeeperInstance(zk);
+        statusAndEndpoints.claim();
         // If we have come thus far we have succeeded in creating the
         // CN_STATUS_NAME node within the service coordinate directory
         // in ZooKeeper and we can give the client a ServiceHandle.
-
-        return new ZkServiceHandle(coordinate, statusAndEndpoints);
+        ZkServiceHandle handle = new ZkServiceHandle(coordinate, statusAndEndpoints);
+        users.add(handle);
+        handle.newZooKeeperInstance(zk);
+        return handle;
     }
     
     @Override
     public Resolver getResolver() {
-        return new ZkResolver.Builder(new ZooKeeperKeeper(zk)).addStrategy(new StrategyAll()).addStrategy(new StrategyAny()).build();
+        ZkResolver resolver =  new ZkResolver.Builder().addStrategy(new StrategyAll()).addStrategy(new StrategyAny()).build();
+        users.add(resolver);
+        resolver.newZooKeeperInstance(zk);
+        return resolver;
     }
 
     @Override
     public ServiceStatus getStatus(Coordinate coordinate) throws CloudnameException {
         String statusPath = ZkCoordinatePath.getStatusPath(coordinate);
-        ZkStatusAndEndpoints statusAndEndpoints = new ZkStatusAndEndpoints.Builder(new ZooKeeperKeeper(zk), statusPath).build().load();
+        ZkStatusAndEndpoints statusAndEndpoints = new ZkStatusAndEndpoints(statusPath);
+        users.add(statusAndEndpoints);
+        statusAndEndpoints.newZooKeeperInstance(zk);
+        statusAndEndpoints.load();
         return statusAndEndpoints.getServiceStatus();
     }
 

@@ -38,36 +38,19 @@ public interface CoordinateListener {
         /**
          * No longer the owner of the coordinate.
          */
-        NOT_OWNER
+        NOT_OWNER,
+        /**
+         * Seems like we might be the new owner due to higher session ID, probably due to a network outage.
+         * We want to re-try state.
+         */
     }
 
-    /**
-     * The action that can be taken in case of events. Panic auto recovery is more desperate than normal auto recovery.
-     * E.g. in ZooKeeper implementation it will try to create the coordinate if it does not exist.
-     */
-    public enum Action {
-        /**
-         * Just continue.
-         */
-        DO_NOTHING,
-        /**
-         * System.exit is called.
-         */
-        DIE_NOW,
-        /**
-         * Try auto recovery, if it fails, die.
-         */
-        DIE_IF_NORMAL_AUTO_RECOVERY_FAILS,
-        /**
-         * Try panic auto recovery, if it fails, die.
-         */
-        DIE_IF_PANIC_AUTO_RECOVERY_FAILS,
-    }
+
 
     /**
-     * Implement this function to receive the events and trigger action.
+     * Implement this function to receive the events.
      * @param event the event that happened.
      * @param message some message associated with the event.
      */
-    public Action onConfigEvent(Event event, String message);
+    public void onConfigEvent(Event event, String message);
 }

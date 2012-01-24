@@ -14,5 +14,8 @@ public class CloudnameException extends Exception {
     public CloudnameException(String message) {
         super(message);
     }
-
+    
+    public CloudnameException(String message, Throwable t) {
+        super(message,t );
+    }
 }

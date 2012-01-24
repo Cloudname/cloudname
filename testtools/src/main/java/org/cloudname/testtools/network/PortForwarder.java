@@ -12,6 +12,7 @@ public class PortForwarder extends Thread {
     final private int myPort;
     final private String hostName;
     final private int hostPort;
+    boolean isAlive = true;
 
     private ClientThread clientThread;
 
@@ -19,22 +20,46 @@ public class PortForwarder extends Thread {
         this.myPort = myPort;
         this.hostName = hostName;
         this.hostPort = hostPort;
+        System.out.println("Starting port forwarder " + myPort + "-> " + hostPort);
         start();
     }
-
+    ServerSocket serverSocket = null;
+    Socket clientSocket = null;
     public void run()  {
-        ServerSocket serverSocket = null;
+
         try {
             serverSocket = new ServerSocket(myPort);
-            Socket clientSocket = serverSocket.accept();
-            clientThread = new ClientThread(clientSocket, hostName, hostPort);
+            System.out.println("Forwarder, server port running " + myPort);
+            while (isAlive) {
+                System.out.println("Now, taking clients to forwarder");
+                clientSocket = serverSocket.accept();
+                clientThread = new ClientThread(clientSocket, hostName, hostPort);
+            }
         } catch (IOException e) {
+            System.err.println("Problems in forwarder " + e.getMessage() + e.getStackTrace());
             return;
         }
+        System.out.println("Forwarder running");
     }
 
     public void disconnect() {
+        System.out.println("Someone called disconnect");
         clientThread.disconnect();
+    }
+
+    public void terminate() {
+        isAlive = false;
+        disconnect();
+        try {
+            clientSocket.close();
+        } catch (IOException e) {
+            System.out.println("Forwarder close client port failed, might be ok."+ e.getMessage());
+        }
+        try {
+            serverSocket.close();
+        } catch (IOException e) {
+            System.out.println("Forwarder close server port failed, might be ok." + e.getMessage());
+        }
     }
 }
 
@@ -44,12 +69,18 @@ class ClientThread extends Thread {
     final private String hostName;
     final private int hostPort;
 
+    public String toString() {
+        return hostName + " " + hostPort;
+    }
+    
     public ClientThread(Socket clientSocket, String hostName, int hostPort) {
         this.clientSocket = clientSocket;
         this.hostName = hostName;
         this.hostPort = hostPort;
         start();
     }
+
+
 
     public void run() {
         InputStream clientIn, serverIn;
@@ -62,22 +93,27 @@ class ClientThread extends Thread {
             serverIn = serverSocket.getInputStream();
             serverOut = serverSocket.getOutputStream();
         } catch (IOException ioe) {
-            System.err.println("Can not connect to " + hostName + ":" + hostPort);
+            System.err.println("Portforwarder: Can not connect to " + hostName + ":" + hostPort);
             disconnect();
             return;
         }
-        ForwardThread clientForward = new ForwardThread(this, clientIn, serverOut);
-        ForwardThread serverForward = new ForwardThread(this, serverIn, clientOut);
+        new ForwardThread(this, clientIn, serverOut);
+        new ForwardThread(this, serverIn, clientOut);
     }
 
 
     public synchronized void disconnect() {
+        System.out.println("Disconnecting");
         try {
             serverSocket.close();
-        } catch (Exception e) {}
+        } catch (Exception e) {
+            System.err.println("Disconnect fun: " + e.getMessage() +  e.getStackTrace());
+        }
         try {
             clientSocket.close();
-        } catch (Exception e) {}
+        } catch (Exception e) {
+            System.err.println("Disconnect fun problems: " + e.getMessage() +  e.getStackTrace());
+        }
     }
 }
 
@@ -87,10 +123,10 @@ class ForwardThread extends Thread {
     OutputStream outputStream;
     ClientThread parent;
 
-    public ForwardThread(ClientThread aParent, InputStream aInputStream, OutputStream aOutputStream) {
-        parent = aParent;
-        inputStream = aInputStream;
-        outputStream = aOutputStream;
+    public ForwardThread(ClientThread parent, InputStream inputStream, OutputStream outputStream) {
+        this.parent = parent;
+        this.inputStream = inputStream;
+        this.outputStream = outputStream;
         start();
     }
 
@@ -99,13 +135,16 @@ class ForwardThread extends Thread {
         try {
             while (true) {
                 int bytesRead = inputStream.read(buffer);
+
                 if (bytesRead == -1)
                     break; // End of stream is reached --> exit
+
                 outputStream.write(buffer, 0, bytesRead);
                 outputStream.flush();
             }
         } catch (IOException e) {
             // Read/write failed --> connection is broken
+            System.out.println("Forwarding in loop died.." + parent.toString() + e.getMessage());
         }
         // Notify parent thread that the connection is broken
         parent.disconnect();

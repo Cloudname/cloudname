@@ -18,22 +18,41 @@ import java.util.regex.Matcher;
  *
  * @author borud
  */
-public class ZkResolver implements Resolver {
+public class ZkResolver implements Resolver, ZkUserInterface {
 
     private static final Logger log = Logger.getLogger(ZkResolver.class.getName());
 
-    private final ZkCloudname.ZooKeeperKeeper zk;
+    private ZooKeeper zk = null;
 
     private Map<String, ResolverStrategy> strategies;
 
+    @Override
+    public void zooKeeperDown() {
+        synchronized (this) {
+            this.zk = null;
+        }
+    }
+
+    @Override
+    public void newZooKeeperInstance(ZooKeeper zk) {
+        synchronized (this) {
+            this.zk = zk;
+        }
+    }
+
+    private ZooKeeper getZooKeeper() throws CloudnameException {
+        synchronized (this) {
+            if (zk == null) {
+                throw new CloudnameException("Connection to ZooKeeper is down.");
+            }
+            return zk;
+        }
+    }
+            
+    
     public static class Builder {
 
         Map<String, ResolverStrategy> strategies = new HashMap<String, ResolverStrategy>();
-        private ZkCloudname.ZooKeeperKeeper zk;
-        
-        public Builder(ZkCloudname.ZooKeeperKeeper keeper) {
-            this.zk = keeper;
-        }
 
         public Builder addStrategy(ResolverStrategy strategy) {
             strategies.put(strategy.getName(), strategy);
@@ -42,10 +61,6 @@ public class ZkResolver implements Resolver {
 
         public Map<String, ResolverStrategy> getStrategies() {
             return strategies;
-        }
-        
-        public ZkCloudname.ZooKeeperKeeper getZooKeeperKeeper() {
-            return zk;
         }
         
         public ZkResolver build() {
@@ -207,7 +222,6 @@ public class ZkResolver implements Resolver {
      * @param builder
      */
     private ZkResolver(Builder builder) {
-        this.zk = builder.getZooKeeperKeeper();
         this.strategies = builder.getStrategies();
     }
     
@@ -232,14 +246,16 @@ public class ZkResolver implements Resolver {
                     parameters.getService(), instance);
 
             try {
-                if (! Util.exist(zk.getZooKeeper(), statusPath)) {
+                if (! Util.exist(getZooKeeper(), statusPath)) {
                     continue;
                 }
             } catch (InterruptedException e) {
                 throw new CloudnameException(e);
 
             }
-            ZkStatusAndEndpoints statusAndEndpoints = new ZkStatusAndEndpoints.Builder(zk, statusPath).build().load();
+            ZkStatusAndEndpoints statusAndEndpoints = new ZkStatusAndEndpoints(statusPath);
+            statusAndEndpoints.newZooKeeperInstance(zk);
+            statusAndEndpoints.load();
             if (statusAndEndpoints.getServiceStatus().getState() != ServiceState.RUNNING) {
                 continue;
             }
@@ -263,7 +279,7 @@ public class ZkResolver implements Resolver {
     private List<Integer> getInstances(String path) throws CloudnameException, InterruptedException {
         List<Integer> paths = new ArrayList<Integer>();
         try {
-            List<String> children = zk.getZooKeeper().getChildren(path, false /* watcher */);
+            List<String> children = getZooKeeper().getChildren(path, false /* watcher */);
             for (String child : children) {
                 paths.add(Integer.parseInt(child));
             }

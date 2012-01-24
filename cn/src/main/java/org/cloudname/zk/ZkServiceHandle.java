@@ -1,5 +1,6 @@
 package org.cloudname.zk;
 
+import org.apache.zookeeper.ZooKeeper;
 import org.cloudname.*;
 
 import java.util.ArrayList;
@@ -12,10 +13,11 @@ import java.util.List;
  *
  * @author borud
  */
-public class ZkServiceHandle implements ServiceHandle {
+public class ZkServiceHandle implements ServiceHandle, ZkUserInterface {
     private final Coordinate coordinate;
     private ZkStatusAndEndpoints statusAndEndpoints;
     private static final Logger log = Logger.getLogger(ZkServiceHandle.class.getName());
+    private ZooKeeper zk = null;
 
     /**
      * Create a ZkServiceHandle for a given coordinate.
@@ -81,5 +83,19 @@ public class ZkServiceHandle implements ServiceHandle {
     @Override
     public String toString() {
         return "StatusEndpoint instance: "+ statusAndEndpoints.toString();
+    }
+
+    @Override
+    public void zooKeeperDown() {
+        synchronized (this) {
+            zk = null;
+        }
+    }
+
+    @Override
+    public void newZooKeeperInstance(ZooKeeper zk) {
+        synchronized (this)  {
+            this.zooKeeperDown();
+        }
     }
 }
