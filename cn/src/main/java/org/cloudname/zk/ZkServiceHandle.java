@@ -98,4 +98,9 @@ public class ZkServiceHandle implements ServiceHandle, ZkUserInterface {
             this.zooKeeperDown();
         }
     }
+
+    @Override
+    public void wakeUp() {
+        //To change body of implemented methods use File | Settings | File Templates.
+    }
 }

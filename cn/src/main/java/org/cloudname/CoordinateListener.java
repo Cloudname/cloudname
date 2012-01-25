@@ -19,12 +19,6 @@ public interface CoordinateListener {
          * Connection lost to storage, no more events will occur.
          */
         LOST_CONNECTION_TO_STORAGE,
-
-        /**
-         * Coordinate ownership is list, nobody owns it. No more events will occur.
-         */
-        COORDINATE_VANISHED,
-
         /**
          * Problems with parsing the data in ZooKeeper for this coordinate.
          */

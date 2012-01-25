@@ -42,23 +42,28 @@ public class PortForwarder extends Thread {
         System.out.println("Forwarder running");
     }
 
-    public void disconnect() {
+    public synchronized  void disconnect() {
         System.out.println("Someone called disconnect");
-        clientThread.disconnect();
+        if (clientThread != null) clientThread.disconnect();
+        clientThread = null;
     }
 
     public void terminate() {
         isAlive = false;
         disconnect();
-        try {
-            clientSocket.close();
-        } catch (IOException e) {
-            System.out.println("Forwarder close client port failed, might be ok."+ e.getMessage());
-        }
-        try {
-            serverSocket.close();
-        } catch (IOException e) {
-            System.out.println("Forwarder close server port failed, might be ok." + e.getMessage());
+        synchronized (this) {
+            if (clientSocket == null) return;
+            try {
+                clientSocket.close();
+            } catch (IOException e) {
+                System.out.println("Forwarder close client port failed, might be ok."+ e.getMessage());
+            }
+            try {
+                serverSocket.close();
+            } catch (IOException e) {
+                System.out.println("Forwarder close server port failed, might be ok." + e.getMessage());
+            }
+            clientSocket = null;
         }
     }
 }

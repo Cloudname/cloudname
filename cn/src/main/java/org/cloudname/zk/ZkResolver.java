@@ -40,6 +40,11 @@ public class ZkResolver implements Resolver, ZkUserInterface {
         }
     }
 
+    @Override
+    public void wakeUp() {
+        //To change body of implemented methods use File | Settings | File Templates.
+    }
+
     private ZooKeeper getZooKeeper() throws CloudnameException {
         synchronized (this) {
             if (zk == null) {

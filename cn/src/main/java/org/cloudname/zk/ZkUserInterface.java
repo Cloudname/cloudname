@@ -12,4 +12,6 @@ public interface ZkUserInterface {
     public void zooKeeperDown();
 
     public void newZooKeeperInstance(ZooKeeper zk);
+
+    public void wakeUp();
 }
