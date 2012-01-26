@@ -258,7 +258,7 @@ public class ZkResolver implements Resolver, ZkUserInterface {
                 throw new CloudnameException(e);
 
             }
-            ZkStatusAndEndpoints statusAndEndpoints = new ZkStatusAndEndpoints(statusPath);
+            ZkRemoteStatusAndEndpoints statusAndEndpoints = new ZkRemoteStatusAndEndpoints(statusPath);
             statusAndEndpoints.newZooKeeperInstance(zk);
             statusAndEndpoints.load();
             if (statusAndEndpoints.getServiceStatus().getState() != ServiceState.RUNNING) {

@@ -323,7 +323,7 @@ public class ZkCloudname extends Thread implements Cloudname, Watcher {
     public ServiceStatus getStatus(Coordinate coordinate) throws CloudnameException {
         System.out.println("GET STATUS");
         String statusPath = ZkCoordinatePath.getStatusPath(coordinate);
-        ZkStatusAndEndpoints statusAndEndpoints = new ZkStatusAndEndpoints(statusPath);
+        ZkRemoteStatusAndEndpoints statusAndEndpoints = new ZkRemoteStatusAndEndpoints(statusPath);
         users.add(statusAndEndpoints);
         statusAndEndpoints.newZooKeeperInstance(getZk());
         statusAndEndpoints.load();

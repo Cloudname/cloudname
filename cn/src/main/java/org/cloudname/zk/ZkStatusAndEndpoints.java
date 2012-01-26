@@ -26,8 +26,9 @@ import java.util.logging.Logger;
  * @author dybdahl
  */
 public class ZkStatusAndEndpoints implements Watcher, ZkUserInterface {
-    private ZkStatusAndEndpoints.State state = ZkStatusAndEndpoints.State.EMPTY;
+
     private Storage storage = Storage.NO_CONNECTION;
+    private boolean claimed = false;
 
     private int lastStatusVersion = -1000;
     private ServiceStatus serviceStatus = new ServiceStatus(ServiceState.UNASSIGNED,
@@ -80,11 +81,11 @@ public class ZkStatusAndEndpoints implements Watcher, ZkUserInterface {
                 
                     try {
                         // todo sync this
-                        if (state == State.CLAIMED) {
+
                         statusAndEndpoints.writeStatusEndpoint();
                         synchronized (statusAndEndpoints) {
                             statusAndEndpoints.storage = Storage.SYNCED;
-                        }
+
                         }
                     } catch (CoordinateMissingException e) {
 
@@ -146,10 +147,10 @@ public class ZkStatusAndEndpoints implements Watcher, ZkUserInterface {
             this.zk = zk;
             // We always start by assuming it is unclaimed.
             storage = Storage.UNCLAIMED;
-            if (state != State.CLAIMED) {
+
+            if (! claimed) {
                 return;
             }
-
             log.info("ZkStatusAndEndpoints: Reclaiming coordinate.");
 
             try {
@@ -169,10 +170,12 @@ public class ZkStatusAndEndpoints implements Watcher, ZkUserInterface {
     public void wakeUp() {
         
         synchronized (this) {
-            if (state != State.CLAIMED || storage == Storage.SYNCED || zk == null) {
+            if ( storage == Storage.SYNCED || zk == null) {
                 return;
             }
-
+            if (! claimed) {
+                return;
+            }
             try {
                 zk.create(
                         path, serialize(serviceStatus, endpointsByName).getBytes(Util.CHARSET_NAME),
@@ -186,23 +189,6 @@ public class ZkStatusAndEndpoints implements Watcher, ZkUserInterface {
         System.out.println("alive");
     }
 
-    /**
-     * The state of the ownership of the endpoint.
-     */
-    private enum State {
-        /**
-         * We have not yet loaded or claimed the endpoint.
-         */
-        EMPTY,
-        /**
-         * We have loaded the state from ZooKeeper. It means that we are in a read-only mode.
-         */
-        LOADED,
-        /**
-         * We have claimed and own the coordinate. We are the only one that are allowed to modify.
-         */
-        CLAIMED,
-    }
     private enum Storage {
         NO_CONNECTION,
         UNCLAIMED,
@@ -217,41 +203,13 @@ public class ZkStatusAndEndpoints implements Watcher, ZkUserInterface {
      */
     public void updateStatus(ServiceStatus status) throws CloudnameException, CoordinateMissingException {
         synchronized (this) {
-            if (state != State.CLAIMED) {
-                throw new IllegalStateException("This instance did not claim this coordinate.");
-            }
+
             this.serviceStatus = status;
         }
         writeStatusEndpoint();
     }
 
-    /**
-     * Returns the ServiceStatus. If we claimed the coordinate, this is the real-time value, otherwise
-     * it is the last loaded value.
-     * @return ServiceStatus.
-     */
-    public synchronized ServiceStatus getServiceStatus() {
-        return serviceStatus;
-    }
 
-    /**
-     * Returns the Endpoint. If we claimed the coordinate, this is the real-time value, otherwise
-     * it is the last loaded value.
-     * @return Endpoint.
-     */
-    public synchronized Endpoint getEndpoint(String name) {
-        return endpointsByName.get(name);
-    }
-
-    /**
-     * Set all endpoints to the endpoints argument.
-     * @param endpoints The endpoints are put in this list.
-     */
-    public synchronized void returnAllEndpoints(List<Endpoint> endpoints) {
-        for (Endpoint endpoint : endpointsByName.values()) {
-            endpoints.add(endpoint);
-        }
-    }
 
     /**
      * Adds new endpoints and persist them. Requires that this instance owns the claim to the coordinate.
@@ -260,9 +218,7 @@ public class ZkStatusAndEndpoints implements Watcher, ZkUserInterface {
     public void putEndpoints(List<Endpoint> newEndpoints)
             throws EndpointException, CloudnameException, CoordinateMissingException {
         synchronized (this) {
-            if (state != State.CLAIMED) {
-                throw new IllegalStateException("This instance did not claim this coordinate.");
-            }
+
             for (Endpoint endpoint : newEndpoints) {
                 if (endpointsByName.containsKey(endpoint.getName())) {
                     throw new EndpointException("endpoint already exists: " +  endpoint.getName());
@@ -280,9 +236,7 @@ public class ZkStatusAndEndpoints implements Watcher, ZkUserInterface {
     public void removeEndpoints(List<String> names)
             throws EndpointException, CloudnameException, CoordinateMissingException {
         synchronized (this) {
-            if (state != State.CLAIMED) {
-                throw new IllegalStateException("This instance did not claim this coordinate.");
-            }
+
             for (String name : names) {
                 if (! endpointsByName.containsKey(name)) {
                     throw new EndpointException("endpoint does not exist: " +  name);
@@ -301,9 +255,7 @@ public class ZkStatusAndEndpoints implements Watcher, ZkUserInterface {
      */
     public void releaseClaim() throws CloudnameException {
         synchronized (this) {
-            if (state != State.CLAIMED) {
-                throw new IllegalStateException("This instance did not own the claim to this coordinate.");
-            }
+
             try {
                 getZooKeeper().delete(path, lastStatusVersion);
             } catch (InterruptedException e) {
@@ -314,7 +266,7 @@ public class ZkStatusAndEndpoints implements Watcher, ZkUserInterface {
 
             serviceStatus = new ServiceStatus(ServiceState.UNASSIGNED,
                     "No service state has been assigned");
-            state = State.LOADED;
+
             endpointsByName.clear();
             lastStatusVersion = -1;
         }
@@ -455,7 +407,7 @@ public class ZkStatusAndEndpoints implements Watcher, ZkUserInterface {
             }
 
             if (event == CoordinateListener.Event.COORDINATE_OUT_OF_SYNC) {
-                if (state == State.CLAIMED)  {
+
                     try {
                         writeStatusEndpoint();
                     } catch (CoordinateMissingException e) {
@@ -466,7 +418,7 @@ public class ZkStatusAndEndpoints implements Watcher, ZkUserInterface {
                         log.info("Exceptiion cloudname" + e.getMessage());
                         return;
                     }
-                }
+
                 return;
 
             }
@@ -476,36 +428,6 @@ public class ZkStatusAndEndpoints implements Watcher, ZkUserInterface {
         //newZooKeeperInstance(getZooKeeper());
     }
 
-    /**
-     * Loads the coordinate from ZooKeeper.
-     * @return this.
-     */
-    public ZkStatusAndEndpoints load() throws CloudnameException {
-        if (state != ZkStatusAndEndpoints.State.EMPTY) {
-            throw new IllegalStateException("Does not make sense to load when something is already set.");
-        }
-        Stat stat = new Stat();
-        try {
-
-            byte[] data = getZooKeeper().getData(path, false /*watcher*/, stat);
-
-            serviceStatus = deserialize(new String(data, Util.CHARSET_NAME), objectMapper, endpointsByName);
-
-        } catch (KeeperException e) {
-            throw new CloudnameException(e);
-        } catch (UnsupportedEncodingException e) {
-            throw new CloudnameException(e);
-        } catch (InterruptedException e) {
-            throw new CloudnameException(e);
-        } catch (IOException e) {
-            throw new CloudnameException(e);
-        }
-        state = State.LOADED;
-
-        return this;
-    }
-
-
 
 
     /**
@@ -513,17 +435,13 @@ public class ZkStatusAndEndpoints implements Watcher, ZkUserInterface {
      * @return this.
      */
     public ZkStatusAndEndpoints claim() throws CloudnameException, CoordinateMissingException, CoordinateAlreadyClaimedException {
-        synchronized (this) {
 
 
-        };
-        if (state != State.EMPTY) {
-            throw new IllegalStateException("Does not make sense to claim when something is already loaded.");
-        }
         try {
             getZooKeeper().create(
                     path, serialize(serviceStatus, endpointsByName).getBytes(Util.CHARSET_NAME), 
                     ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.EPHEMERAL);
+            claimed = true;
 
         } catch (KeeperException.NodeExistsException e) {
             log.info("Coordinate already claimed  (" + path + ")");
@@ -569,7 +487,7 @@ public class ZkStatusAndEndpoints implements Watcher, ZkUserInterface {
         } catch (InterruptedException e) {
             throw new CloudnameException(e);
         }
-        state = State.CLAIMED;
+
         storage = Storage.DIRTY;
         return this;
     }
@@ -603,7 +521,7 @@ public class ZkStatusAndEndpoints implements Watcher, ZkUserInterface {
                 // Try to parse the loaded data.
                 Map<String, Endpoint> endpointsByNameLoaded = new HashMap<String, Endpoint>();
                 try {
-                    deserialize(new String(loadedState, Util.CHARSET_NAME), new ObjectMapper(), endpointsByNameLoaded);
+                    RemoteStatusAndEndpoints.deserialize(new String(loadedState, Util.CHARSET_NAME), new ObjectMapper(), endpointsByNameLoaded);
                 } catch (UnsupportedEncodingException e) {
                     statusAndEndpoints.updateCoordinateListenersAndTakeAction(
                             CoordinateListener.Event.COORDINATE_CORRUPTED, "on verify encoding problems");
@@ -697,26 +615,6 @@ public class ZkStatusAndEndpoints implements Watcher, ZkUserInterface {
         return new String(stringWriter.getBuffer());
     }
 
-    /**
-     * Deserialize a json string into the endpointsByName and the return value.
-     * @see ZkStatusAndEndpoints#serialize for de-serialization.
-     * @param data The string to be deserialized.
-     * @param objectMapper A helper object.
-     * @param endpointsByName This map is populated with the endpoints.
-     * @return the ServiceStatus in the data.                                             ´
-     */
-
-    private static ServiceStatus deserialize(
-            String data, ObjectMapper objectMapper, Map<String, Endpoint> endpointsByName) throws IOException {
-
-        JsonFactory jsonFactory = new JsonFactory();
-        JsonParser jp = jsonFactory.createJsonParser(data);
-        String statusString = objectMapper.readValue(jp, new TypeReference <String>() {});
-        endpointsByName.clear();
-        endpointsByName.putAll((Map<String, Endpoint>)objectMapper.readValue(jp,
-                new TypeReference <Map<String, Endpoint>>() {}));
-        return ServiceStatus.fromJson(statusString);
-    }
 
     /**
      * Creates the serialized value of the object and stores this in ZooKeeper under the path.
@@ -724,9 +622,7 @@ public class ZkStatusAndEndpoints implements Watcher, ZkUserInterface {
      */
     private void writeStatusEndpoint() throws CoordinateMissingException, CloudnameException {
         synchronized (this) {
-            if (state != State.CLAIMED) {
-                throw new IllegalStateException("This instance did not claim this coordinate.");
-            }
+
             if (storage != Storage.DIRTY && storage != Storage.SYNCED) {
                 throw new IllegalStateException("Not owner of coordinate yet: " + storage.name());
             }
