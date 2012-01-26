@@ -464,6 +464,7 @@ public class Flags {
         }
 
         public Field getField() {
+            // To support private variables we simply make the field accessible.
             if (!field.isAccessible()) {
                 field.setAccessible(true);
             }

@@ -35,9 +35,9 @@ public class FlagsAllLegalFields {
     public static SimpleEnum option = SimpleEnum.OPTION1;
 
     /**
-     * @return int - integer
+     * Get the value of the private variable "integer"
      */
-    public static int getInteger() {
+    public static int getValueForPrivateInteger() {
         return integer;
     }
 }
