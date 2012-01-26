@@ -116,6 +116,11 @@ public class ZkTool {
             } catch (IOException e) {
                 System.err.println("Failed to read coordinate from file. " + e.getMessage());
             }
+            try {
+                br.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
             return;
         }
 
