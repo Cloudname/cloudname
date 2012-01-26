@@ -32,7 +32,7 @@ public class FlagsTest {
         assertEquals(false, FlagsAllLegalFields.bool);
         assertEquals(new Boolean(false), FlagsAllLegalFields.bool2);
         assertEquals("NA", FlagsAllLegalFields.string);
-        assertEquals(1, FlagsAllLegalFields.integer);
+        assertEquals(1, FlagsAllLegalFields.getInteger());
         assertEquals(new Integer(1), FlagsAllLegalFields.integer2);
         assertEquals(1, FlagsAllLegalFields.longNum);
         assertEquals(1, FlagsAllLegalFields.longNum2);
@@ -54,7 +54,7 @@ public class FlagsTest {
         assertEquals(true, FlagsAllLegalFields.bool);
         assertEquals(new Boolean(true), FlagsAllLegalFields.bool2);
         assertEquals("stringtest", FlagsAllLegalFields.string);
-        assertEquals(10, FlagsAllLegalFields.integer);
+        assertEquals(10, FlagsAllLegalFields.getInteger());
         assertEquals(new Integer(20), FlagsAllLegalFields.integer2);
         assertEquals(30, FlagsAllLegalFields.longNum);
         assertEquals(40, FlagsAllLegalFields.longNum2);

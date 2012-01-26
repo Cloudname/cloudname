@@ -12,7 +12,7 @@ public class FlagsAllLegalFields {
     public static String string = "NA";
 
     @Flag(name="int", description="Some int")
-    public static int integer = 1;
+    private static int integer = 1;
 
     @Flag(name="boolean")
     public static boolean bool = false;
@@ -33,4 +33,11 @@ public class FlagsAllLegalFields {
 
     @Flag(name="option", options=SimpleEnum.class)
     public static SimpleEnum option = SimpleEnum.OPTION1;
+
+    /**
+     * @return int - integer
+     */
+    public static int getInteger() {
+        return integer;
+    }
 }
