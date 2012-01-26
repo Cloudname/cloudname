@@ -22,7 +22,7 @@ public final class ZkResolver implements Resolver {
 
     private static final Logger log = Logger.getLogger(ZkResolver.class.getName());
 
-    private ZooKeeper zk;
+    private final ZooKeeper zk;
 
     private Map<String, ResolverStrategy> strategies;
 
@@ -127,7 +127,7 @@ public final class ZkResolver implements Resolver {
 
         /**
          * Returns instance if set or negative number if not set.
-         * @return
+         * @return instance number.
          */
         public Integer getInstance() {
             return instance;
@@ -231,9 +231,16 @@ public final class ZkResolver implements Resolver {
 
         List<Endpoint> endpoints = new ArrayList<Endpoint>();
         for (Integer instance : instances) {
-            String path = ZkCoordinatePath.getStatusPath(parameters.getCell(), parameters.getUser(),
+            String statusPath = ZkCoordinatePath.getStatusPath(parameters.getCell(), parameters.getUser(),
                     parameters.getService(), instance);
-            ZkStatusAndEndpoints statusAndEndpoints = new ZkStatusAndEndpoints.Builder(zk, path).load().build();
+
+            if (! Util.exist(zk, statusPath)) {
+                continue;
+            }
+            ZkStatusAndEndpoints statusAndEndpoints = new ZkStatusAndEndpoints.Builder(zk, statusPath).build().load();
+            if (statusAndEndpoints.getServiceStatus().getState() != ServiceState.RUNNING) {
+                continue;
+            }
             if (parameters.getEndpointName() == "") {
                 statusAndEndpoints.returnAllEndpoints(endpoints);
             } else {
@@ -263,4 +270,3 @@ public final class ZkResolver implements Resolver {
         return paths;
     }
 }
-

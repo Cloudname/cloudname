@@ -6,6 +6,8 @@ import static org.junit.Assert.assertTrue;
 
 import java.io.ByteArrayOutputStream;
 
+import junit.framework.Assert;
+
 import org.junit.Test;
 
 /**
@@ -65,7 +67,26 @@ public class FlagsTest {
         flags.printHelp(baos);
         assertTrue(baos.size() > 0);
     }
-    
+
+    /**
+     * Boolean flags should be set to true if no parameter is set, or parameter is set to true.
+     * False otherwise.
+     */
+    @Test
+    public void testBooleanFlag() {
+        Flags flags = new Flags()
+        .loadOpts(FlagsAllLegalFields.class)
+        .parse(new String[] {"--boolean", "--Boolean"});
+
+        assertEquals(true, FlagsAllLegalFields.bool);
+        assertEquals(true, FlagsAllLegalFields.bool2);
+
+        flags.parse(new String[] {"--boolean", "false", "--Boolean=false"});
+
+        assertEquals(false, FlagsAllLegalFields.bool);
+        assertEquals(false, FlagsAllLegalFields.bool2);
+    }
+
     /**
      * Test that printing help does not crash on various cases.
      */
@@ -141,6 +162,21 @@ public class FlagsTest {
     public void testNotStaticVariable() {
         Flags flags = new Flags()
         .loadOpts(FlagsNonStaticVariable.class);
+    }
+
+    /**
+     * Test no default value and not given in argument.
+     * Should not do anything, and of course not crash.
+     */
+    @Test
+    public void testArgumentNotGivenForValueWithoutDefault() {
+        Assert.assertNull(FlagsArgumentNPE.argWithoutDefault);
+
+        Flags flags = new Flags()
+        .loadOpts(FlagsArgumentNPE.class)
+        .parse(new String[] {});
+
+        Assert.assertNull(FlagsArgumentNPE.argWithoutDefault);
     }
 
 }

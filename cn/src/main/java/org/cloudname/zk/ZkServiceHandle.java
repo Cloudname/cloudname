@@ -13,7 +13,7 @@ import java.util.List;
  * @author borud
  */
 public class ZkServiceHandle implements ServiceHandle {
-    private Coordinate coordinate;
+    private final Coordinate coordinate;
     private ZkStatusAndEndpoints statusAndEndpoints;
     private static final Logger log = Logger.getLogger(ZkServiceHandle.class.getName());
 
@@ -60,6 +60,11 @@ public class ZkServiceHandle implements ServiceHandle {
     @Override
     public void registerConfigListener(ConfigListener listener) {
 
+    }
+
+    @Override
+    public void registerCoordinateListener(CoordinateListener listener) {
+        statusAndEndpoints.registerCoordinateListener(listener);
     }
 
     @Override

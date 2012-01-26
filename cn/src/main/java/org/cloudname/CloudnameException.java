@@ -12,7 +12,6 @@ public class CloudnameException extends RuntimeException {
      */
     public static class AlreadyClaimed extends CloudnameException {
         public AlreadyClaimed() {
-            super();
         }
 
         public AlreadyClaimed(Throwable t) {
@@ -25,7 +24,6 @@ public class CloudnameException extends RuntimeException {
      */
     public static class CoordinateNotFound extends CloudnameException {
         public CoordinateNotFound() {
-            super();
         }
 
         public CoordinateNotFound(Throwable t) {
@@ -38,7 +36,6 @@ public class CloudnameException extends RuntimeException {
      */
     public static class EndpointExists extends CloudnameException {
         public EndpointExists() {
-            super();
         }
 
         public EndpointExists(Throwable t) {
@@ -51,7 +48,6 @@ public class CloudnameException extends RuntimeException {
      */
     public static class EndpointDoesNotExist extends CloudnameException {
         public EndpointDoesNotExist() {
-            super();
         }
 
         public EndpointDoesNotExist(Throwable t) {
@@ -59,12 +55,60 @@ public class CloudnameException extends RuntimeException {
         }
     }
 
+    /**
+     * The coordinate exists, and it was assumed it did not.
+     */
+    public static class CoordinateExist  extends CloudnameException {
+        public CoordinateExist() {
+            super();
+        }
+    }
+
+    /**
+     * The coordinate the user tried to destroy is claimed.
+     */
+    public static class CoordinateIsClaimed extends CloudnameException {
+        public CoordinateIsClaimed() {
+            super();
+        }
+
+        public CoordinateIsClaimed(Throwable t) {
+            super(t);
+        }
+    }
+
+    /**
+     * The coordinate the user tried to destroy has config nodes.
+     */
+    public static class CoordinateHasConfig extends CloudnameException {
+        public CoordinateHasConfig() {
+            super();
+        }
+
+        public CoordinateHasConfig(Throwable t) {
+            super(t);
+        }
+    }
+
+    public static class CouldNotConnectToStorage extends CloudnameException {
+        public CouldNotConnectToStorage(Throwable t) {
+            super(t);
+        }
+        
+        public CouldNotConnectToStorage(String message) {
+            super(message);
+        }
+    }
+
     public CloudnameException() {
-        super();
     }
 
     public CloudnameException(Throwable t) {
         super(t);
+    }
+
+    public CloudnameException(String message) {
+        super(message);
     }
 
 }

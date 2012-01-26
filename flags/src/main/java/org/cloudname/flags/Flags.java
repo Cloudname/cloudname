@@ -59,7 +59,7 @@ public class Flags {
             .accepts("help", "Show this help");
 
     // Helper list for loaded options.
-    private Map<String, OptionHolder> options = new HashMap<String, OptionHolder>();
+    private final Map<String, OptionHolder> options = new HashMap<String, OptionHolder>();
 
     // OptionSet used by option parser implementation
     private OptionSet optionSet;
@@ -67,7 +67,7 @@ public class Flags {
     private List<String> nonOptionArguments;
 
     // Helper map to store enum options.
-    private Map<Class<? extends Enum<?>>, List<String>> enumOptions = new HashMap<Class<? extends Enum<?>>, List<String>>();
+    private final Map<Class<? extends Enum<?>>, List<String>> enumOptions = new HashMap<Class<? extends Enum<?>>, List<String>>();
 
     /**
      * Load a class that contains Flag annotations.
@@ -135,7 +135,7 @@ public class Flags {
                 if (flag.required()) {
                     booleanOption = optionParser
                             .accepts(name, description)
-                            .withRequiredArg()
+                            .withOptionalArg()
                             .ofType(Boolean.class);
                 } else {
                     booleanOption = optionParser
@@ -250,12 +250,12 @@ public class Flags {
         if (nonOptionArguments == null) {
             nonOptionArguments = new ArrayList<String>();
         }
-        
+
         //do not parse options if "help" is a part of the arguments given
         if (helpFlagged()) {
             return this;
         }
-        
+
         for (OptionHolder holder : options.values()) {
             try {
                 OptionSpec<?> optionSpec = holder.getOptionSpec();
@@ -264,19 +264,21 @@ public class Flags {
                 if (optionSet.has(optionSpec)) {
                     switch(holder.getType()) {
                     case INTEGER:
-                        holder.getField().set(holder.getField().getClass(), (Integer) optionSet.valueOf(optionSpec));
+                        holder.getField().set(holder.getField().getClass(), optionSet.valueOf(optionSpec));
                         break;
 
                     case LONG:
-                        holder.getField().set(holder.getField().getClass(), (Long) optionSet.valueOf(optionSpec));
+                        holder.getField().set(holder.getField().getClass(), optionSet.valueOf(optionSpec));
                         break;
 
                     case STRING:
-                        holder.getField().set(holder.getField().getClass(), (String) optionSet.valueOf(optionSpec));
+                        holder.getField().set(holder.getField().getClass(), optionSet.valueOf(optionSpec));
                         break;
 
                     case BOOLEAN:
-                        holder.getField().set(holder.getField().getClass(), (Boolean) optionSet.valueOf(optionSpec));
+                            Object value = optionSet.valueOf(optionSpec);
+                            holder.getField().set(holder.getField().getClass(),
+                                (value == null) ? true : value);
                         break;
 
                     case ENUM:
@@ -388,8 +390,8 @@ public class Flags {
 
     /**
      * Debugging method. Prints the Flags found and the corresponding Fields.
-     * @throws IllegalAccessException 
-     * @throws IllegalArgumentException 
+     * @throws IllegalAccessException
+     * @throws IllegalArgumentException
      */
     public void printFlags() {
         try {
@@ -444,11 +446,11 @@ public class Flags {
      *
      */
     private static class OptionHolder {
-        private Flag flag;
-        private Field field;
-        private OptionSpec<?> optionSpec;
+        private final Flag flag;
+        private final Field field;
+        private final OptionSpec<?> optionSpec;
         private final FieldType type;
-        private Class<?> source;
+        private final Class<?> source;
 
         public OptionHolder(FieldType type, Flag flag, Field field, OptionSpec<?> optionSpec, Class<?> source) {
             this.type = type;

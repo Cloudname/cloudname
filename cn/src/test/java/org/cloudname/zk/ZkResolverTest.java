@@ -29,7 +29,8 @@ public class ZkResolverTest {
     private ZooKeeper zk;
     private int zkport;
     private ZkCloudname cn;
-    private Coordinate coordinate;
+    private Coordinate coordinateRunning;
+    private Coordinate coordinateDraining;
     @Rule public TemporaryFolder temp = new TemporaryFolder();
 
     /**
@@ -57,15 +58,23 @@ public class ZkResolverTest {
             }
         });
         connectedLatch.await();
-        coordinate = Coordinate.parse("1.service.user.cell");
+        coordinateRunning = Coordinate.parse("1.service.user.cell");
         cn = new ZkCloudname.Builder().setConnectString("localhost:" + zkport).build().connect();
-        cn.createCoordinate(coordinate);
-        ServiceHandle handle = cn.claim(coordinate);
-        handle.putEndpoint(new Endpoint(coordinate, "foo", "localhost", 1234, "http", "data"));
-        handle.putEndpoint(new Endpoint(coordinate, "bar", "localhost", 1235, "http", null));
+        cn.createCoordinate(coordinateRunning);
+        ServiceHandle handleRunning = cn.claim(coordinateRunning);
+        handleRunning.putEndpoint(new Endpoint(coordinateRunning, "foo", "localhost", 1234, "http", "data"));
+        handleRunning.putEndpoint(new Endpoint(coordinateRunning, "bar", "localhost", 1235, "http", null));
+        ServiceStatus statusRunning = new ServiceStatus(ServiceState.RUNNING, "Running message");
+        handleRunning.setStatus(statusRunning);
 
-        ServiceStatus status = new ServiceStatus(ServiceState.DRAIN, "drain my disk");
-        handle.setStatus(status);
+        coordinateDraining = Coordinate.parse("0.service.user.cell");
+        cn.createCoordinate(coordinateDraining);
+        ServiceHandle handleDraining = cn.claim(coordinateDraining);
+        handleDraining.putEndpoint(new Endpoint(coordinateDraining, "foo", "localhost", 5555, "http", "data"));
+        handleDraining.putEndpoint(new Endpoint(coordinateDraining, "bar", "localhost", 5556, "http", null));
+
+        ServiceStatus statusDraining = new ServiceStatus(ServiceState.DRAIN, "Draining message");
+        handleDraining.setStatus(statusDraining);
     }
     @After
     public void tearDown() throws Exception {
@@ -95,9 +104,9 @@ public class ZkResolverTest {
 
     @Test
     public void testStatus() throws Exception {
-        ServiceStatus status = cn.getStatus(coordinate);
-        assertEquals(ServiceState.DRAIN, status.getState());
-        assertEquals("drain my disk", status.getMessage());
+        ServiceStatus status = cn.getStatus(coordinateRunning);
+        assertEquals(ServiceState.RUNNING, status.getState());
+        assertEquals("Running message", status.getMessage());
     }
     
     

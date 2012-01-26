@@ -9,6 +9,9 @@ import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.ZooDefs.Ids;
 import org.apache.zookeeper.KeeperException;
 
+import java.util.List;
+import java.util.concurrent.TimeUnit;
+
 import java.util.logging.Logger;
 
 import java.util.concurrent.CountDownLatch;
@@ -44,7 +47,7 @@ public class ZkCloudname implements Cloudname, Watcher {
 
     // Instance variables
     private ZooKeeper zk;
-    private String connectString;
+    private final String connectString;
 
     // Latches that count down when ZooKeeper is connected
     private final CountDownLatch connectedSignal = new CountDownLatch(1);
@@ -55,26 +58,37 @@ public class ZkCloudname implements Cloudname, Watcher {
     }
 
     /**
-     * Connect to ZooKeeper instance.
-     *
-     * TODO(borud): if the ZooKeeper server is not there this method
-     *   will hang forever.  It should probably time out or produce an
-     *   exception.
-     *
+     * Connect to ZooKeeper instance with time-out value.
+     * @param waitTime time-out value for establishing connection.
+     * @param waitUnit time unit for time-out when establishing connection.
+     * @throws org.cloudname.CloudnameException.CouldNotConnectToStorage if connection can not be established
+     * @return
      */
-    public ZkCloudname connect() {
+    public ZkCloudname connectWithTimeout(long waitTime, TimeUnit waitUnit) {
 
         try {
             zk = new ZooKeeper(connectString, SESSION_TIMEOUT, this);
-            connectedSignal.await();
+            if (! connectedSignal.await(waitTime, waitUnit)) {
+                throw new CloudnameException.CouldNotConnectToStorage(
+                        "Connecting to ZooKeeper timed out.");
+            }
             log.info("Connected to ZooKeeper " + connectString);
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            throw new CloudnameException.CouldNotConnectToStorage(e);
         } catch (InterruptedException e) {
-            throw new RuntimeException(e);
+            throw new CloudnameException.CouldNotConnectToStorage(e);
         }
 
         return this;
+    }
+
+    /**
+     * Connect to ZooKeeper instance with long time-out, however, it might fail fast.
+     * @return
+     */
+    public ZkCloudname connect() {
+        // We wait up to 100 years.
+        return connectWithTimeout(365 * 100, TimeUnit.DAYS);
     }
 
     @Override
@@ -104,7 +118,12 @@ public class ZkCloudname implements Cloudname, Watcher {
         // blindly, meaning that if the path already exists, then
         // that's ok -- so a more correct name for this method would
         // be ensureCoordinate(), but that might confuse developers.
-        String root = ZkCoordinatePath.getRoot(coordinate);
+        String root = ZkCoordinatePath.getCoordinateRoot(coordinate);
+
+        if (Util.exist(zk, root)) {
+            throw new CloudnameException.CoordinateExist();
+        }
+
         try {
             Util.mkdir(zk, root, Ids.OPEN_ACL_UNSAFE);
         } catch (KeeperException e) {
@@ -124,6 +143,45 @@ public class ZkCloudname implements Cloudname, Watcher {
     }
 
     /**
+     * Deletes a coordinate in the persistent service store. This includes deletion
+     * of config. It will fail if the coordinate is claimed.
+     * @param coordinate the coordinate we wish to destroy.
+     */
+    @Override
+    public void destroyCoordinate(Coordinate coordinate) {
+        String statusPath = ZkCoordinatePath.getStatusPath(coordinate);
+        String configPath = ZkCoordinatePath.getConfigPath(coordinate, null);
+        String rootPath = ZkCoordinatePath.getCoordinateRoot(coordinate);
+
+        if (! Util.exist(zk, rootPath)) {
+            throw new CloudnameException.CoordinateNotFound();
+        }
+
+        // Do this early to raise the error before anything is deleted. However, there might be a raise condition
+        // if someone claims while we delete configPath and instance (root) node.
+        if (Util.exist(zk, configPath) && Util.hasChildren(zk, configPath)) {
+            throw new CloudnameException.CoordinateHasConfig();
+        }
+
+        if (Util.exist(zk, statusPath)) {
+            throw new CloudnameException.CoordinateIsClaimed();
+        }
+
+        // Delete config, the instance node, and continue with as much as possible.
+        // We might have a raise condition if someone is creating a coordinate with a shared path in parallel.
+        // We want to keep 3 levels of nodes (/cn/%CELL%/%USER%).
+        int deletedNodes = Util.deletePathKeepRootLevels(zk, configPath, 3);
+        if (deletedNodes == 0) {
+            throw new CloudnameException(
+                    new RuntimeException("Did not manage to delete config node:" + configPath));
+        }
+        if (deletedNodes == 1) {
+            throw new CloudnameException(
+                    new RuntimeException("Did not manage to delete instance node:" + configPath));
+        }
+    }
+
+    /**
      * Claim a coordinate.
      *
      * In this implementation a coordinate is claimed by creating an
@@ -135,7 +193,7 @@ public class ZkCloudname implements Cloudname, Watcher {
         String statusPath = ZkCoordinatePath.getStatusPath(coordinate);
         log.info("Claiming " + coordinate.asString() + " (" + statusPath + ")");
 
-        ZkStatusAndEndpoints statusAndEndpoints = new ZkStatusAndEndpoints.Builder(zk, statusPath).claim().build();
+        ZkStatusAndEndpoints statusAndEndpoints = new ZkStatusAndEndpoints.Builder(zk, statusPath).build().claim();
         // If we have come thus far we have succeeded in creating the
         // CN_STATUS_NAME node within the service coordinate directory
         // in ZooKeeper and we can give the client a ServiceHandle.
@@ -151,7 +209,7 @@ public class ZkCloudname implements Cloudname, Watcher {
     @Override
     public ServiceStatus getStatus(Coordinate coordinate) {
         String statusPath = ZkCoordinatePath.getStatusPath(coordinate);
-        ZkStatusAndEndpoints statusAndEndpoints = new ZkStatusAndEndpoints.Builder(zk, statusPath).load().build();
+        ZkStatusAndEndpoints statusAndEndpoints = new ZkStatusAndEndpoints.Builder(zk, statusPath).build().load();
         return statusAndEndpoints.getServiceStatus();
     }
 
@@ -172,11 +230,18 @@ public class ZkCloudname implements Cloudname, Watcher {
 
     }
 
+    /**
+     * List the sub-nodes in ZooKeeper owned by Cloudname.
+     * @param nodeList
+     */
+    public void listRecursively(List<String> nodeList) {
+        Util.listRecursively(zk, ZkCoordinatePath.getCloudnameRoot(), null, nodeList);
+    }
 
     /**
      *  This class builds parameters for ZkCloudname.
      */
-    static class Builder {
+    public static class Builder {
         private String connectString;
 
         public Builder setConnectString(String connectString) {
@@ -188,7 +253,7 @@ public class ZkCloudname implements Cloudname, Watcher {
         //                       Connect to one node and read from a magic path
         //                       how many zookeepers that are running and build
         //                       the path based on this information.
-        public Builder autoConnect() {
+        public Builder setDefaultConnectString() {
             this.connectString = "z1:2181,z2:2181,z3:2181";
             return this;
         }
@@ -198,6 +263,9 @@ public class ZkCloudname implements Cloudname, Watcher {
         }
 
         public ZkCloudname build() {
+            if (connectString.isEmpty()) {
+                throw new RuntimeException("You need to specify connection string before you can build.");
+            }
             return new ZkCloudname(this);
         }
     }

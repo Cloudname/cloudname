@@ -53,6 +53,7 @@
     <module>timber</module>
     <module>flags</module>
     <module>idgen</module>
+    <module>codelabs</module>
   </modules>
 
   <build>
