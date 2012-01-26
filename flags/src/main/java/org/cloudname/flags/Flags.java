@@ -76,9 +76,8 @@ public class Flags {
      * @return this
      */
     public Flags loadOpts(Class<?> c) {
-        for (Field field : c.getFields()) {
+        for (Field field : c.getDeclaredFields()) {
             Flag flag = field.getAnnotation(Flag.class);
-
             // Check if we found a flag annotation for this field.
             if (null == flag) {
                 continue;
@@ -465,6 +464,10 @@ public class Flags {
         }
 
         public Field getField() {
+            // To support private variables we simply make the field accessible.
+            if (!field.isAccessible()) {
+                field.setAccessible(true);
+            }
             return field;
         }
 
