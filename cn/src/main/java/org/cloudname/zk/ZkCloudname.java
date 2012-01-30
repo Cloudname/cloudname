@@ -296,7 +296,7 @@ public class ZkCloudname extends Thread implements Cloudname, Watcher {
         String statusPath = ZkCoordinatePath.getStatusPath(coordinate);
         log.info("Claiming " + coordinate.asString() + " (" + statusPath + ")");
 
-        ZkStatusAndEndpoints statusAndEndpoints = new ZkStatusAndEndpoints(statusPath);
+        ZkLocalStatusAndEndpoints statusAndEndpoints = new ZkLocalStatusAndEndpoints(statusPath);
         users.add(statusAndEndpoints);
         //statusAndEndpoints.newZooKeeperInstance(getZk());
         //statusAndEndpoints.claim();

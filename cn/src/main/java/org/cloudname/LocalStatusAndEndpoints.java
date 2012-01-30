@@ -1,11 +1,8 @@
 package org.cloudname;
 
-import org.cloudname.zk.ZkStatusAndEndpoints;
 import org.codehaus.jackson.JsonFactory;
 import org.codehaus.jackson.JsonGenerator;
-import org.codehaus.jackson.JsonParser;
 import org.codehaus.jackson.map.ObjectMapper;
-import org.codehaus.jackson.type.TypeReference;
 
 import java.io.IOException;
 import java.io.StringWriter;
@@ -47,15 +44,14 @@ public class LocalStatusAndEndpoints {
         }
     }
 
-    private static String serialize(ServiceStatus status, Map<String, Endpoint> endpointsByName)
-            throws CloudnameException, IOException {
+    public synchronized String serialize()  throws CloudnameException, IOException {
         StringWriter stringWriter = new StringWriter();
         JsonGenerator generator;
 
         generator = new JsonFactory(new ObjectMapper()).createJsonGenerator(stringWriter);
 
         try {
-            generator.writeString(status.toJson());
+            generator.writeString(serviceStatus.toJson());
             generator.writeObject(endpointsByName);
         } catch (IOException e) {
             throw new CloudnameException(e);

@@ -51,7 +51,7 @@ public class ZkRemoteStatusAndEndpoints implements Watcher, ZkUserInterface {
 
     @Override
     public void zooKeeperDown() {
-        log.info("ZkStatusAndEndpoints: Got event ZooKeeper is down.");
+        log.info("ZkLocalStatusAndEndpoints: Got event ZooKeeper is down.");
         synchronized (this) {
             zk = null;
             storage = Storage.NO_CONNECTION;
@@ -62,7 +62,7 @@ public class ZkRemoteStatusAndEndpoints implements Watcher, ZkUserInterface {
     
     @Override
     public void newZooKeeperInstance(ZooKeeper zk) {
-        log.info("ZkStatusAndEndpoints: Got new ZeeKeeper, expect session to be down so starting potential cleanup." + zk.getSessionId());
+        log.info("ZkLocalStatusAndEndpoints: Got new ZeeKeeper, expect session to be down so starting potential cleanup." + zk.getSessionId());
         synchronized (this) {
             this.zk = zk;
         }
