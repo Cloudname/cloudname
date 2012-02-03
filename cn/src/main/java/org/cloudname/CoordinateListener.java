@@ -18,14 +18,15 @@ public interface CoordinateListener {
         /**
          * Connection lost to storage, no more events will occur.
          */
-        LOST_CONNECTION_TO_STORAGE,
+        NO_CONNECTION_TO_STORAGE,
+
         /**
          * Problems with parsing the data in ZooKeeper for this coordinate.
          */
         COORDINATE_CORRUPTED,
 
         /**
-         * The data in the storage and memory is out of sync, system is corrupted.
+         * The data in the storage and memory is out of sync.
          */
         COORDINATE_OUT_OF_SYNC,
 
@@ -33,10 +34,6 @@ public interface CoordinateListener {
          * No longer the owner of the coordinate.
          */
         NOT_OWNER,
-        /**
-         * Seems like we might be the new owner due to higher session ID, probably due to a network outage.
-         * We want to re-try state.
-         */
     }
 
 

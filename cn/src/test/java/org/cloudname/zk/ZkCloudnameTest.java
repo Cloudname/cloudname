@@ -1,7 +1,6 @@
 package org.cloudname.zk;
 
 import org.apache.zookeeper.ZooDefs;
-import org.apache.zookeeper.data.Stat;
 import org.cloudname.*;
 
 import org.apache.zookeeper.WatchedEvent;
@@ -113,6 +112,7 @@ public class ZkCloudnameTest {
         // Claiming the coordinate creates the status node
         ServiceHandle handle = cn.claim(c);
         assertNotNull(handle);
+        Thread.sleep(49);
         assertTrue(pathExists("/cn/cell/user/service/1/status"));
 
         List<String> nodes = new ArrayList<String>();
@@ -187,7 +187,7 @@ public class ZkCloudnameTest {
                     case COORDINATE_OK:
                         okCounter.countDown();
                         break;
-                    case LOST_CONNECTION_TO_STORAGE:
+                    case NO_CONNECTION_TO_STORAGE:
                         failCounter.countDown();
                         break;
                     case COORDINATE_CORRUPTED:
@@ -324,7 +324,7 @@ public class ZkCloudnameTest {
         forwarder.terminate();
         assertTrue(connectedLatch2.await(20, TimeUnit.SECONDS));
         assertEquals(3, listener.events.size());
-        assertEquals(CoordinateListener.Event.LOST_CONNECTION_TO_STORAGE, listener.events.get(2));
+        assertEquals(CoordinateListener.Event.NO_CONNECTION_TO_STORAGE, listener.events.get(2));
     }
 
     @Test
@@ -466,7 +466,7 @@ public class ZkCloudnameTest {
         Thread.sleep(9000);
         log.info("Recreating connection soon" + forwarderPort + "->" + zkport);
         Thread.sleep(1000);
-        assertEquals(CoordinateListener.Event.LOST_CONNECTION_TO_STORAGE,
+        assertEquals(CoordinateListener.Event.NO_CONNECTION_TO_STORAGE,
                 listener.events.get(listener.events.size() -1 ));
         forwarder = new PortForwarder(forwarderPort, "127.0.0.1", zkport);
         assertTrue(connectedLatch2.await(20, TimeUnit.SECONDS));

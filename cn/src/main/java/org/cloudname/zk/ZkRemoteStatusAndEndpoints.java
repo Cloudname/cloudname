@@ -3,14 +3,8 @@ package org.cloudname.zk;
 import org.apache.zookeeper.*;
 import org.apache.zookeeper.data.Stat;
 import org.cloudname.*;
-import org.codehaus.jackson.JsonFactory;
-import org.codehaus.jackson.JsonGenerator;
-import org.codehaus.jackson.JsonParser;
-import org.codehaus.jackson.map.ObjectMapper;
-import org.codehaus.jackson.type.TypeReference;
 
 import java.io.IOException;
-import java.io.StringWriter;
 import java.io.UnsupportedEncodingException;
 import java.util.*;
 import java.util.logging.Level;
@@ -56,7 +50,7 @@ public class ZkRemoteStatusAndEndpoints implements Watcher, ZkUserInterface {
             zk = null;
             storage = Storage.NO_CONNECTION;
         }
-        updateCoordinateListenersAndTakeAction(CoordinateListener.Event.LOST_CONNECTION_TO_STORAGE, "Got message from parent watcher.");
+        updateCoordinateListenersAndTakeAction(CoordinateListener.Event.NO_CONNECTION_TO_STORAGE, "Got message from parent watcher.");
     }
 
     
@@ -144,12 +138,12 @@ public class ZkRemoteStatusAndEndpoints implements Watcher, ZkUserInterface {
         if (event.getType() == Event.EventType.None &&
                 (event.getState() == Event.KeeperState.Disconnected
                         || event.getState() == Event.KeeperState.AuthFailed)) {
-            updateCoordinateListenersAndTakeAction(CoordinateListener.Event.LOST_CONNECTION_TO_STORAGE, event.toString());
+            updateCoordinateListenersAndTakeAction(CoordinateListener.Event.NO_CONNECTION_TO_STORAGE, event.toString());
             return;
         }
         if (event.getType() == Event.EventType.None &&
                 (event.getState() == Event.KeeperState.Expired)) {
-            updateCoordinateListenersAndTakeAction(CoordinateListener.Event.LOST_CONNECTION_TO_STORAGE, event.toString());
+            updateCoordinateListenersAndTakeAction(CoordinateListener.Event.NO_CONNECTION_TO_STORAGE, event.toString());
             return;
         }
 
@@ -178,11 +172,11 @@ public class ZkRemoteStatusAndEndpoints implements Watcher, ZkUserInterface {
         try {
             registerWatcher();
         } catch (CloudnameException e) {
-            updateCoordinateListenersAndTakeAction(CoordinateListener.Event.LOST_CONNECTION_TO_STORAGE,
+            updateCoordinateListenersAndTakeAction(CoordinateListener.Event.NO_CONNECTION_TO_STORAGE,
                     "Failed setting up new watcher, CloudnameException.");
             return;
         } catch (InterruptedException e) {
-            updateCoordinateListenersAndTakeAction(CoordinateListener.Event.LOST_CONNECTION_TO_STORAGE,
+            updateCoordinateListenersAndTakeAction(CoordinateListener.Event.NO_CONNECTION_TO_STORAGE,
                     "Failed setting up new watcher, InterruptedException.");
             return;
         }
