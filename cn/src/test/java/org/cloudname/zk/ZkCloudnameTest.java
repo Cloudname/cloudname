@@ -1,6 +1,7 @@
 package org.cloudname.zk;
 
 import org.apache.zookeeper.ZooDefs;
+import org.apache.zookeeper.data.Stat;
 import org.cloudname.*;
 
 import org.apache.zookeeper.WatchedEvent;
@@ -10,7 +11,7 @@ import org.apache.zookeeper.ZooKeeper;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.*;
 
 import org.cloudname.testtools.network.PortForwarder;
 import org.junit.*;
@@ -21,7 +22,6 @@ import org.cloudname.testtools.Net;
 import org.cloudname.testtools.zookeeper.EmbeddedZooKeeper;
 
 import java.io.File;
-import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
 
 /**
@@ -175,19 +175,49 @@ public class ZkCloudnameTest {
     public void testDoubleClaim() throws CloudnameException, InterruptedException {
         Coordinate c = Coordinate.parse("2.service.user.cell");
         ZkCloudname cn = null;
+        final CountDownLatch okCounter = new  CountDownLatch(1);     
+        final CountDownLatch failCounter = new  CountDownLatch(1);
+        
+        CoordinateListener listener = new CoordinateListener() {
+
+            @Override
+            public void onConfigEvent(Event event, String message) {
+                switch (event) {
+
+                    case COORDINATE_OK:
+                        okCounter.countDown();
+                        break;
+                    case LOST_CONNECTION_TO_STORAGE:
+                        failCounter.countDown();
+                        break;
+                    case COORDINATE_CORRUPTED:
+                        fail("not expected");
+                        break;
+                    case COORDINATE_OUT_OF_SYNC:
+                        fail("not expected");
+                        break;
+                    case NOT_OWNER:
+                        fail("not expected");
+                        break;
+                }
+            }
+        };
+        
         try {
             cn = new ZkCloudname.Builder().setConnectString("localhost:" + zkport).build().connect();
         } catch (CloudnameException e) {
             fail("connecting to localhost failed.");
         }
+
         try {
             cn.createCoordinate(c);
-            cn.claim(c);
-            cn.claim(c);
-            fail("Should have thrown exception.");
-        } catch (CoordinateException e) {
-            // Expected.
+        } catch (CoordinateExistsException e) {
+            fail("should not happen.");
         }
+        cn.claim(c).registerCoordinateListener(listener);
+        cn.claim(c).registerCoordinateListener(listener);
+            
+
     }
 
 
@@ -196,12 +226,33 @@ public class ZkCloudnameTest {
      */
     @Test
     public void testCoordinateNotFound() throws CloudnameException, InterruptedException {
-        Coordinate c = Coordinate.parse("3.service.user.cell");
-        ZkCloudname cn = new ZkCloudname.Builder().setConnectString("localhost:" + zkport).build().connect();
+        final Coordinate c = Coordinate.parse("3.service.user.cell");
+        final ZkCloudname cn = new ZkCloudname.Builder().setConnectString("localhost:" + zkport).build().connect();
+
+            //cn.claim(c);
+            //fail("Expected coordinate not found thrown.");
+
+
+
+        ExecutorService executor = Executors.newCachedThreadPool();
+        Callable<Object> task = new Callable<Object>() {
+            public Object call() throws InterruptedException {
+                return cn.claim(c);
+            }
+        };
+        Future<Object> future = executor.submit(task);
         try {
-            cn.claim(c);
-            fail("Expected coordinate not found thrown.");
-        } catch (CoordinateException e) {
+            Object result = future.get(300, TimeUnit.MILLISECONDS);
+        } catch (TimeoutException ex) {
+            // handle the timeout
+            log.info("Got time out, nice!");
+        } catch (InterruptedException e) {
+            fail("Interrupted");
+        } catch (ExecutionException e) {
+            fail("Some error " + e.getMessage());
+            // handle other exceptions
+        } finally {
+            future.cancel(true);
         }
     }
 
@@ -244,42 +295,42 @@ public class ZkCloudnameTest {
         } catch (CoordinateException e) {
             fail(e.toString());
         }
-        ServiceHandle handle = cn.claim(c);
         UnitTestCoordinateListener listener = new UnitTestCoordinateListener(connectedLatch1, connectedLatch2);
-        handle.registerCoordinateListener(listener);
+
+        cn.claim(c).registerCoordinateListener(listener);
+
         return listener;
     }
 
     @Test
     public void testCoordinateListenerInitialEvent() throws  Exception {
-        final CountDownLatch connectedLatch1 = new CountDownLatch(1);
-        final CountDownLatch connectedLatch2 = new CountDownLatch(1);
+        final CountDownLatch connectedLatch1 = new CountDownLatch(2);
+        final CountDownLatch connectedLatch2 = new CountDownLatch(2);
         UnitTestCoordinateListener listener = setUpListenerEnvironment(connectedLatch1, connectedLatch2);
-        assertTrue(connectedLatch1.await(2, TimeUnit.SECONDS));
-        assertEquals(1, listener.events.size());
-        assertEquals(CoordinateListener.Event.COORDINATE_OK, listener.events.get(0));
+        assertTrue(connectedLatch1.await(15, TimeUnit.SECONDS));
+        assertEquals(2, listener.events.size());
+        assertEquals(CoordinateListener.Event.COORDINATE_OK, listener.events.get(1));
         forwarder.terminate();
     }
 
     @Test
     public void testCoordinateListenerConnectionDies() throws  Exception {
         final CountDownLatch connectedLatch1 = new CountDownLatch(1);
-        final CountDownLatch connectedLatch2 = new CountDownLatch(2);
+        final CountDownLatch connectedLatch2 = new CountDownLatch(3);
         UnitTestCoordinateListener listener = setUpListenerEnvironment(connectedLatch1, connectedLatch2);
         assertTrue(connectedLatch1.await(20, TimeUnit.SECONDS));
         log.info("Killing zookeeper");
         ezk.shutdown();
         forwarder.terminate();
         assertTrue(connectedLatch2.await(20, TimeUnit.SECONDS));
-        assertEquals(2, listener.events.size());
-        assertEquals(CoordinateListener.Event.COORDINATE_OK, listener.events.get(0));
-        assertEquals(CoordinateListener.Event.LOST_CONNECTION_TO_STORAGE, listener.events.get(1));
+        assertEquals(3, listener.events.size());
+        assertEquals(CoordinateListener.Event.LOST_CONNECTION_TO_STORAGE, listener.events.get(2));
     }
 
     @Test
     public void testCoordinateListenerCoordinateCorrupted() throws  Exception {
-        final CountDownLatch connectedLatch1 = new CountDownLatch(1);
-        final CountDownLatch connectedLatch2 = new CountDownLatch(2);
+        final CountDownLatch connectedLatch1 = new CountDownLatch(2);
+        final CountDownLatch connectedLatch2 = new CountDownLatch(3);
         UnitTestCoordinateListener listener = setUpListenerEnvironment(connectedLatch1, connectedLatch2);
         assertTrue(connectedLatch1.await(20, TimeUnit.SECONDS));
         log.info("Corrupting coordinate.");
@@ -288,16 +339,15 @@ public class ZkCloudnameTest {
 
         zk.setData("/cn/cell/user/service/1/status", garbageBytes, -1);
         assertTrue(connectedLatch2.await(20, TimeUnit.SECONDS));
-        assertEquals(2, listener.events.size());
-        assertEquals(CoordinateListener.Event.COORDINATE_OK, listener.events.get(0));
-        assertEquals(CoordinateListener.Event.COORDINATE_OUT_OF_SYNC, listener.events.get(1));
+        assertEquals(3, listener.events.size());
+        assertEquals(CoordinateListener.Event.COORDINATE_OUT_OF_SYNC, listener.events.get(2));
         forwarder.terminate();
     }
 
     @Test
     public void testCoordinateListenerCoordinateOutOfSync() throws  Exception {
-        final CountDownLatch connectedLatch1 = new CountDownLatch(1);
-        final CountDownLatch connectedLatch2 = new CountDownLatch(2);
+        final CountDownLatch connectedLatch1 = new CountDownLatch(2);
+        final CountDownLatch connectedLatch2 = new CountDownLatch(4);
         UnitTestCoordinateListener listener = setUpListenerEnvironment(connectedLatch1, connectedLatch2);
         assertTrue(connectedLatch1.await(20, TimeUnit.SECONDS));
 
@@ -306,10 +356,11 @@ public class ZkCloudnameTest {
         byte[] byteArray = source.getBytes(Util.CHARSET_NAME);
 
         zk.setData("/cn/cell/user/service/1/status", byteArray, -1);
+        log.info("Done writing different coordinate.");
         assertTrue(connectedLatch2.await(20, TimeUnit.SECONDS));
-        assertEquals(2, listener.events.size());
-        assertEquals(CoordinateListener.Event.COORDINATE_OK, listener.events.get(0));
-        assertEquals(CoordinateListener.Event.COORDINATE_OUT_OF_SYNC, listener.events.get(1));
+
+        assertEquals(CoordinateListener.Event.NOT_OWNER, listener.events.get(3));
+
         forwarder.terminate();
     }
 
@@ -384,8 +435,8 @@ public class ZkCloudnameTest {
 
     @Test
     public void testCoordinateListenerConnectionDiesReconnect() throws  Exception {
-        final CountDownLatch connectedLatch1 = new CountDownLatch(1);
-        final CountDownLatch connectedLatch2 = new CountDownLatch(3);
+        final CountDownLatch connectedLatch1 = new CountDownLatch(2);
+        final CountDownLatch connectedLatch2 = new CountDownLatch(4);
         UnitTestCoordinateListener listener = setUpListenerEnvironment(connectedLatch1, connectedLatch2);
         assertTrue(connectedLatch1.await(20, TimeUnit.SECONDS));
 
@@ -401,8 +452,8 @@ public class ZkCloudnameTest {
 
     @Test
     public void testCoordinateListenerConnectionDiesReconnectAfterTimeout() throws  Exception {
-        final CountDownLatch connectedLatch1 = new CountDownLatch(1);
-        final CountDownLatch connectedLatch2 = new CountDownLatch(5);
+        final CountDownLatch connectedLatch1 = new CountDownLatch(2);
+        final CountDownLatch connectedLatch2 = new CountDownLatch(6);
         UnitTestCoordinateListener listener = setUpListenerEnvironment(connectedLatch1, connectedLatch2);
         assertTrue(connectedLatch1.await(20, TimeUnit.SECONDS));
         assertEquals(CoordinateListener.Event.COORDINATE_OK,

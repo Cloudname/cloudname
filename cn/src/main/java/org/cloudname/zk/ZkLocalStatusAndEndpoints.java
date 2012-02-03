@@ -10,6 +10,7 @@ import java.io.IOException;
 
 import java.io.UnsupportedEncodingException;
 import java.util.*;
+import java.util.concurrent.CountDownLatch;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -25,17 +26,20 @@ import java.util.logging.Logger;
 public class ZkLocalStatusAndEndpoints implements Watcher, ZkUserInterface {
 
     private Storage storage = Storage.OUT_OF_SYNC;
-    private boolean claimed = false;
+    private boolean started = false;
 
-    private int lastStatusVersion = -1000;
+    private int lastStatusVersion = -1;
     private static final Logger log = Logger.getLogger(ZkLocalStatusAndEndpoints.class.getName());
     private ZooKeeper zk;
     private final String path;
+    //final CoordinateListener coordinateListener;
+
+    private LocalStatusAndEndpoints localStatusAndEndpoints = new LocalStatusAndEndpoints();
     private List<CoordinateListener> coordinateListenerList =
             Collections.synchronizedList(new ArrayList<CoordinateListener>());
 
-    private LocalStatusAndEndpoints localStatusAndEndpoints = new LocalStatusAndEndpoints();
-    
+    //CountDownLatch claimLatch = new CountDownLatch(1);
+
     /**
      * Constructor, the ZooKeeper instances is retrieved from implementing the ZkUserInterface so the object
      * is not ready to be used before the ZooKeeper instance is received.
@@ -59,10 +63,10 @@ public class ZkLocalStatusAndEndpoints implements Watcher, ZkUserInterface {
     class ClaimCallback implements AsyncCallback.StringCallback {
 
         @Override
-        public void processResult(int i, String s, Object o, String s1) {
+        public void processResult(int rawReturnCode, String s, Object parent, String s1) {
 
-            KeeperException.Code returnCode =  KeeperException.Code.get(i);
-            ZkLocalStatusAndEndpoints statusAndEndpoints =  (ZkLocalStatusAndEndpoints) o;
+            KeeperException.Code returnCode =  KeeperException.Code.get(rawReturnCode);
+            ZkLocalStatusAndEndpoints statusAndEndpoints =  (ZkLocalStatusAndEndpoints) parent;
             log.info("Claim callback " + returnCode.name() + " " + s);
            
             switch (returnCode) {
@@ -70,8 +74,11 @@ public class ZkLocalStatusAndEndpoints implements Watcher, ZkUserInterface {
                 case OK:
                     synchronized (statusAndEndpoints) {
                         try {
+                            lastStatusVersion = -1;
                             statusAndEndpoints.writeStatusEndpoint();
                             storage = Storage.SYNCED;
+                            log.info("Now in lock!!!!!!!");
+
                         } catch (CoordinateMissingException e) {
                             log.info("Problems writing config, coordinate missing");
                             statusAndEndpoints.updateCoordinateListenersAndTakeAction(
@@ -86,13 +93,26 @@ public class ZkLocalStatusAndEndpoints implements Watcher, ZkUserInterface {
                             break;
                         }
                     }
+
+                    try {
+                        registerWatcher();
+                    } catch (CloudnameException e) {
+                        log.info("Interrupted while setting up new watcher. Going to state out of sync.");
+                        storage = Storage.OUT_OF_SYNC;
+
+                    } catch (InterruptedException e) {
+                        log.info("Interrupted while setting up new watcher. Going to state out of sync.");
+                        storage = Storage.OUT_OF_SYNC;
+                    }
+                    log.info("Now in lock!!!!!!!  111111");
                     statusAndEndpoints.updateCoordinateListenersAndTakeAction(
-                            CoordinateListener.Event.COORDINATE_OK, "synced on recovery");
+                            CoordinateListener.Event.COORDINATE_OK, "claimed");
+                    log.info("Now in lock!!!!!!!  2222222");
                     break;
                 case NODEEXISTS:
                     synchronized (statusAndEndpoints) {
                         // If everything is fine, this is not a true negative, so ignore it.
-                        if (storage == Storage.SYNCED && claimed) {
+                        if (storage == Storage.SYNCED && started) {
                             break;
                         }
                     }
@@ -115,6 +135,20 @@ public class ZkLocalStatusAndEndpoints implements Watcher, ZkUserInterface {
         }
     }
 
+    private void claim(ZooKeeper zkArg) {
+
+        try {
+            zkArg.create(
+                    path, localStatusAndEndpoints.serialize().getBytes(Util.CHARSET_NAME),
+                    ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.EPHEMERAL, new ClaimCallback(), this);
+        } catch (CloudnameException e) {
+            log.info("Could not claim with the new ZooKeeper instance: " + e.getMessage());
+        } catch (IOException e) {
+            log.info("Got IO exception on claim with new ZooKeeper instance " + e.getMessage());
+        }
+    }
+
+    
     @Override
     public void newZooKeeperInstance(ZooKeeper zk) {
         log.info("ZkLocalStatusAndEndpoints: Got new ZeeKeeper, expect session to be down so starting potential cleanup." + zk.getSessionId());
@@ -123,21 +157,11 @@ public class ZkLocalStatusAndEndpoints implements Watcher, ZkUserInterface {
             // We always start by assuming it is unclaimed.
             storage = Storage.OUT_OF_SYNC;
 
-            if (! claimed) {
+            if (! started) {
                 return;
             }
             log.info("ZkLocalStatusAndEndpoints: Reclaiming coordinate.");
-
-            try {
-
-                getZooKeeper().create(
-                        path, localStatusAndEndpoints.serialize().getBytes(Util.CHARSET_NAME),
-                        ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.EPHEMERAL, new ClaimCallback(), this);
-            } catch (CloudnameException e) {
-                log.info("Could not claim with the new ZooKeeper instance: " + e.getMessage());
-            } catch (IOException e) {
-                log.info("Got IO exception on claim with new ZooKeeper instance " + e.getMessage());
-            }
+            claim(zk);
         }
     }
 
@@ -145,19 +169,10 @@ public class ZkLocalStatusAndEndpoints implements Watcher, ZkUserInterface {
     public void wakeUp() {
         
         synchronized (this) {
-            if ( storage == Storage.SYNCED || zk == null || ! claimed) {
+            if ( storage == Storage.SYNCED || zk == null || ! started) {
                 return;
             }
-
-            try {
-                zk.create(
-                        path, localStatusAndEndpoints.serialize().getBytes(Util.CHARSET_NAME),
-                        ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.EPHEMERAL, new ClaimCallback(), this);
-            } catch (CloudnameException e) {
-                log.info("Could not claim with the new ZooKeeper instance: " + e.getMessage());
-            } catch (IOException e) {
-                log.info("Got IO exception on claim with new ZooKeeper instance " + e.getMessage());
-            }
+            claim(zk);
         }
         System.out.println("alive");
     }
@@ -235,6 +250,7 @@ public class ZkLocalStatusAndEndpoints implements Watcher, ZkUserInterface {
     public void registerCoordinateListener(CoordinateListener coordinateListener) throws CloudnameException {
 
         String message = "New listener added, resending current state.";
+        System.out.println(message + "!!!!!!!!!!" + storage.toString());
         synchronized (this) {
             coordinateListenerList.add(coordinateListener);
             if (storage == Storage.SYNCED) {
@@ -246,8 +262,9 @@ public class ZkLocalStatusAndEndpoints implements Watcher, ZkUserInterface {
         }
     }
 
+
     /**
-     * Handles even from ZooKeeper for this coordinate.
+     * Handles event from ZooKeeper for this coordinate.
      * @param event
      */
     @Override public void process(WatchedEvent event) {
@@ -323,10 +340,10 @@ public class ZkLocalStatusAndEndpoints implements Watcher, ZkUserInterface {
     private void updateCoordinateListenersAndTakeAction(CoordinateListener.Event event, String message) {
         synchronized (this) {
             log.info("Event " + event.name() + " " + message);
+            //coordinateListener.onConfigEvent(event, message);
             for (CoordinateListener listener : coordinateListenerList) {
                 listener.onConfigEvent(event, message);
             }
-            log.info("Done notifying listeners about event " + event.name() + " # listeners " + coordinateListenerList.size());
 
             // Simply ignore the action from the listener, we are ok anyway.
             if (event == CoordinateListener.Event.COORDINATE_OK) {
@@ -377,21 +394,34 @@ public class ZkLocalStatusAndEndpoints implements Watcher, ZkUserInterface {
         //newZooKeeperInstance(getZooKeeper());
     }
 
-
+    /*public void waitForSynchronized() throws InterruptedException {
+        synchronized (this) {
+            while (storage != Storage.SYNCED) {
+                storage.wait();
+            }
+        }
+    } */
 
     /**
      * Claims a coordinate.
      * @return this.
      */
-    public ZkLocalStatusAndEndpoints claim() throws CloudnameException, CoordinateMissingException, CoordinateAlreadyClaimedException {
+    public ZkLocalStatusAndEndpoints start()  {
+        synchronized (this) {
+            started = true;
+        }
+        wakeUp();
 
+      //  claimLatch.await();
+       /* }
 
         try {
+            started = true;
+            
             synchronized (this) {
                 getZooKeeper().create(
                         path, localStatusAndEndpoints.serialize().getBytes(Util.CHARSET_NAME),
                         ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.EPHEMERAL);
-                claimed = true;
                 storage = Storage.SYNCED;
             }
 
@@ -440,7 +470,7 @@ public class ZkLocalStatusAndEndpoints implements Watcher, ZkUserInterface {
             throw new CloudnameException(e);
         }
 
-
+         */
         return this;
     }
 
@@ -449,6 +479,7 @@ public class ZkLocalStatusAndEndpoints implements Watcher, ZkUserInterface {
 
 
     private void registerWatcher() throws CloudnameException, InterruptedException {
+        log.info("Register watcher for ZooKeeper..");
         try {
             getZooKeeper().exists(path, this);
         } catch (KeeperException e) {
@@ -466,8 +497,8 @@ public class ZkLocalStatusAndEndpoints implements Watcher, ZkUserInterface {
     private void writeStatusEndpoint() throws CoordinateMissingException, CloudnameException {
         synchronized (this) {
 
-            if (! claimed) {
-                throw new IllegalStateException("Not owner of coordinate yet: " + storage.name());
+            if (! started) {
+                throw new IllegalStateException("Not started yet: " + storage.name());
             }
             try {
 
@@ -479,7 +510,7 @@ public class ZkLocalStatusAndEndpoints implements Watcher, ZkUserInterface {
             } catch (KeeperException.NoNodeException e) {
                 throw new CoordinateMissingException("Coordinate does not exist " + path);
             } catch (KeeperException e) {
-                throw new CloudnameException("writeStatusEndpoint", e);
+                throw new CloudnameException("writeStatusEndpoint: " + e.getMessage(), e);
             } catch (UnsupportedEncodingException e) {
                 throw new CloudnameException(e);
             } catch (InterruptedException e) {

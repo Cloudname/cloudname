@@ -30,6 +30,15 @@ public class ZkServiceHandle implements ServiceHandle, ZkUserInterface {
         this.statusAndEndpoints = statusAndEndpoints;
     }
 
+    /*public boolean waitForSynchronized() {
+        try {
+            statusAndEndpoints.waitForSynchronized();
+        } catch (InterruptedException e) {
+            return false;
+        }
+        return true;
+    } */
+
     @Override
     public void setStatus(ServiceStatus status) throws CloudnameException, CoordinateMissingException {
         statusAndEndpoints.updateStatus(status);

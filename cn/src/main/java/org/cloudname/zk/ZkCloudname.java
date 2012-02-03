@@ -291,8 +291,7 @@ public class ZkCloudname extends Thread implements Cloudname, Watcher {
      * already exists the coordinate has already been claimed.
      */
     @Override
-    public ServiceHandle claim(Coordinate coordinate)
-            throws CloudnameException, CoordinateMissingException, CoordinateAlreadyClaimedException {
+    public ServiceHandle claim(Coordinate coordinate) {
         String statusPath = ZkCoordinatePath.getStatusPath(coordinate);
         log.info("Claiming " + coordinate.asString() + " (" + statusPath + ")");
 
@@ -307,7 +306,7 @@ public class ZkCloudname extends Thread implements Cloudname, Watcher {
         users.add(handle);
         handle.newZooKeeperInstance(getZk());
         statusAndEndpoints.newZooKeeperInstance(getZk());
-        statusAndEndpoints.claim();
+        statusAndEndpoints.start();
         return handle;
     }
     

@@ -10,6 +10,14 @@ import java.util.List;
  * @author borud
  */
 public interface ServiceHandle {
+
+    /**
+     * Wait for any previous operation to be complete and coordinate to be claimed state (initial claim, put endpoints etc)
+     * @return
+     */
+ //   public boolean waitForSynchronized();
+
+
     /**
      * Set the status of this service.
      *
@@ -65,6 +73,7 @@ public interface ServiceHandle {
      */
     public void removeEndpoints(List<String> names)
             throws EndpointException, CloudnameException, CoordinateMissingException;
+
 
     /**
      * Register a ConfigListener which will be called whenever there

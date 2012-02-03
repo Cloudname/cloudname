@@ -10,15 +10,11 @@ public interface Cloudname {
      * Claim a coordinate returning a {@link ServiceHandle} through
      * which the service can interact with the system.  If the
      * coordinate has already been claimed by a different running
-     * instance of the service, an exception will be thrown.
+     * instance of the service, the claim will block until the coordinate is available for claim.
      *
-     * @param coordinate of the service we wish to claim
-     * @throws CoordinateMissingException if coordinate is missing.
-     * @throws CoordinateAlreadyClaimedException if coordinate is already claimed.
-     * @throws CloudnameException if problems talking with storage.
+     * @param coordinate of the service we wish to claim.
      */
-    public ServiceHandle claim(Coordinate coordinate)
-            throws CloudnameException, CoordinateMissingException, CoordinateAlreadyClaimedException;
+    public ServiceHandle claim(Coordinate coordinate);
 
     /**
      * Get a resolver instance.
