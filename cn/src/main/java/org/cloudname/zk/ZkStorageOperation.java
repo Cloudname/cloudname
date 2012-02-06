@@ -19,16 +19,38 @@ import java.util.concurrent.TimeUnit;
 public class ZkStorageOperation implements StorageOperation {
     private boolean isDone = false;
     List<Callback> callbacks = Collections.synchronizedList(new ArrayList());
+    final String errorMessage;
+    
+    public ZkStorageOperation() {
+        errorMessage = null;
+    }
 
+    public ZkStorageOperation(String errorMessage) {
+        this.errorMessage = errorMessage;
+    }
+    
     @Override
     public boolean waitForCompletionMillis(int milliSeconds) {
-        System.out.println("Waiting for operation");
+        synchronized (this) {
+            if (isDone()) {
+                return true;
+            }
+            if (errorMessage != null) {
+                return false;
+            }
+        }
         final CountDownLatch latch = new CountDownLatch(1);
         registerCallback(new Callback() {
             @Override
             public void success() {
                 latch.countDown();
             }
+
+            @Override
+            public void failure(String message) {
+                // not used
+            }
+
         });
         try {
             return latch.await(milliSeconds, TimeUnit.MILLISECONDS);
@@ -39,7 +61,11 @@ public class ZkStorageOperation implements StorageOperation {
 
     @Override
     public void registerCallback(Callback callback) {
-        System.out.println("Register callback!!!!!");
+        if (errorMessage !=  null) {
+            callback.failure(errorMessage);
+            return;
+        }
+
         boolean runCallback;
         synchronized (this) {
             runCallback = isDone;
@@ -60,7 +86,7 @@ public class ZkStorageOperation implements StorageOperation {
     }
 
     public Callback getSystemCallback() {
-        System.out.println("$$$$$$$$$$$$$$$$$$$$$$$$$ Get system callback");
+
         return new Callback() {
             @Override
             public void success() {
@@ -73,6 +99,11 @@ public class ZkStorageOperation implements StorageOperation {
                 for (Callback callback : callbacks) {
                     callback.success();
                 }
+            }
+
+            @Override
+            public void failure(String message) {
+                // not used
             }
         };
     }

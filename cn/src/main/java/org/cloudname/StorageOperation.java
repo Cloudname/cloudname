@@ -6,6 +6,7 @@ public interface StorageOperation {
 
     public interface Callback {
         void success();
+        void failure(String message);
     }
 
     public void registerCallback(Callback callback);

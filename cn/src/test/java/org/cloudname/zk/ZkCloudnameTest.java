@@ -113,8 +113,20 @@ public class ZkCloudnameTest {
         // Claiming the coordinate creates the status node
         ServiceHandle handle = cn.claim(c);
         assertNotNull(handle);
-        assertTrue(handle.waitForConnectionToStorageMillis(2000));
-        System.out.println("DDDDOOOONNE");
+        final CountDownLatch latch = new CountDownLatch(1);
+        handle.registerCoordinateListener(new CoordinateListener() {
+
+            @Override
+            public boolean onConfigEvent(Event event, String message) {
+                if (event == Event.COORDINATE_OK) {
+                    latch.countDown();
+                    return false;
+                }
+                return true;
+            }
+        });
+        latch.await(2, TimeUnit.SECONDS);
+
         assertTrue(pathExists("/cn/cell/user/service/1/status"));
 
         List<String> nodes = new ArrayList<String>();
