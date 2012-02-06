@@ -4,6 +4,8 @@ import org.apache.zookeeper.ZooKeeper;
 import org.cloudname.*;
 
 import java.util.ArrayList;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
 
 import java.util.List;
@@ -30,45 +32,85 @@ public class ZkServiceHandle implements ServiceHandle, ZkUserInterface {
         this.statusAndEndpoints = statusAndEndpoints;
     }
 
-    /*public boolean waitForSynchronized() {
+    @Override
+    public boolean waitForConnectionToStorageMillis(long millis) throws CloudnameException {
+        final CountDownLatch latch = new CountDownLatch(1);
+        registerCoordinateListener(new CoordinateListener() {
+            
+            @Override
+            public boolean onConfigEvent(Event event, String message) {
+                //System.out.println("%%%%%%%%%%%%%%%%%%%" + event.name() + " " + message);
+                if (event == Event.COORDINATE_OK) {
+                    System.out.println("(((((((((((())))))) LATCHING");
+                    latch.countDown();
+                    return false;
+                }
+                return true;
+            }
+        });
         try {
-            statusAndEndpoints.waitForSynchronized();
+            System.out.println("WAITIN LATCH!!");
+            boolean  r = latch.await(millis, TimeUnit.MILLISECONDS);
+            System.out.println("WAITIN LATCH   DDDOOBNE!!");
+
+            return r;
         } catch (InterruptedException e) {
             return false;
         }
-        return true;
-    } */
-
-    @Override
-    public void setStatus(ServiceStatus status) throws CloudnameException, CoordinateMissingException {
-        statusAndEndpoints.updateStatus(status);
     }
 
     @Override
-    public void putEndpoints(List<Endpoint> endpoints)
+    public StorageOperation setStatus(ServiceStatus status) throws CloudnameException, CoordinateMissingException {
+        statusAndEndpoints.updateStatus(status);
+        return createStorageOperation();
+    }
+
+    private StorageOperation createStorageOperation() {
+        final ZkStorageOperation op = new ZkStorageOperation();
+
+        registerCoordinateListener(new CoordinateListener() {
+
+            @Override
+            public boolean onConfigEvent(Event event, String message) {
+                if (event == Event.COORDINATE_OK) {
+                    op.getSystemCallback().success();
+                    return false;
+                }
+                return true;
+            }
+        });
+        return op;
+    }
+
+    @Override
+    public StorageOperation putEndpoints(List<Endpoint> endpoints)
             throws EndpointException, CloudnameException, CoordinateMissingException {
         statusAndEndpoints.putEndpoints(endpoints);
+        return createStorageOperation();
     }
 
     @Override
-    public void putEndpoint(Endpoint endpoint)
+    public StorageOperation putEndpoint(Endpoint endpoint)
             throws EndpointException, CloudnameException, CoordinateMissingException {
         List<Endpoint> endpoints = new ArrayList<Endpoint>();
         endpoints.add(endpoint);
         putEndpoints(endpoints);
+        return createStorageOperation();
     }
 
     @Override
-    public void removeEndpoints(List<String> names)
+    public StorageOperation removeEndpoints(List<String> names)
             throws EndpointException, CloudnameException, CoordinateMissingException {
         statusAndEndpoints.removeEndpoints(names);
+        return createStorageOperation();
     }
 
     @Override
-    public void removeEndpoint(String name) throws EndpointException, CloudnameException, CoordinateMissingException {
+    public StorageOperation removeEndpoint(String name) throws EndpointException, CloudnameException, CoordinateMissingException {
         List<String> names = new ArrayList<String>();
         names.add(name);
         removeEndpoints(names);
+        return createStorageOperation();
     }
 
     @Override
@@ -77,7 +119,7 @@ public class ZkServiceHandle implements ServiceHandle, ZkUserInterface {
     }
 
     @Override
-    public void registerCoordinateListener(CoordinateListener listener) throws CloudnameException {
+    public void registerCoordinateListener(CoordinateListener listener)  {
         statusAndEndpoints.registerCoordinateListener(listener);
     }
 

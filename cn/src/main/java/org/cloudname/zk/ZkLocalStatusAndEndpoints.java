@@ -238,7 +238,7 @@ public class ZkLocalStatusAndEndpoints implements Watcher, ZkUserInterface {
      * a deadlock.
      * @param coordinateListener
      */
-    public void registerCoordinateListener(CoordinateListener coordinateListener) throws CloudnameException {
+    public void registerCoordinateListener(CoordinateListener coordinateListener)  {
 
         String message = "New listener added, resending current state.";
         synchronized (this) {
@@ -283,7 +283,21 @@ public class ZkLocalStatusAndEndpoints implements Watcher, ZkUserInterface {
             sendEventToCoordinateListener(CoordinateListener.Event.NOT_OWNER, event.toString());
             return;
         }
+        if (event.getState() == Event.KeeperState.SyncConnected &&  event.getType() == Event.EventType.NodeDataChanged) {
+            try {
+                registerWatcher();
 
+            } catch (CloudnameException e) {
+                sendEventToCoordinateListener(CoordinateListener.Event.NO_CONNECTION_TO_STORAGE,
+                        "Failed setting up new watcher, CloudnameException.");
+                return;
+            } catch (InterruptedException e) {
+                sendEventToCoordinateListener(CoordinateListener.Event.NO_CONNECTION_TO_STORAGE,
+                        "Failed setting up new watcher, InterruptedException.");
+                return;
+            }
+            return;
+        }
         if (event.getType() == Event.EventType.NodeDataChanged) {
 
 

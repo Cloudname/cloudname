@@ -40,8 +40,9 @@ public interface CoordinateListener {
 
     /**
      * Implement this function to receive the events.
+     * Return false if no more events are wanted, will stop eventually.
      * @param event the event that happened.
      * @param message some message associated with the event.
      */
-    public void onConfigEvent(Event event, String message);
+    public boolean onConfigEvent(Event event, String message);
 }

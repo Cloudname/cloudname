@@ -16,16 +16,17 @@ public interface ServiceHandle {
      * @return
      */
  //   public boolean waitForSynchronized();
-
+     public boolean waitForConnectionToStorageMillis(long millis) throws CloudnameException;
 
     /**
      * Set the status of this service.
+     *
      *
      * @param status the new status.
      * @throws CoordinateMissingException if coordinate does not exist.
      * @throws CloudnameException if problems talking with storage.
      */
-    public void setStatus(ServiceStatus status)
+    public StorageOperation setStatus(ServiceStatus status)
             throws CloudnameException, CoordinateMissingException;
 
     /**
@@ -38,7 +39,7 @@ public interface ServiceHandle {
      * @throws CloudnameException if problems talking with storage.
      * @throws EndpointException if problems with endpoint, e.g. already present.
      */
-    public void putEndpoint(Endpoint endpoint)
+    public StorageOperation putEndpoint(Endpoint endpoint)
             throws EndpointException, CloudnameException, CoordinateMissingException;
 
     /**
@@ -49,7 +50,7 @@ public interface ServiceHandle {
      * @throws CloudnameException if problems talking with storage.
      * @throws EndpointException if problems with endpoint, e.g. already present.
      */
-    public void putEndpoints(List<Endpoint> endpoints)
+    public StorageOperation putEndpoints(List<Endpoint> endpoints)
             throws EndpointException, CloudnameException, CoordinateMissingException;
 
     /**
@@ -60,7 +61,7 @@ public interface ServiceHandle {
      * @throws CloudnameException if problems talking with storage.
      * @throws EndpointException if problems with endpoint, e.g. non-existing.
      */
-    public void removeEndpoint(String name)
+    public StorageOperation removeEndpoint(String name)
             throws EndpointException, CloudnameException, CoordinateMissingException;
 
     /**
@@ -71,7 +72,7 @@ public interface ServiceHandle {
      * @throws CloudnameException if problems talking with storage.
      * @throws EndpointException if problems with endpoint, e.g. non-existing.
      */
-    public void removeEndpoints(List<String> names)
+    public StorageOperation removeEndpoints(List<String> names)
             throws EndpointException, CloudnameException, CoordinateMissingException;
 
 
