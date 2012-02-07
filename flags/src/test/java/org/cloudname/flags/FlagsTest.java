@@ -75,16 +75,16 @@ public class FlagsTest {
     @Test
     public void testBooleanFlag() {
         Flags flags = new Flags()
-        .loadOpts(FlagsAllLegalFields.class)
+            .loadOpts(FlagsBooleanFlag.class)
         .parse(new String[] {"--boolean", "--Boolean"});
 
-        assertEquals(true, FlagsAllLegalFields.bool);
-        assertEquals(true, FlagsAllLegalFields.bool2);
+        assertEquals(true, FlagsBooleanFlag.bool);
+        assertEquals(true, FlagsBooleanFlag.bool2);
 
         flags.parse(new String[] {"--boolean", "false", "--Boolean=false"});
 
-        assertEquals(false, FlagsAllLegalFields.bool);
-        assertEquals(false, FlagsAllLegalFields.bool2);
+        assertEquals(false, FlagsBooleanFlag.bool);
+        assertEquals(false, FlagsBooleanFlag.bool2);
     }
 
     /**
@@ -107,7 +107,7 @@ public class FlagsTest {
     @Test (expected = IllegalArgumentException.class)
     public void testEnumFlagWithWrongCase() {
         Flags flags = new Flags()
-        .loadOpts(FlagsAllLegalFields.class)
+            .loadOpts(FlagsEnum.class)
         .parse(new String[]{"--option", "option2"});
     }
 
@@ -117,7 +117,7 @@ public class FlagsTest {
     @Test
     public void testNonOptionArgs() {
         Flags flags = new Flags()
-        .loadOpts(FlagsAllLegalFields.class)
+            .loadOpts(FlagsOptionTest.class)
         .parse(new String[]{"--int", "10",
                 "--Integer", "20",
                 "nonoptionarg1",
