@@ -480,18 +480,14 @@ public class ZkResolver implements Resolver, ZkUserInterface {
 
                     break;
                 case NodeDeleted:
-                    log.info("Remote coordinate deleted: " + path);
                     synchronized (this) {
                         zkRemoteStatusAndEndpointsMap.remove(path);
                         dirtyTimeMap.remove(path);
                         return;
                     }
                 case NodeDataChanged:
-                    System.err.println("PATH CHANGED " + path);
                     refreshPathWithWatcher(path);
-                    System.err.println("REFRESHED PATH CHANGED " + path);
                     scheduleRefresh(path, 10 * 60 * 1000);  // 10 mins
-                    System.err.println("SCHEDULED PATH CHANGED " + path);
                     break;
             }
 

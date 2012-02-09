@@ -73,9 +73,6 @@ public class ZkRemoteStatusAndEndpoints implements Watcher, ZkUserInterface {
         SYNCED,
     }
 
-
-    
-
     /**
      * Returns the ServiceStatus. If we claimed the coordinate, this is the real-time value, otherwise
      * it is the last loaded value.
@@ -102,9 +99,7 @@ public class ZkRemoteStatusAndEndpoints implements Watcher, ZkUserInterface {
         remoteStatusAndEndpoints.returnAllEndpoints(endpoints);
     }
 
-    
 
-    
 
     /**
      * Creates a string for debugging etc

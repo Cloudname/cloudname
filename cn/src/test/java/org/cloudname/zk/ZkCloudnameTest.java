@@ -250,10 +250,6 @@ public class ZkCloudnameTest {
         final Coordinate c = Coordinate.parse("3.service.user.cell");
         final ZkCloudname cn = new ZkCloudname.Builder().setConnectString("localhost:" + zkport).build().connect();
 
-            //cn.claim(c);
-            //fail("Expected coordinate not found thrown.");
-
-
 
         ExecutorService executor = Executors.newCachedThreadPool();
         Callable<Object> task = new Callable<Object>() {
@@ -301,11 +297,6 @@ public class ZkCloudnameTest {
         }
     }
 
-    /**
-     * Sets up a claimed coordinate and a connection listener.
-     * @param connectedLatch
-     * @return
-     */
     private UnitTestCoordinateListener setUpListenerEnvironment(
             CountDownLatch connectedLatch1, CountDownLatch connectedLatch2) throws Exception {
         forwarderPort = Net.getFreePort();
@@ -349,7 +340,7 @@ public class ZkCloudnameTest {
         assertEquals(CoordinateListener.Event.NO_CONNECTION_TO_STORAGE, listener.events.get(2));
     }
                 /*
-                To make this test pass, the data has to be read after a change has occured. However, this will add
+                To make this test pass, the data has to be read after a change has occurred. However, this will add
                 extra load on ZooKeeper.
     @Test
     public void testCoordinateListenerCoordinateCorrupted() throws  Exception {
@@ -437,7 +428,6 @@ public class ZkCloudnameTest {
         while (true) {
             if (q != listener.events.size()) {
                 q = listener.events.size();
-                System.err.println("!!!!!!!!!!!!!!!!!!!!" + listener.events.get(listener.events.size() - 1 ).name() + listener.events.size());
             }
             if (listener.events.get(listener.events.size() - 1 ) == CoordinateListener.Event.NOT_OWNER) {
                 break;
