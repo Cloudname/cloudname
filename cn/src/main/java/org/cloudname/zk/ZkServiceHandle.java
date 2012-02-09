@@ -4,8 +4,6 @@ import org.apache.zookeeper.ZooKeeper;
 import org.cloudname.*;
 
 import java.util.ArrayList;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
 
 import java.util.List;
@@ -35,7 +33,7 @@ public class ZkServiceHandle implements ServiceHandle, ZkUserInterface {
 
 
     @Override
-    public StorageOperation setStatus(ServiceStatus status) {
+    public StorageFuture setStatus(ServiceStatus status) {
         try {
             statusAndEndpoints.updateStatus(status);
         } catch (CloudnameException e) {
@@ -46,7 +44,7 @@ public class ZkServiceHandle implements ServiceHandle, ZkUserInterface {
         return createStorageOperation();
     }
 
-    private StorageOperation createStorageOperation() {
+    private StorageFuture createStorageOperation() {
         final ZkStorageOperation op = new ZkStorageOperation();
 
         registerCoordinateListener(new CoordinateListener() {
@@ -64,7 +62,7 @@ public class ZkServiceHandle implements ServiceHandle, ZkUserInterface {
     }
 
     @Override
-    public StorageOperation putEndpoints(List<Endpoint> endpoints) {
+    public StorageFuture putEndpoints(List<Endpoint> endpoints) {
         try {
             statusAndEndpoints.putEndpoints(endpoints);
         } catch (EndpointException e) {
@@ -78,7 +76,7 @@ public class ZkServiceHandle implements ServiceHandle, ZkUserInterface {
     }
 
     @Override
-    public StorageOperation putEndpoint(Endpoint endpoint) {
+    public StorageFuture putEndpoint(Endpoint endpoint) {
         List<Endpoint> endpoints = new ArrayList<Endpoint>();
         endpoints.add(endpoint);
         putEndpoints(endpoints);
@@ -86,7 +84,7 @@ public class ZkServiceHandle implements ServiceHandle, ZkUserInterface {
     }
 
     @Override
-    public StorageOperation removeEndpoints(List<String> names) {
+    public StorageFuture removeEndpoints(List<String> names) {
         try {
             statusAndEndpoints.removeEndpoints(names);
         } catch (EndpointException e) {
@@ -100,7 +98,7 @@ public class ZkServiceHandle implements ServiceHandle, ZkUserInterface {
     }
 
     @Override
-    public StorageOperation removeEndpoint(String name) {
+    public StorageFuture removeEndpoint(String name) {
         List<String> names = new ArrayList<String>();
         names.add(name);
         removeEndpoints(names);

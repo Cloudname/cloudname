@@ -1,7 +1,6 @@
 package org.cloudname.zk;
 
-import org.cloudname.CoordinateListener;
-import org.cloudname.StorageOperation;
+import org.cloudname.StorageFuture;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -16,7 +15,7 @@ import java.util.concurrent.TimeUnit;
  * Time: 12:31
  * To change this template use File | Settings | File Templates.
  */
-public class ZkStorageOperation implements StorageOperation {
+public class ZkStorageOperation implements StorageFuture {
     private boolean isDone = false;
     List<Callback> callbacks = Collections.synchronizedList(new ArrayList());
     final String errorMessage;

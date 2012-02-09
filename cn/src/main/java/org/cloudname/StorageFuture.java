@@ -1,7 +1,7 @@
 package org.cloudname;
 
 
-public interface StorageOperation {
+public interface StorageFuture {
     boolean waitForCompletionMillis(int milliSeconds);
 
     public interface Callback {
