@@ -19,14 +19,14 @@ import java.util.logging.Logger;
  *
  * @author dybdahl
  */
-public class SingleExperssionResolver implements Watcher, ZkUserInterface {
+public class SingleExpressionResolver implements Watcher, ZkUserInterface {
  
     private Storage storage = Storage.NO_CONNECTION;
 
     private int lastStatusVersion = -1000;
     private RemoteStatusAndEndpoints remoteStatusAndEndpoints = null;
     
-    private static final Logger log = Logger.getLogger(SingleExperssionResolver.class.getName());
+    private static final Logger log = Logger.getLogger(SingleExpressionResolver.class.getName());
     private ZooKeeper zk;
     private final String path;
     private List<CoordinateListener> coordinateListenerList =
@@ -38,33 +38,32 @@ public class SingleExperssionResolver implements Watcher, ZkUserInterface {
      * is not ready to be used before the ZooKeeper instance is received.
      * @param path is the path of the status of the coordinate.
      */
-    public SingleExperssionResolver(String path) {
+    public SingleExpressionResolver(String path) {
         this.path = path;
     }
 
 
     @Override
     public void zooKeeperDown() {
-        log.info("CoordinateOwner: Got event ZooKeeper is down.");
+        log.info("MyServerCoordinate: Got event ZooKeeper is down.");
         synchronized (this) {
             zk = null;
             storage = Storage.NO_CONNECTION;
         }
-        updateCoordinateListenersAndTakeAction(CoordinateListener.Event.NO_CONNECTION_TO_STORAGE, "Got message from parent watcher.");
+        updateCoordinateListeners(CoordinateListener.Event.NO_CONNECTION_TO_STORAGE,
+                "Got message from parent watcher.");
     }
 
     
     @Override
     public void newZooKeeperInstance(ZooKeeper zk) {
-        log.info("CoordinateOwner: Got new ZeeKeeper, expect session to be down so starting potential cleanup." + zk.getSessionId());
         synchronized (this) {
             this.zk = zk;
         }
     }
 
     @Override
-    public void wakeUp() {
-        System.out.println("alive");
+    public void timeEvent() {
     }
 
    
@@ -133,26 +132,23 @@ public class SingleExperssionResolver implements Watcher, ZkUserInterface {
         if (event.getType() == Event.EventType.None &&
                 (event.getState() == Event.KeeperState.Disconnected
                         || event.getState() == Event.KeeperState.AuthFailed)) {
-            updateCoordinateListenersAndTakeAction(CoordinateListener.Event.NO_CONNECTION_TO_STORAGE, event.toString());
+            updateCoordinateListeners(CoordinateListener.Event.NO_CONNECTION_TO_STORAGE, event.toString());
             return;
         }
         if (event.getType() == Event.EventType.None &&
                 (event.getState() == Event.KeeperState.Expired)) {
-            updateCoordinateListenersAndTakeAction(CoordinateListener.Event.NO_CONNECTION_TO_STORAGE, event.toString());
+            updateCoordinateListeners(CoordinateListener.Event.NO_CONNECTION_TO_STORAGE, event.toString());
             return;
         }
 
         // If node is deleted, we have no node to place a new watcher so we stop watching.
         if (event.getType() == Event.EventType.NodeDeleted) {
-            updateCoordinateListenersAndTakeAction(CoordinateListener.Event.NOT_OWNER, event.toString());
+            updateCoordinateListeners(CoordinateListener.Event.NOT_OWNER, event.toString());
             return;
         }
 
         if (event.getType() == Event.EventType.NodeDataChanged) {
-
-            // todo only true for claimed coordinates
-
-            updateCoordinateListenersAndTakeAction(CoordinateListener.Event.COORDINATE_OUT_OF_SYNC, event.toString());
+            updateCoordinateListeners(CoordinateListener.Event.COORDINATE_OUT_OF_SYNC, event.toString());
             return;
 
         }
@@ -167,11 +163,11 @@ public class SingleExperssionResolver implements Watcher, ZkUserInterface {
         try {
             registerWatcher();
         } catch (CloudnameException e) {
-            updateCoordinateListenersAndTakeAction(CoordinateListener.Event.NO_CONNECTION_TO_STORAGE,
+            updateCoordinateListeners(CoordinateListener.Event.NO_CONNECTION_TO_STORAGE,
                     "Failed setting up new watcher, CloudnameException.");
             return;
         } catch (InterruptedException e) {
-            updateCoordinateListenersAndTakeAction(CoordinateListener.Event.NO_CONNECTION_TO_STORAGE,
+            updateCoordinateListeners(CoordinateListener.Event.NO_CONNECTION_TO_STORAGE,
                     "Failed setting up new watcher, InterruptedException.");
             return;
         }
@@ -188,26 +184,24 @@ public class SingleExperssionResolver implements Watcher, ZkUserInterface {
             return zk;
         }
     }
+
     /**
      * Sends an event too all coordinate listeners. Note that the event is sent from this thread so if the
      * callback code does the wrong calls, deadlocks might occur.
      * @param event
      * @param message
      */
-    private void updateCoordinateListenersAndTakeAction(CoordinateListener.Event event, String message) {
+    private void updateCoordinateListeners(CoordinateListener.Event event, String message) {
         log.info("Event " + event.name() + " " + message);
         for (CoordinateListener listener : coordinateListenerList) {
-            listener.onConfigEvent(event, message);
+            listener.onCoordinateEvent(event, message);
         }
 
         synchronized (this) {
-
             if (event == CoordinateListener.Event.COORDINATE_OK) {
                 storage = Storage.SYNCED;
                 return;
             }
-
-
             storage = Storage.NO_CONNECTION;
         }
     }
@@ -217,7 +211,7 @@ public class SingleExperssionResolver implements Watcher, ZkUserInterface {
      * @return this.
      */
 
-    public SingleExperssionResolver load(Watcher watcher) throws CloudnameException {
+    public SingleExpressionResolver load(Watcher watcher) throws CloudnameException {
         Stat stat = new Stat();
         try {
             byte[] data;
@@ -240,7 +234,6 @@ public class SingleExperssionResolver implements Watcher, ZkUserInterface {
         }
         return this;
     }
-
 
     private void registerWatcher() throws CloudnameException, InterruptedException {
         try {

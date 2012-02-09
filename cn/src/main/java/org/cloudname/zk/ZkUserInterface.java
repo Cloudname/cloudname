@@ -13,5 +13,5 @@ public interface ZkUserInterface {
 
     public void newZooKeeperInstance(ZooKeeper zk);
 
-    public void wakeUp();
+    public void timeEvent();
 }

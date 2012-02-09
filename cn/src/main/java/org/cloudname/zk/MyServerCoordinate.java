@@ -20,13 +20,13 @@ import java.util.logging.Logger;
  *
  * @author dybdahl
  */
-public class CoordinateOwner implements Watcher, ZkUserInterface {
+public class MyServerCoordinate implements Watcher, ZkUserInterface {
 
     private Storage storage = Storage.OUT_OF_SYNC;
     private boolean started = false;
 
     private int lastStatusVersion = -1;
-    private static final Logger log = Logger.getLogger(CoordinateOwner.class.getName());
+    private static final Logger log = Logger.getLogger(MyServerCoordinate.class.getName());
     private ZooKeeper zk;
     private final String path;
 
@@ -40,19 +40,19 @@ public class CoordinateOwner implements Watcher, ZkUserInterface {
      * is not ready to be used before the ZooKeeper instance is received.
      * @param path is the path of the status of the coordinate.
      */
-    public CoordinateOwner(String path) {
+    public MyServerCoordinate(String path) {
         this.path = path;
     }
 
-
     @Override
     public void zooKeeperDown() {
-        log.info("CoordinateOwner: Got event ZooKeeper is down.");
+        log.info("MyServerCoordinate: Got event ZooKeeper is down.");
         synchronized (this) {
             zk = null;
             storage = Storage.OUT_OF_SYNC;
         }
-        sendEventToCoordinateListener(CoordinateListener.Event.NO_CONNECTION_TO_STORAGE, "Got message from parent watcher.");
+        sendEventToCoordinateListener(CoordinateListener.Event.NO_CONNECTION_TO_STORAGE,
+                "Got message from parent watcher.");
     }
 
     class ClaimCallback implements AsyncCallback.StringCallback {
@@ -61,8 +61,7 @@ public class CoordinateOwner implements Watcher, ZkUserInterface {
         public void processResult(int rawReturnCode, String s, Object parent, String s1) {
 
             KeeperException.Code returnCode =  KeeperException.Code.get(rawReturnCode);
-            CoordinateOwner statusAndEndpoints =  (CoordinateOwner) parent;
-            log.info("Claim callback " + returnCode.name() + " " + s);
+            MyServerCoordinate statusAndEndpoints =  (MyServerCoordinate) parent;
            
             switch (returnCode) {
 
@@ -100,8 +99,7 @@ public class CoordinateOwner implements Watcher, ZkUserInterface {
                         storage = Storage.OUT_OF_SYNC;
                         break;
                     }
-                    statusAndEndpoints.sendEventToCoordinateListener(
-                            CoordinateListener.Event.COORDINATE_OK, "claimed");
+                    statusAndEndpoints.sendEventToCoordinateListener(CoordinateListener.Event.COORDINATE_OK, "claimed");
                     break;
                 case NODEEXISTS:
                     synchronized (statusAndEndpoints) {
@@ -127,21 +125,10 @@ public class CoordinateOwner implements Watcher, ZkUserInterface {
         }
     }
 
-    private void claim(ZooKeeper zkArg) {
-        try {
-            zkArg.create(
-                    path, localStatusAndEndpoints.serialize().getBytes(Util.CHARSET_NAME),
-                    ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.EPHEMERAL, new ClaimCallback(), this);
-        } catch (CloudnameException e) {
-            log.info("Could not claim with the new ZooKeeper instance: " + e.getMessage());
-        } catch (IOException e) {
-            log.info("Got IO exception on claim with new ZooKeeper instance " + e.getMessage());
-        }
-    }
-
     @Override
     public void newZooKeeperInstance(ZooKeeper zk) {
-        log.info("CoordinateOwner: Got new ZeeKeeper, expect session to be down so starting potential cleanup." + zk.getSessionId());
+        log.info("MyServerCoordinate: Got new ZeeKeeper, expect session to be down so starting potential cleanup."
+                + zk.getSessionId());
         synchronized (this) {
             this.zk = zk;
             // We always start by assuming it is unclaimed.
@@ -150,13 +137,13 @@ public class CoordinateOwner implements Watcher, ZkUserInterface {
             if (! started) {
                 return;
             }
-            log.info("CoordinateOwner: Reclaiming coordinate.");
+            log.info("MyServerCoordinate: Reclaiming coordinate.");
             claim(zk);
         }
     }
 
     @Override
-    public void wakeUp() {
+    public void timeEvent() {
         
         synchronized (this) {
             if ( storage == Storage.SYNCED || zk == null || ! started) {
@@ -168,11 +155,6 @@ public class CoordinateOwner implements Watcher, ZkUserInterface {
 
     }
 
-    private enum Storage {
-        OUT_OF_SYNC,
-        SYNCED,
-    }
-
 
     /**
      * Updates the ServiceStatus and persists it. Only allowed if we claimed the coordinate.
@@ -182,8 +164,6 @@ public class CoordinateOwner implements Watcher, ZkUserInterface {
         localStatusAndEndpoints.updateStatus(status);
         writeStatusEndpoint();
     }
-
-
 
     /**
      * Adds new endpoints and persist them. Requires that this instance owns the claim to the coordinate.
@@ -244,12 +224,24 @@ public class CoordinateOwner implements Watcher, ZkUserInterface {
         synchronized (this) {
             coordinateListenerList.add(coordinateListener);
             if (storage == Storage.SYNCED) {
-                coordinateListener.onConfigEvent(CoordinateListener.Event.COORDINATE_OK, message);
+                coordinateListener.onCoordinateEvent(CoordinateListener.Event.COORDINATE_OK, message);
             } else {
                 sendEventToCoordinateListener(CoordinateListener.Event.NO_CONNECTION_TO_STORAGE, "Not ok " +
                         storage.toString());
             }
         }
+    }
+
+    /**
+     * Claims a coordinate.
+     * @return this.
+     */
+    public MyServerCoordinate start()  {
+        synchronized (this) {
+            started = true;
+        }
+        timeEvent();
+        return this;
     }
 
 
@@ -299,8 +291,6 @@ public class CoordinateOwner implements Watcher, ZkUserInterface {
             return;
         }
         if (event.getType() == Event.EventType.NodeDataChanged) {
-
-
             sendEventToCoordinateListener(CoordinateListener.Event.COORDINATE_OUT_OF_SYNC, event.toString());
             return;
 
@@ -328,6 +318,23 @@ public class CoordinateOwner implements Watcher, ZkUserInterface {
 
     }
 
+    private void claim(ZooKeeper zkArg) {
+        try {
+            zkArg.create(
+                    path, localStatusAndEndpoints.serialize().getBytes(Util.CHARSET_NAME),
+                    ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.EPHEMERAL, new ClaimCallback(), this);
+        } catch (CloudnameException e) {
+            log.info("Could not claim with the new ZooKeeper instance: " + e.getMessage());
+        } catch (IOException e) {
+            log.info("Got IO exception on claim with new ZooKeeper instance " + e.getMessage());
+        }
+    }
+
+    private enum Storage {
+        OUT_OF_SYNC,
+        SYNCED,
+    }
+
     /**
      * Safe way to get a ZooKeeper instance.
      * @throws CloudnameException if connection is not up.
@@ -348,21 +355,9 @@ public class CoordinateOwner implements Watcher, ZkUserInterface {
             storage = Storage.OUT_OF_SYNC;
             log.info("Event " + event.name() + " " + message);
             for (CoordinateListener listener : coordinateListenerList) {
-                listener.onConfigEvent(event, message);
+                listener.onCoordinateEvent(event, message);
             }
         }
-    }
-
-    /**
-     * Claims a coordinate.
-     * @return this.
-     */
-    public CoordinateOwner start()  {
-        synchronized (this) {
-            started = true;
-        }
-        wakeUp();
-        return this;
     }
 
 

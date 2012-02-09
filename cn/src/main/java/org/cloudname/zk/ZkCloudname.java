@@ -98,7 +98,7 @@ public class ZkCloudname extends Thread implements Cloudname, Watcher {
             zk = getZk();
             if (zk != null && zk.getState() == ZooKeeper.States.CONNECTED) {
                 for (ZkUserInterface user : users) {
-                    user.wakeUp();
+                    user.timeEvent();
                 }
             }
 
@@ -300,7 +300,7 @@ public class ZkCloudname extends Thread implements Cloudname, Watcher {
         String statusPath = ZkCoordinatePath.getStatusPath(coordinate);
         log.info("Claiming " + coordinate.asString() + " (" + statusPath + ")");
 
-        CoordinateOwner statusAndEndpoints = new CoordinateOwner(statusPath);
+        MyServerCoordinate statusAndEndpoints = new MyServerCoordinate(statusPath);
         users.add(statusAndEndpoints);
 
         // If we have come thus far we have succeeded in creating the
@@ -323,7 +323,7 @@ public class ZkCloudname extends Thread implements Cloudname, Watcher {
     @Override
     public ServiceStatus getStatus(Coordinate coordinate) throws CloudnameException {
         String statusPath = ZkCoordinatePath.getStatusPath(coordinate);
-        SingleExperssionResolver statusAndEndpoints = new SingleExperssionResolver(statusPath);
+        SingleExpressionResolver statusAndEndpoints = new SingleExpressionResolver(statusPath);
         users.add(statusAndEndpoints);
         statusAndEndpoints.newZooKeeperInstance(getZk());
         statusAndEndpoints.load(null);

@@ -15,7 +15,7 @@ import java.util.List;
  */
 public class ZkServiceHandle implements ServiceHandle, ZkUserInterface {
     private final Coordinate coordinate;
-    private CoordinateOwner statusAndEndpoints;
+    private MyServerCoordinate statusAndEndpoints;
     private static final Logger log = Logger.getLogger(ZkServiceHandle.class.getName());
     private ZooKeeper zk = null;
 
@@ -25,7 +25,7 @@ public class ZkServiceHandle implements ServiceHandle, ZkUserInterface {
      *
      * @param coordinate the coordinate for this service handle.
      */
-    public ZkServiceHandle(Coordinate coordinate, CoordinateOwner statusAndEndpoints) {
+    public ZkServiceHandle(Coordinate coordinate, MyServerCoordinate statusAndEndpoints) {
         this.coordinate = coordinate;
         this.statusAndEndpoints = statusAndEndpoints;
     }
@@ -50,7 +50,7 @@ public class ZkServiceHandle implements ServiceHandle, ZkUserInterface {
         registerCoordinateListener(new CoordinateListener() {
 
             @Override
-            public boolean onConfigEvent(Event event, String message) {
+            public boolean onCoordinateEvent(Event event, String message) {
                 if (event == Event.COORDINATE_OK) {
                     op.getSystemCallback().success();
                     return false;
@@ -143,7 +143,7 @@ public class ZkServiceHandle implements ServiceHandle, ZkUserInterface {
     }
 
     @Override
-    public void wakeUp() {
+    public void timeEvent() {
         //To change body of implemented methods use File | Settings | File Templates.
     }
 }
