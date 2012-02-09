@@ -4,6 +4,7 @@ import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.WatchedEvent;
 import org.apache.zookeeper.Watcher;
 import org.apache.zookeeper.ZooKeeper;
+import org.apache.zookeeper.data.Stat;
 import org.cloudname.*;
 
 import java.util.*;
@@ -253,43 +254,7 @@ public class ZkResolver implements Resolver, ZkUserInterface {
     
     
     private Map<String, ZkRemoteStatusAndEndpoints> activelyMonitoredCoordinates = new HashMap<String, ZkRemoteStatusAndEndpoints>();
-    
-    /*private List<ZkRemoteStatusAndEndpoints> resolveStatusAndEndpoints(List<Integer> instances, Parameters parameters)
-            throws CloudnameException {
-        List<ZkRemoteStatusAndEndpoints> statusAndEndpointsList = new ArrayList<ZkRemoteStatusAndEndpoints>();
-        for (Integer instance : instances) {
-            String statusPath = ZkCoordinatePath.getStatusPath(parameters.getCell(), parameters.getUser(),
-                    parameters.getService(), instance);
 
-            try {
-                if (! Util.exist(getZooKeeper(), statusPath)) {
-                    continue;
-                }
-            } catch (InterruptedException e) {
-                throw new CloudnameException(e);
-
-            }
-
-            ZkRemoteStatusAndEndpoints statusAndEndpoints = new ZkRemoteStatusAndEndpoints(statusPath);
-            statusAndEndpointsList.add(statusAndEndpoints);
-            statusAndEndpoints.newZooKeeperInstance(zk);
-            statusAndEndpoints.load();
-
-            addEndpoints(statusAndEndpoints, );
-
-            if (statusAndEndpoints.getServiceStatus().getState() != ServiceState.RUNNING) {
-                continue;
-            }
-            if (parameters.getEndpointName() == "") {
-                statusAndEndpoints.returnAllEndpoints(endpoints);
-            } else {
-                Endpoint e =  statusAndEndpoints.getEndpoint(parameters.getEndpointName());
-                if (e != null) {
-                    endpoints.add(e);
-                }
-            }
-        }
-    } */
     
     @Override
     public List<Endpoint> resolve(String addressExpression) throws CloudnameException {
@@ -315,8 +280,8 @@ public class ZkResolver implements Resolver, ZkUserInterface {
             addEndpoints(statusAndEndpoints, endpoints, parameters.getEndpointName());
 
         }
-        if (parameters.getStrategy() == "") {
-         return endpoints;
+        if (parameters.getStrategy().equals("")) {
+          return endpoints;
         }
         ResolverStrategy strategy = strategies.get(parameters.getStrategy());
         return strategy.order(strategy.filter(endpoints));
@@ -335,7 +300,7 @@ public class ZkResolver implements Resolver, ZkUserInterface {
         if (statusAndEndpoints.getServiceStatus().getState() != ServiceState.RUNNING) {
             return;
         }
-        if (endpointname == "") {
+        if (endpointname.equals("")) {
             statusAndEndpoints.returnAllEndpoints(endpoints);
         } else {
             Endpoint e =  statusAndEndpoints.getEndpoint(endpointname);
@@ -370,7 +335,8 @@ public class ZkResolver implements Resolver, ZkUserInterface {
             try {
                 instances = resolveInstances(parameters);
             } catch (CloudnameException e) {
-                e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
+                log.info("Got cloudname exception " + e.getMessage());
+                return;
             }
             List<Endpoint> endpoints = new ArrayList<Endpoint>();
             for (Integer instance : instances) {
@@ -378,39 +344,25 @@ public class ZkResolver implements Resolver, ZkUserInterface {
                         parameters.getService(), instance);
 
                 try {
-                    if (! Util.exist(getZooKeeper(), statusPath)) {
+                    if (null == zk.exists(statusPath, this)) {
                         continue;
                     }
-                } catch (InterruptedException e) {
 
-
-                } catch (CloudnameException e) {
-                    e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
-                }
-                ZkRemoteStatusAndEndpoints statusAndEndpoints = new ZkRemoteStatusAndEndpoints(statusPath);
-                try {
-                    log.info("NOW ADDING WATCHERS!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
-                    + statusPath);
-                    zk.exists(statusPath, this);
-                } catch (KeeperException e) {
-                    e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
-                } catch (InterruptedException e) {
-                    e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
-                }
-                statusAndEndpoints.newZooKeeperInstance(zk);
-                try {
+                    ZkRemoteStatusAndEndpoints statusAndEndpoints = new ZkRemoteStatusAndEndpoints(statusPath);
+                    statusAndEndpoints.newZooKeeperInstance(zk);
                     statusAndEndpoints.load();
+                    zkRemoteStatusAndEndpointsMap.put(statusPath, statusAndEndpoints);
+
+                } catch (KeeperException e) {
+                    log.info("Got keeper exception " + e.getMessage() + " " + statusPath);
+                } catch (InterruptedException e) {
+                    log.info("Got interrupt: " + e.getMessage()+ " " + statusPath);
+                    return;
                 } catch (CloudnameException e) {
-                    e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
-                }
-                zkRemoteStatusAndEndpointsMap.put(statusPath, statusAndEndpoints);
-
-
+                    log.info("Got cloudname exception: " + e.getMessage()+ " " + statusPath);                }
             }
             notifyClient();
         }
-
-
 
 
         private void notifyClient() {
@@ -418,21 +370,17 @@ public class ZkResolver implements Resolver, ZkUserInterface {
             System.err.println("Notify client 1");
             List<Endpoint> newEndpoints = new ArrayList<Endpoint>();
             synchronized (this ) {
-                //System.err.println("Notify client 2");
-
                 for (Map.Entry<String, ZkRemoteStatusAndEndpoints> statusAndEndpoints : zkRemoteStatusAndEndpointsMap.entrySet()) {
                     addEndpoints(statusAndEndpoints.getValue(), newEndpoints, parameters.getEndpointName());
 
                 }
-                //System.err.println("Notify client 3");
 
                 Map<String, Endpoint> newEndpointsByName = new HashMap<String, Endpoint>();
                 for (Endpoint endpoint : newEndpoints) {
                     System.err.println("NEW CLIENT HAD " + endpoint.toJson());
                     newEndpointsByName.put(endpoint.getCoordinate().asString(), endpoint);
                 }
-                //System.err.println("OLD LIST IS " + clientStatus.size() + " NEW LIST IS " + newEndpointsByName.size());
-                //System.err.println("Notify client 4");
+
                 for (Map.Entry<String, Endpoint> endpointEntry : clientStatus.entrySet()) {
                     String key = endpointEntry.getValue().getCoordinate().asString();
 
@@ -441,28 +389,18 @@ public class ZkResolver implements Resolver, ZkUserInterface {
                         clientStatus.remove(key);
                     }
                 }
-                //System.err.println("Notify client 5");
+
                 for (Endpoint endpoint : newEndpoints) {
                     String key = endpoint.getCoordinate().asString();
-                   // System.err.println("Key is " + key);
+
                     if (! clientStatus.containsKey(key) ||
                             ! clientStatus.get(key).toJson().equals(endpoint.toJson())) {
-
-
-                      //  if ( clientStatus.containsKey(key)) {
-                       //    System.err.println("OLD CLIENT IS " + clientStatus.get(key).toJson() + " New clienbt is "  + endpoint.toJson());
-                        //}
-
-                            clientCallback.endpointModified(endpoint);
+                        clientCallback.endpointModified(endpoint);
                         clientStatus.put(key, endpoint);
                     }
                 }
 
             }
-        }
-        
-        public void refreshResloverExpression() {
-            // Update  zkRemoteStatusAndEndpointsMap
         }
 
         private void scheduleRefresh(String path, long delayMillis) {
@@ -499,7 +437,6 @@ public class ZkResolver implements Resolver, ZkUserInterface {
                     // Try again on 20 secs
                     scheduleRefresh(path, 20000);
                 }
-
             }
         }
         
@@ -513,9 +450,7 @@ public class ZkResolver implements Resolver, ZkUserInterface {
                 log.info("Tried to refresh path " + path + ", message " + e1.getMessage());
                 retVal = false;
             }
-            System.err.println("About to notify users");
             notifyClient();
-            System.err.println("Done: About to notify users");
             return retVal;
         }
         
@@ -557,7 +492,6 @@ public class ZkResolver implements Resolver, ZkUserInterface {
                     System.err.println("REFRESHED PATH CHANGED " + path);
                     scheduleRefresh(path, 10 * 60 * 1000);  // 10 mins
                     System.err.println("SCHEDULED PATH CHANGED " + path);
-                    //notifyClient();
                     break;
             }
 
