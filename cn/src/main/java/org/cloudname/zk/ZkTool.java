@@ -4,6 +4,10 @@ import org.cloudname.*;
 import org.cloudname.flags.Flag;
 import org.cloudname.flags.Flags;
 
+import java.io.BufferedReader;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Matcher;
@@ -25,12 +29,16 @@ public class ZkTool {
     public static String coordinateFlag = null;
 
     @Flag(name="operation", options = Operation.class,
-          description="The operationFlag to do on coordinate.", required=true)
-    public static Operation operationFlag = null;
+        description = "The operationFlag to do on coordinate.")
+    public static Operation operationFlag = Operation.STATUS;
+
+    @Flag(name = "setup-file",
+        description = "Path to file containing a list of coordinates to create (1 coordinate per line).")
+    public static String filePath = null;
 
     /**
      *   The possible operations to do on a coordinate.
-     */  
+     */
     public enum Operation {
         /**
          * Create a new coordinate.
@@ -56,10 +64,10 @@ public class ZkTool {
     public static final Pattern instanceConfigPattern
             = Pattern.compile("\\/cn\\/([a-z][a-z-_]*)\\/" // cell
             + "([a-z][a-z0-9-_]*)\\/" // user
-            + "([a-z][a-z0-9-_]*)\\/" // service 
+            + "([a-z][a-z0-9-_]*)\\/" // service
             + "(\\d+)\\/config\\z"); // instance
-         
-    
+
+
     public static void main(String[] args) throws Exception {
         // Parse the flags.
         Flags flags = new Flags()
@@ -71,11 +79,11 @@ public class ZkTool {
             flags.printHelp(System.out);
             return;
         }
-        
+
         ZkCloudname.Builder builder = new ZkCloudname.Builder();
         if (zooKeeperFlag == null) {
             System.out.println("Connecting to cloudname with auto connect.");
-            builder.autoConnect();
+            builder.setDefaultConnectString();
         } else {
             System.out.println("Connecting to cloudname with ZooKeeper connect string " + zooKeeperFlag);
             builder.setConnectString(zooKeeperFlag);
@@ -84,6 +92,37 @@ public class ZkTool {
         System.err.println("Connected to ZooKeeper.");
 
         Resolver resolver = cloudname.getResolver();
+
+        if (filePath != null) {
+            BufferedReader br;
+            try {
+                br = new BufferedReader(new FileReader(filePath));
+            } catch (FileNotFoundException e) {
+                System.err.println("File not found: " + filePath);
+                return;
+            }
+            String line;
+            try {
+                while ((line = br.readLine()) != null) {
+                    try {
+                        cloudname.createCoordinate(Coordinate.parse(line));
+                        System.out.println("Created " + line);
+                    } catch (Exception e) {
+                        System.err.println("Could not create: " + line);
+                        e.printStackTrace();
+                    }
+
+                }
+            } catch (IOException e) {
+                System.err.println("Failed to read coordinate from file. " + e.getMessage());
+            }
+            try {
+                br.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            return;
+        }
 
         switch (operationFlag) {
             case CREATE:

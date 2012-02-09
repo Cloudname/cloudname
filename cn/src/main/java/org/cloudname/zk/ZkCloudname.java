@@ -151,6 +151,7 @@ public class ZkCloudname extends Thread implements Cloudname, Watcher {
         return connectWithTimeout(365 * 100, TimeUnit.DAYS);
     }
 
+
     /**
      * When calling this function, the zookeeper state should be either connected or closed.
      * @return
@@ -171,7 +172,7 @@ public class ZkCloudname extends Thread implements Cloudname, Watcher {
             user.zooKeeperDown();
         }
     } 
-    
+
     @Override
     public void process(WatchedEvent event) {
         log.info("Got event in ZkCloudname: " + event.toString());
@@ -253,7 +254,9 @@ public class ZkCloudname extends Thread implements Cloudname, Watcher {
             throw new CloudnameException(e);
         }
 
+
         // Do this early to raise the error before anything is deleted. However, there might be a race condition
+
         // if someone claims while we delete configPath and instance (root) node.
         try {
             if (Util.exist(getZk(), configPath) && Util.hasChildren(getZk(), configPath)) {
@@ -368,7 +371,7 @@ public class ZkCloudname extends Thread implements Cloudname, Watcher {
         //                       Connect to one node and read from a magic path
         //                       how many zookeepers that are running and build
         //                       the path based on this information.
-        public Builder autoConnect() {
+        public Builder setDefaultConnectString() {
             this.connectString = "z1:2181,z2:2181,z3:2181";
             return this;
         }

@@ -6,6 +6,8 @@ import static org.junit.Assert.assertTrue;
 
 import java.io.ByteArrayOutputStream;
 
+import junit.framework.Assert;
+
 import org.junit.Test;
 
 /**
@@ -30,7 +32,7 @@ public class FlagsTest {
         assertEquals(false, FlagsAllLegalFields.bool);
         assertEquals(new Boolean(false), FlagsAllLegalFields.bool2);
         assertEquals("NA", FlagsAllLegalFields.string);
-        assertEquals(1, FlagsAllLegalFields.integer);
+        assertEquals(1, FlagsAllLegalFields.getValueForPrivateInteger());
         assertEquals(new Integer(1), FlagsAllLegalFields.integer2);
         assertEquals(1, FlagsAllLegalFields.longNum);
         assertEquals(1, FlagsAllLegalFields.longNum2);
@@ -52,7 +54,7 @@ public class FlagsTest {
         assertEquals(true, FlagsAllLegalFields.bool);
         assertEquals(new Boolean(true), FlagsAllLegalFields.bool2);
         assertEquals("stringtest", FlagsAllLegalFields.string);
-        assertEquals(10, FlagsAllLegalFields.integer);
+        assertEquals(10, FlagsAllLegalFields.getValueForPrivateInteger());
         assertEquals(new Integer(20), FlagsAllLegalFields.integer2);
         assertEquals(30, FlagsAllLegalFields.longNum);
         assertEquals(40, FlagsAllLegalFields.longNum2);
@@ -65,7 +67,26 @@ public class FlagsTest {
         flags.printHelp(baos);
         assertTrue(baos.size() > 0);
     }
-    
+
+    /**
+     * Boolean flags should be set to true if no parameter is set, or parameter is set to true.
+     * False otherwise.
+     */
+    @Test
+    public void testBooleanFlag() {
+        Flags flags = new Flags()
+            .loadOpts(FlagsBooleanFlag.class)
+        .parse(new String[] {"--boolean", "--Boolean"});
+
+        assertEquals(true, FlagsBooleanFlag.bool);
+        assertEquals(true, FlagsBooleanFlag.bool2);
+
+        flags.parse(new String[] {"--boolean", "false", "--Boolean=false"});
+
+        assertEquals(false, FlagsBooleanFlag.bool);
+        assertEquals(false, FlagsBooleanFlag.bool2);
+    }
+
     /**
      * Test that printing help does not crash on various cases.
      */
@@ -86,7 +107,7 @@ public class FlagsTest {
     @Test (expected = IllegalArgumentException.class)
     public void testEnumFlagWithWrongCase() {
         Flags flags = new Flags()
-        .loadOpts(FlagsAllLegalFields.class)
+            .loadOpts(FlagsEnum.class)
         .parse(new String[]{"--option", "option2"});
     }
 
@@ -96,7 +117,7 @@ public class FlagsTest {
     @Test
     public void testNonOptionArgs() {
         Flags flags = new Flags()
-        .loadOpts(FlagsAllLegalFields.class)
+            .loadOpts(FlagsOptionTest.class)
         .parse(new String[]{"--int", "10",
                 "--Integer", "20",
                 "nonoptionarg1",
@@ -141,6 +162,21 @@ public class FlagsTest {
     public void testNotStaticVariable() {
         Flags flags = new Flags()
         .loadOpts(FlagsNonStaticVariable.class);
+    }
+
+    /**
+     * Test no default value and not given in argument.
+     * Should not do anything, and of course not crash.
+     */
+    @Test
+    public void testArgumentNotGivenForValueWithoutDefault() {
+        Assert.assertNull(FlagsArgumentNPE.argWithoutDefault);
+
+        Flags flags = new Flags()
+        .loadOpts(FlagsArgumentNPE.class)
+        .parse(new String[] {});
+
+        Assert.assertNull(FlagsArgumentNPE.argWithoutDefault);
     }
 
 }
