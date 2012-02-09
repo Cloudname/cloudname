@@ -23,8 +23,6 @@ public interface ServiceHandle {
      *
      *
      * @param status the new status.
-     * @throws CoordinateMissingException if coordinate does not exist.
-     * @throws CloudnameException if problems talking with storage.
      */
     public StorageOperation setStatus(ServiceStatus status);
 
@@ -34,9 +32,6 @@ public interface ServiceHandle {
      * endpoint you first have to remove it.
      *
      * @param endpoint the endpoint data.
-     * @throws CoordinateMissingException if coordinate does not exist.
-     * @throws CloudnameException if problems talking with storage.
-     * @throws EndpointException if problems with endpoint, e.g. already present.
      */
     public StorageOperation putEndpoint(Endpoint endpoint);
 
@@ -44,9 +39,6 @@ public interface ServiceHandle {
      * Same as putEndpoints, but takes a list.
      *
      * @param endpoints the endpoints data.
-     * @throws CoordinateMissingException if coordinate is missing.
-     * @throws CloudnameException if problems talking with storage.
-     * @throws EndpointException if problems with endpoint, e.g. already present.
      */
     public StorageOperation putEndpoints(List<Endpoint> endpoints);
 
@@ -54,9 +46,6 @@ public interface ServiceHandle {
      * Remove a published endpoint.
      *
      * @param name the name of the endpoint we wish to remove.
-     * @throws CoordinateException if problems with the coordinate.
-     * @throws CloudnameException if problems talking with storage.
-     * @throws EndpointException if problems with endpoint, e.g. non-existing.
      */
     public StorageOperation removeEndpoint(String name);
 
@@ -64,9 +53,6 @@ public interface ServiceHandle {
      * Same as removeEndpoint() but takes a list of names.
      *
      * @param names
-     * @throws CoordinateMissingException if coordinate is missing.
-     * @throws CloudnameException if problems talking with storage.
-     * @throws EndpointException if problems with endpoint, e.g. non-existing.
      */
     public StorageOperation removeEndpoints(List<String> names);
 

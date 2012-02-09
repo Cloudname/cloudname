@@ -1,5 +1,7 @@
 package org.cloudname;
 
+import sun.jvm.hotspot.tools.FinalizerInfo;
+
 import java.util.List;
 
 /**
@@ -37,4 +39,12 @@ public interface Resolver {
      * @throws CloudnameException if problems talking with storage.
      */
     public List<Endpoint> resolve(String address) throws CloudnameException;
+
+
+    public interface ResolverFuture {
+        void endpointModified(final Endpoint endpoint);
+        void endpointDeleted(final Endpoint endpoint);
+    }
+
+    public void addResolverListener(String address, ResolverFuture future);
 }

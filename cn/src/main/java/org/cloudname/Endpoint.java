@@ -78,7 +78,7 @@ public class Endpoint {
     public static Endpoint fromJson(String json) throws IOException {
         return new ObjectMapper().readValue(json, Endpoint.class);
     }
-
+    
     public String toJson() {
         try {
             return new ObjectMapper().writeValueAsString(this);

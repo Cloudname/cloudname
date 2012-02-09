@@ -126,5 +126,6 @@ public class ZkTool {
             default:
                 System.out.println("Unknown command " + operationFlag);
         }
+        cloudname.close();
     }
 }

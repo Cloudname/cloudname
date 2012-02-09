@@ -1,13 +1,12 @@
 package org.cloudname.zk;
 
 import org.apache.zookeeper.KeeperException;
+import org.apache.zookeeper.WatchedEvent;
+import org.apache.zookeeper.Watcher;
 import org.apache.zookeeper.ZooKeeper;
 import org.cloudname.*;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.logging.Logger;
 import java.util.regex.Pattern;
 import java.util.regex.Matcher;
@@ -40,9 +39,14 @@ public class ZkResolver implements Resolver, ZkUserInterface {
         }
     }
 
+    List<DynamicAddress> dynamicAddresses = new ArrayList<DynamicAddress>();
+    
     @Override
     public void wakeUp() {
-        //To change body of implemented methods use File | Settings | File Templates.
+        for (DynamicAddress dynamicAddress : dynamicAddresses) {
+            dynamicAddress.wakeUp();
+        }
+        
     }
 
     private ZooKeeper getZooKeeper() throws CloudnameException {
@@ -106,7 +110,7 @@ public class ZkResolver implements Resolver, ZkUserInterface {
     /**
      * Inner class to keep track of parameters parsed from addressExpression.
      */
-    class Parameters {
+    public static class Parameters {
         private String endpointName = null;
         private Integer instance = null;
         private String service = null;
@@ -230,21 +234,68 @@ public class ZkResolver implements Resolver, ZkUserInterface {
         this.strategies = builder.getStrategies();
     }
     
-    @Override
-    public List<Endpoint> resolve(String addressExpression) throws CloudnameException {
-        Parameters parameters = new Parameters(addressExpression);
-               
+    
+    private List<Integer> resolveInstances(Parameters parameters) throws CloudnameException {
+ 
         List<Integer> instances = new ArrayList<Integer>();
         if (parameters.getInstance() > -1) {
             instances.add(parameters.getInstance());
         } else {
             try {
-                instances = getInstances(ZkCoordinatePath.coordinateWithoutInstanceAsPath(parameters.getCell(),
+                instances = getInstances(getZooKeeper(), ZkCoordinatePath.coordinateWithoutInstanceAsPath(parameters.getCell(),
                         parameters.getUser(), parameters.getService()));
             } catch (InterruptedException e) {
                 throw new CloudnameException(e);
             }
         }
+        return instances;
+    }
+    
+    
+    private Map<String, ZkRemoteStatusAndEndpoints> activelyMonitoredCoordinates = new HashMap<String, ZkRemoteStatusAndEndpoints>();
+    
+    /*private List<ZkRemoteStatusAndEndpoints> resolveStatusAndEndpoints(List<Integer> instances, Parameters parameters)
+            throws CloudnameException {
+        List<ZkRemoteStatusAndEndpoints> statusAndEndpointsList = new ArrayList<ZkRemoteStatusAndEndpoints>();
+        for (Integer instance : instances) {
+            String statusPath = ZkCoordinatePath.getStatusPath(parameters.getCell(), parameters.getUser(),
+                    parameters.getService(), instance);
+
+            try {
+                if (! Util.exist(getZooKeeper(), statusPath)) {
+                    continue;
+                }
+            } catch (InterruptedException e) {
+                throw new CloudnameException(e);
+
+            }
+
+            ZkRemoteStatusAndEndpoints statusAndEndpoints = new ZkRemoteStatusAndEndpoints(statusPath);
+            statusAndEndpointsList.add(statusAndEndpoints);
+            statusAndEndpoints.newZooKeeperInstance(zk);
+            statusAndEndpoints.load();
+
+            addEndpoints(statusAndEndpoints, );
+
+            if (statusAndEndpoints.getServiceStatus().getState() != ServiceState.RUNNING) {
+                continue;
+            }
+            if (parameters.getEndpointName() == "") {
+                statusAndEndpoints.returnAllEndpoints(endpoints);
+            } else {
+                Endpoint e =  statusAndEndpoints.getEndpoint(parameters.getEndpointName());
+                if (e != null) {
+                    endpoints.add(e);
+                }
+            }
+        }
+    } */
+    
+    @Override
+    public List<Endpoint> resolve(String addressExpression) throws CloudnameException {
+        Parameters parameters = new Parameters(addressExpression);
+
+        List<Integer> instances = resolveInstances(parameters);
         List<Endpoint> endpoints = new ArrayList<Endpoint>();
         for (Integer instance : instances) {
             String statusPath = ZkCoordinatePath.getStatusPath(parameters.getCell(), parameters.getUser(),
@@ -261,17 +312,8 @@ public class ZkResolver implements Resolver, ZkUserInterface {
             ZkRemoteStatusAndEndpoints statusAndEndpoints = new ZkRemoteStatusAndEndpoints(statusPath);
             statusAndEndpoints.newZooKeeperInstance(zk);
             statusAndEndpoints.load();
-            if (statusAndEndpoints.getServiceStatus().getState() != ServiceState.RUNNING) {
-                continue;
-            }
-            if (parameters.getEndpointName() == "") {
-                statusAndEndpoints.returnAllEndpoints(endpoints);
-            } else {
-                Endpoint e =  statusAndEndpoints.getEndpoint(parameters.getEndpointName());
-                if (e != null) {
-                    endpoints.add(e);
-                }
-            }
+            addEndpoints(statusAndEndpoints, endpoints, parameters.getEndpointName());
+
         }
         if (parameters.getStrategy() == "") {
          return endpoints;
@@ -280,11 +322,252 @@ public class ZkResolver implements Resolver, ZkUserInterface {
         return strategy.order(strategy.filter(endpoints));
     }
 
- 
-    private List<Integer> getInstances(String path) throws CloudnameException, InterruptedException {
+    @Override
+    public void addResolverListener(String address, ResolverFuture future) {
+        DynamicAddress dynamicAddress = new DynamicAddress(address, future);
+        synchronized (this) {
+            dynamicAddresses.add(dynamicAddress);
+        }
+        dynamicAddress.init();
+    }
+
+    static private void addEndpoints(ZkRemoteStatusAndEndpoints statusAndEndpoints, List<Endpoint> endpoints, String endpointname) {
+        if (statusAndEndpoints.getServiceStatus().getState() != ServiceState.RUNNING) {
+            return;
+        }
+        if (endpointname == "") {
+            statusAndEndpoints.returnAllEndpoints(endpoints);
+        } else {
+            Endpoint e =  statusAndEndpoints.getEndpoint(endpointname);
+            if (e != null) {
+                endpoints.add(e);
+            }
+        }
+    }
+
+    class DynamicAddress implements Watcher {
+        final private String expression;
+
+        final private Map<String, Endpoint> clientStatus = new HashMap<String, Endpoint>();
+        final private ResolverFuture clientCallback;
+        final private Map<String, Long> dirtyTimeMap = new HashMap<String, Long>();
+        final private Parameters parameters;
+
+        final private Map<String, ZkRemoteStatusAndEndpoints> zkRemoteStatusAndEndpointsMap =
+                new HashMap<String, ZkRemoteStatusAndEndpoints>();
+        
+        final private Random random = new Random();
+        
+        public DynamicAddress(String expression, ResolverFuture clientCallback) {
+            log.info("Monitoring: " + expression);
+            this.expression = expression;
+            this.clientCallback = clientCallback;
+            this.parameters = new Parameters(expression);
+        }
+
+        public void init() {
+            List<Integer> instances = null;
+            try {
+                instances = resolveInstances(parameters);
+            } catch (CloudnameException e) {
+                e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
+            }
+            List<Endpoint> endpoints = new ArrayList<Endpoint>();
+            for (Integer instance : instances) {
+                String statusPath = ZkCoordinatePath.getStatusPath(parameters.getCell(), parameters.getUser(),
+                        parameters.getService(), instance);
+
+                try {
+                    if (! Util.exist(getZooKeeper(), statusPath)) {
+                        continue;
+                    }
+                } catch (InterruptedException e) {
+
+
+                } catch (CloudnameException e) {
+                    e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
+                }
+                ZkRemoteStatusAndEndpoints statusAndEndpoints = new ZkRemoteStatusAndEndpoints(statusPath);
+                try {
+                    log.info("NOW ADDING WATCHERS!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+                    + statusPath);
+                    zk.exists(statusPath, this);
+                } catch (KeeperException e) {
+                    e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
+                } catch (InterruptedException e) {
+                    e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
+                }
+                statusAndEndpoints.newZooKeeperInstance(zk);
+                try {
+                    statusAndEndpoints.load();
+                } catch (CloudnameException e) {
+                    e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
+                }
+                zkRemoteStatusAndEndpointsMap.put(statusPath, statusAndEndpoints);
+
+
+            }
+            notifyClient();
+        }
+
+
+
+
+        private void notifyClient() {
+            // First generate a fresh list of endpoints.
+            System.err.println("Notify client 1");
+            List<Endpoint> newEndpoints = new ArrayList<Endpoint>();
+            synchronized (this ) {
+                //System.err.println("Notify client 2");
+
+                for (Map.Entry<String, ZkRemoteStatusAndEndpoints> statusAndEndpoints : zkRemoteStatusAndEndpointsMap.entrySet()) {
+                    addEndpoints(statusAndEndpoints.getValue(), newEndpoints, parameters.getEndpointName());
+
+                }
+                //System.err.println("Notify client 3");
+
+                Map<String, Endpoint> newEndpointsByName = new HashMap<String, Endpoint>();
+                for (Endpoint endpoint : newEndpoints) {
+                    System.err.println("NEW CLIENT HAD " + endpoint.toJson());
+                    newEndpointsByName.put(endpoint.getCoordinate().asString(), endpoint);
+                }
+                //System.err.println("OLD LIST IS " + clientStatus.size() + " NEW LIST IS " + newEndpointsByName.size());
+                //System.err.println("Notify client 4");
+                for (Map.Entry<String, Endpoint> endpointEntry : clientStatus.entrySet()) {
+                    String key = endpointEntry.getValue().getCoordinate().asString();
+
+                    if (! newEndpointsByName.containsKey(key)) {
+                        clientCallback.endpointDeleted(endpointEntry.getValue());
+                        clientStatus.remove(key);
+                    }
+                }
+                //System.err.println("Notify client 5");
+                for (Endpoint endpoint : newEndpoints) {
+                    String key = endpoint.getCoordinate().asString();
+                   // System.err.println("Key is " + key);
+                    if (! clientStatus.containsKey(key) ||
+                            ! clientStatus.get(key).toJson().equals(endpoint.toJson())) {
+
+
+                      //  if ( clientStatus.containsKey(key)) {
+                       //    System.err.println("OLD CLIENT IS " + clientStatus.get(key).toJson() + " New clienbt is "  + endpoint.toJson());
+                        //}
+
+                            clientCallback.endpointModified(endpoint);
+                        clientStatus.put(key, endpoint);
+                    }
+                }
+
+            }
+        }
+        
+        public void refreshResloverExpression() {
+            // Update  zkRemoteStatusAndEndpointsMap
+        }
+
+        private void scheduleRefresh(String path, long delayMillis) {
+            // Randomize refreshes to avoid network peaks.
+            delayMillis = (long) (delayMillis * (0.7 + random.nextDouble() * 0.6));
+            synchronized (this) {
+                long now = System.currentTimeMillis();
+                if (dirtyTimeMap.containsKey((path))) {
+                    long oldSchedule = dirtyTimeMap.get(path);
+                    if (oldSchedule < delayMillis + now) {
+                        return;
+                    }
+                }
+                dirtyTimeMap.put(path, delayMillis + now);
+            }
+        }
+        
+        private void wakeUp() {
+
+            List<String> paths = new ArrayList<String>();
+            synchronized (this) {
+                Long now = System.currentTimeMillis();  // msec
+                for (Map.Entry<String, Long> entry : dirtyTimeMap.entrySet()) {
+                    if (now - entry.getValue()  >  0) {
+                        paths.add(entry.getKey());
+                    }
+                }
+                for (String path : paths) {
+                    dirtyTimeMap.remove(path);
+                }
+            }
+            for (String path : paths) {
+                if (! refreshPathWithWatcher(path)) {
+                    // Try again on 20 secs
+                    scheduleRefresh(path, 20000);
+                }
+
+            }
+        }
+        
+        private boolean refreshPathWithWatcher(String path) {
+            ZkRemoteStatusAndEndpoints e = zkRemoteStatusAndEndpointsMap.get(path);
+
+            boolean retVal = true;
+            try {
+                e.load(this);
+            } catch (CloudnameException e1) {
+                log.info("Tried to refresh path " + path + ", message " + e1.getMessage());
+                retVal = false;
+            }
+            System.err.println("About to notify users");
+            notifyClient();
+            System.err.println("Done: About to notify users");
+            return retVal;
+        }
+        
+        @Override
+        public void process(WatchedEvent watchedEvent) {
+            String path = watchedEvent.getPath();
+            Event.KeeperState state = watchedEvent.getState();
+            Event.EventType type = watchedEvent.getType();
+
+            log.info("Dynamic watch got event with path " + path + " state " + state.name() + " type " + type.name());
+            
+            switch (state) {
+                case Expired:
+                case AuthFailed:
+                case Disconnected:
+                    // Try again in 10 secs
+                    scheduleRefresh(path, 10000);
+                    break;
+            }
+            switch (type) {
+                case NodeChildrenChanged:
+                case None:
+                case NodeCreated:
+                    log.info("Unexpected event from zookeeper, path: " + path + " event " + 
+                            type.name() + watchedEvent.toString());
+                    scheduleRefresh(path, 2000);
+
+                    break;
+                case NodeDeleted:
+                    log.info("Remote coordinate deleted: " + path);
+                    synchronized (this) {
+                        zkRemoteStatusAndEndpointsMap.remove(path);
+                        dirtyTimeMap.remove(path);
+                        return;
+                    }
+                case NodeDataChanged:
+                    System.err.println("PATH CHANGED " + path);
+                    refreshPathWithWatcher(path);
+                    System.err.println("REFRESHED PATH CHANGED " + path);
+                    scheduleRefresh(path, 10 * 60 * 1000);  // 10 mins
+                    System.err.println("SCHEDULED PATH CHANGED " + path);
+                    //notifyClient();
+                    break;
+            }
+
+        }
+    }
+    
+    static private List<Integer> getInstances(ZooKeeper zk, String path) throws CloudnameException, InterruptedException {
         List<Integer> paths = new ArrayList<Integer>();
         try {
-            List<String> children = getZooKeeper().getChildren(path, false /* watcher */);
+            List<String> children = zk.getChildren(path, false /* watcher */);
             for (String child : children) {
                 paths.add(Integer.parseInt(child));
             }

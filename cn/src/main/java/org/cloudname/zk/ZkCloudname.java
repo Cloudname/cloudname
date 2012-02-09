@@ -70,6 +70,8 @@ public class ZkCloudname extends Thread implements Cloudname, Watcher {
     // Latches that count down when ZooKeeper is connected
     private final CountDownLatch connectedSignal = new CountDownLatch(1);
 
+    private ZkResolver resolver = null;
+
 
     private ZkCloudname(Builder builder) {
         connectString = builder.getConnectString();
@@ -79,13 +81,14 @@ public class ZkCloudname extends Thread implements Cloudname, Watcher {
     @Override
     public void run() {
 
+
         while (true) {
             ZooKeeper zk = getZk();
             if (zk != null && zk.getState() == ZooKeeper.States.CLOSED) {
                 retryConnection();
                 try {
                     // Wait a bit so the next reconnection does not happen to frequently.
-                    Thread.sleep(100000);
+                    Thread.sleep(10000);
                 } catch (InterruptedException e) {
                     return;
                 }
@@ -131,6 +134,9 @@ public class ZkCloudname extends Thread implements Cloudname, Watcher {
         } catch (InterruptedException e) {
             throw new CloudnameException(e);
         }
+        resolver =  new ZkResolver.Builder().addStrategy(new StrategyAll()).addStrategy(new StrategyAny()).build();
+        users.add(resolver);
+        resolver.newZooKeeperInstance(getZk());
         start();
         return this;
     }
@@ -310,9 +316,7 @@ public class ZkCloudname extends Thread implements Cloudname, Watcher {
     
     @Override
     public Resolver getResolver() {
-        ZkResolver resolver =  new ZkResolver.Builder().addStrategy(new StrategyAll()).addStrategy(new StrategyAny()).build();
-        users.add(resolver);
-        resolver.newZooKeeperInstance(getZk());
+
         return resolver;
     }
 

@@ -1,8 +1,10 @@
 package org.cloudname.zk;
 
 import java.io.File;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 
 import org.apache.zookeeper.WatchedEvent;
 import org.apache.zookeeper.Watcher;
@@ -14,6 +16,7 @@ import org.junit.*;
 import org.junit.rules.TemporaryFolder;
 
 import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
 
 
 /**
@@ -31,6 +34,7 @@ public class ZkResolverTest {
     private Coordinate coordinateRunning;
     private Coordinate coordinateDraining;
     @Rule public TemporaryFolder temp = new TemporaryFolder();
+    private ServiceHandle handleDraining;
 
     /**
      * Set up an embedded ZooKeeper instance backed by a temporary
@@ -68,13 +72,23 @@ public class ZkResolverTest {
 
         coordinateDraining = Coordinate.parse("0.service.user.cell");
         cn.createCoordinate(coordinateDraining);
-        ServiceHandle handleDraining = cn.claim(coordinateDraining);
+        handleDraining = cn.claim(coordinateDraining);
         handleDraining.putEndpoint(new Endpoint(coordinateDraining, "foo", "localhost", 5555, "http", "data"));
         handleDraining.putEndpoint(new Endpoint(coordinateDraining, "bar", "localhost", 5556, "http", null));
 
         ServiceStatus statusDraining = new ServiceStatus(ServiceState.DRAIN, "Draining message");
         handleDraining.setStatus(statusDraining);
     }
+
+    public void undrain() {
+        ServiceStatus statusDraining = new ServiceStatus(ServiceState.RUNNING, "alive");
+        handleDraining.setStatus(statusDraining);
+    }
+    public void drain() {
+        ServiceStatus statusDraining = new ServiceStatus(ServiceState.DRAIN, "alive");
+        handleDraining.setStatus(statusDraining);
+    }
+
     @After
     public void tearDown() throws Exception {
         zk.close();
@@ -110,7 +124,7 @@ public class ZkResolverTest {
     
     
     @Test
-    public void testBasicResolving() throws Exception {
+    public void testBasicSyncResolving() throws Exception {
         Resolver resolver = cn.getResolver();
         List<Endpoint> endpoints = resolver.resolve("foo.1.service.user.cell");
         assertEquals(1, endpoints.size());
@@ -121,6 +135,52 @@ public class ZkResolverTest {
         assertEquals("http", endpoints.get(0).getProtocol());
     }
 
+    @Test
+    public void testBasicAsyncResolving() throws Exception {
+        Resolver resolver = cn.getResolver();
+        final CountDownLatch latch1 = new CountDownLatch(1);
+        final CountDownLatch latch2 = new CountDownLatch(2);
+        final CountDownLatch latch3 = new CountDownLatch(1);
+        final List<Endpoint> endpointList = new ArrayList<Endpoint>();
+        resolver.addResolverListener("foo.all.service.user.cell", new Resolver.ResolverFuture() {
+            @Override
+            public void endpointModified(Endpoint endpoint) {
+                System.err.println("UNIT TEEST CALL BACK");
+
+                endpointList.add(endpoint);
+                latch1.countDown();
+                latch2.countDown();
+            }
+
+            @Override
+            public void endpointDeleted(Endpoint endpoint) {
+                endpointList.add(endpoint);
+                latch3.countDown();
+
+            }
+        });
+        assertTrue(latch1.await(5000, TimeUnit.MILLISECONDS));
+
+        undrain();
+
+        assertTrue(latch2.await(5000, TimeUnit.MILLISECONDS));
+
+        drain();
+
+        assertTrue(latch3.await(5000, TimeUnit.MILLISECONDS));
+
+        assertEquals(3, endpointList.size());
+        assertEquals("foo", endpointList.get(0).getName());
+        assertEquals("1.service.user.cell", endpointList.get(0).getCoordinate().toString());
+
+        assertEquals("foo", endpointList.get(1).getName());
+        assertEquals("0.service.user.cell", endpointList.get(1).getCoordinate().toString());
+
+
+        assertEquals("foo", endpointList.get(2).getName());
+        assertEquals("0.service.user.cell", endpointList.get(2).getCoordinate().toString());
+    }
+    
     @Test
     public void testAnyResolving() throws Exception {
         Resolver resolver = cn.getResolver();

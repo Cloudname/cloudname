@@ -242,6 +242,26 @@ public class ZkRemoteStatusAndEndpoints implements Watcher, ZkUserInterface {
     }
 
 
+    public ZkRemoteStatusAndEndpoints load(Watcher watcher) throws CloudnameException {
+        Stat stat = new Stat();
+        try {
+
+            byte[] data = getZooKeeper().getData(path, watcher, stat);
+
+            remoteStatusAndEndpoints = new RemoteStatusAndEndpoints(data);
+
+        } catch (KeeperException e) {
+            throw new CloudnameException(e);
+        } catch (UnsupportedEncodingException e) {
+            throw new CloudnameException(e);
+        } catch (InterruptedException e) {
+            throw new CloudnameException(e);
+        } catch (IOException e) {
+            throw new CloudnameException(e);
+        }
+        return this;
+    }
+    
 
 
     /**
