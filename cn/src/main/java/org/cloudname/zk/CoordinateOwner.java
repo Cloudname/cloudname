@@ -20,13 +20,13 @@ import java.util.logging.Logger;
  *
  * @author dybdahl
  */
-public class ZkLocalStatusAndEndpoints implements Watcher, ZkUserInterface {
+public class CoordinateOwner implements Watcher, ZkUserInterface {
 
     private Storage storage = Storage.OUT_OF_SYNC;
     private boolean started = false;
 
     private int lastStatusVersion = -1;
-    private static final Logger log = Logger.getLogger(ZkLocalStatusAndEndpoints.class.getName());
+    private static final Logger log = Logger.getLogger(CoordinateOwner.class.getName());
     private ZooKeeper zk;
     private final String path;
 
@@ -40,14 +40,14 @@ public class ZkLocalStatusAndEndpoints implements Watcher, ZkUserInterface {
      * is not ready to be used before the ZooKeeper instance is received.
      * @param path is the path of the status of the coordinate.
      */
-    public ZkLocalStatusAndEndpoints(String path) {
+    public CoordinateOwner(String path) {
         this.path = path;
     }
 
 
     @Override
     public void zooKeeperDown() {
-        log.info("ZkLocalStatusAndEndpoints: Got event ZooKeeper is down.");
+        log.info("CoordinateOwner: Got event ZooKeeper is down.");
         synchronized (this) {
             zk = null;
             storage = Storage.OUT_OF_SYNC;
@@ -61,7 +61,7 @@ public class ZkLocalStatusAndEndpoints implements Watcher, ZkUserInterface {
         public void processResult(int rawReturnCode, String s, Object parent, String s1) {
 
             KeeperException.Code returnCode =  KeeperException.Code.get(rawReturnCode);
-            ZkLocalStatusAndEndpoints statusAndEndpoints =  (ZkLocalStatusAndEndpoints) parent;
+            CoordinateOwner statusAndEndpoints =  (CoordinateOwner) parent;
             log.info("Claim callback " + returnCode.name() + " " + s);
            
             switch (returnCode) {
@@ -141,7 +141,7 @@ public class ZkLocalStatusAndEndpoints implements Watcher, ZkUserInterface {
 
     @Override
     public void newZooKeeperInstance(ZooKeeper zk) {
-        log.info("ZkLocalStatusAndEndpoints: Got new ZeeKeeper, expect session to be down so starting potential cleanup." + zk.getSessionId());
+        log.info("CoordinateOwner: Got new ZeeKeeper, expect session to be down so starting potential cleanup." + zk.getSessionId());
         synchronized (this) {
             this.zk = zk;
             // We always start by assuming it is unclaimed.
@@ -150,7 +150,7 @@ public class ZkLocalStatusAndEndpoints implements Watcher, ZkUserInterface {
             if (! started) {
                 return;
             }
-            log.info("ZkLocalStatusAndEndpoints: Reclaiming coordinate.");
+            log.info("CoordinateOwner: Reclaiming coordinate.");
             claim(zk);
         }
     }
@@ -357,7 +357,7 @@ public class ZkLocalStatusAndEndpoints implements Watcher, ZkUserInterface {
      * Claims a coordinate.
      * @return this.
      */
-    public ZkLocalStatusAndEndpoints start()  {
+    public CoordinateOwner start()  {
         synchronized (this) {
             started = true;
         }

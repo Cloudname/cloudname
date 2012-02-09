@@ -47,19 +47,16 @@ public class ZkCloudname extends Thread implements Cloudname, Watcher {
     private static final Logger log = Logger.getLogger(ZkCloudname.class.getName());
 
     // Instance variables
-    private ZooKeeper zkNotSafe;
+    private ZooKeeper zkNotThreadSafe;
 
-    // todo there must be a better way
-    private Integer zkLock = new Integer(3);
-    
     private ZooKeeper getZk() {
-        synchronized (zkLock) {
-            return zkNotSafe;
+        synchronized (this) {
+            return zkNotThreadSafe;
         }
     }
     private void setZk(ZooKeeper zk) {
-        synchronized (zkLock) {
-            zkNotSafe = zk;
+        synchronized (this) {
+            zkNotThreadSafe = zk;
         }
     }
 
@@ -303,7 +300,7 @@ public class ZkCloudname extends Thread implements Cloudname, Watcher {
         String statusPath = ZkCoordinatePath.getStatusPath(coordinate);
         log.info("Claiming " + coordinate.asString() + " (" + statusPath + ")");
 
-        ZkLocalStatusAndEndpoints statusAndEndpoints = new ZkLocalStatusAndEndpoints(statusPath);
+        CoordinateOwner statusAndEndpoints = new CoordinateOwner(statusPath);
         users.add(statusAndEndpoints);
 
         // If we have come thus far we have succeeded in creating the
@@ -325,12 +322,11 @@ public class ZkCloudname extends Thread implements Cloudname, Watcher {
 
     @Override
     public ServiceStatus getStatus(Coordinate coordinate) throws CloudnameException {
-        System.out.println("GET STATUS");
         String statusPath = ZkCoordinatePath.getStatusPath(coordinate);
-        ZkRemoteStatusAndEndpoints statusAndEndpoints = new ZkRemoteStatusAndEndpoints(statusPath);
+        SingleExperssionResolver statusAndEndpoints = new SingleExperssionResolver(statusPath);
         users.add(statusAndEndpoints);
         statusAndEndpoints.newZooKeeperInstance(getZk());
-        statusAndEndpoints.load();
+        statusAndEndpoints.load(null);
         return statusAndEndpoints.getServiceStatus();
     }
 

@@ -19,14 +19,14 @@ import java.util.logging.Logger;
  *
  * @author dybdahl
  */
-public class ZkRemoteStatusAndEndpoints implements Watcher, ZkUserInterface {
+public class SingleExperssionResolver implements Watcher, ZkUserInterface {
  
     private Storage storage = Storage.NO_CONNECTION;
 
     private int lastStatusVersion = -1000;
     private RemoteStatusAndEndpoints remoteStatusAndEndpoints = null;
     
-    private static final Logger log = Logger.getLogger(ZkRemoteStatusAndEndpoints.class.getName());
+    private static final Logger log = Logger.getLogger(SingleExperssionResolver.class.getName());
     private ZooKeeper zk;
     private final String path;
     private List<CoordinateListener> coordinateListenerList =
@@ -38,14 +38,14 @@ public class ZkRemoteStatusAndEndpoints implements Watcher, ZkUserInterface {
      * is not ready to be used before the ZooKeeper instance is received.
      * @param path is the path of the status of the coordinate.
      */
-    public ZkRemoteStatusAndEndpoints(String path) {
+    public SingleExperssionResolver(String path) {
         this.path = path;
     }
 
 
     @Override
     public void zooKeeperDown() {
-        log.info("ZkLocalStatusAndEndpoints: Got event ZooKeeper is down.");
+        log.info("CoordinateOwner: Got event ZooKeeper is down.");
         synchronized (this) {
             zk = null;
             storage = Storage.NO_CONNECTION;
@@ -56,7 +56,7 @@ public class ZkRemoteStatusAndEndpoints implements Watcher, ZkUserInterface {
     
     @Override
     public void newZooKeeperInstance(ZooKeeper zk) {
-        log.info("ZkLocalStatusAndEndpoints: Got new ZeeKeeper, expect session to be down so starting potential cleanup." + zk.getSessionId());
+        log.info("CoordinateOwner: Got new ZeeKeeper, expect session to be down so starting potential cleanup." + zk.getSessionId());
         synchronized (this) {
             this.zk = zk;
         }
@@ -216,11 +216,16 @@ public class ZkRemoteStatusAndEndpoints implements Watcher, ZkUserInterface {
      * Loads the coordinate from ZooKeeper.
      * @return this.
      */
-    public ZkRemoteStatusAndEndpoints load() throws CloudnameException {
+
+    public SingleExperssionResolver load(Watcher watcher) throws CloudnameException {
         Stat stat = new Stat();
         try {
-
-            byte[] data = getZooKeeper().getData(path, false /*watcher*/, stat);
+            byte[] data;
+            if (watcher == null) {
+                data = getZooKeeper().getData(path, false, stat);
+            } else {
+                data = getZooKeeper().getData(path, watcher, stat);
+            }
 
             remoteStatusAndEndpoints = new RemoteStatusAndEndpoints(data);
 
@@ -235,36 +240,6 @@ public class ZkRemoteStatusAndEndpoints implements Watcher, ZkUserInterface {
         }
         return this;
     }
-
-
-    public ZkRemoteStatusAndEndpoints load(Watcher watcher) throws CloudnameException {
-        Stat stat = new Stat();
-        try {
-
-            byte[] data = getZooKeeper().getData(path, watcher, stat);
-
-            remoteStatusAndEndpoints = new RemoteStatusAndEndpoints(data);
-
-        } catch (KeeperException e) {
-            throw new CloudnameException(e);
-        } catch (UnsupportedEncodingException e) {
-            throw new CloudnameException(e);
-        } catch (InterruptedException e) {
-            throw new CloudnameException(e);
-        } catch (IOException e) {
-            throw new CloudnameException(e);
-        }
-        return this;
-    }
-    
-
-
-    /**
-     * Claims a coordinate.
-     * @return this.
-     */
-
-
 
 
     private void registerWatcher() throws CloudnameException, InterruptedException {

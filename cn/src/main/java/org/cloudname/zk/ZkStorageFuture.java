@@ -8,23 +8,17 @@ import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
-/**
- * Created by IntelliJ IDEA.
- * User: dybdahl
- * Date: 03.02.12
- * Time: 12:31
- * To change this template use File | Settings | File Templates.
- */
-public class ZkStorageOperation implements StorageFuture {
+
+public class ZkStorageFuture implements StorageFuture {
     private boolean isDone = false;
     List<Callback> callbacks = Collections.synchronizedList(new ArrayList());
     final String errorMessage;
     
-    public ZkStorageOperation() {
+    public ZkStorageFuture() {
         errorMessage = null;
     }
 
-    public ZkStorageOperation(String errorMessage) {
+    public ZkStorageFuture(String errorMessage) {
         this.errorMessage = errorMessage;
     }
     

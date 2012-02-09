@@ -15,7 +15,7 @@ import java.util.List;
  */
 public class ZkServiceHandle implements ServiceHandle, ZkUserInterface {
     private final Coordinate coordinate;
-    private ZkLocalStatusAndEndpoints statusAndEndpoints;
+    private CoordinateOwner statusAndEndpoints;
     private static final Logger log = Logger.getLogger(ZkServiceHandle.class.getName());
     private ZooKeeper zk = null;
 
@@ -25,7 +25,7 @@ public class ZkServiceHandle implements ServiceHandle, ZkUserInterface {
      *
      * @param coordinate the coordinate for this service handle.
      */
-    public ZkServiceHandle(Coordinate coordinate, ZkLocalStatusAndEndpoints statusAndEndpoints) {
+    public ZkServiceHandle(Coordinate coordinate, CoordinateOwner statusAndEndpoints) {
         this.coordinate = coordinate;
         this.statusAndEndpoints = statusAndEndpoints;
     }
@@ -37,15 +37,15 @@ public class ZkServiceHandle implements ServiceHandle, ZkUserInterface {
         try {
             statusAndEndpoints.updateStatus(status);
         } catch (CloudnameException e) {
-           return new ZkStorageOperation("CloudnameException:" + e.getMessage());
+           return new ZkStorageFuture("CloudnameException:" + e.getMessage());
         } catch (CoordinateMissingException e) {
-            return new ZkStorageOperation("CoordinateMissingException:" + e.getMessage());
+            return new ZkStorageFuture("CoordinateMissingException:" + e.getMessage());
         }
         return createStorageOperation();
     }
 
     private StorageFuture createStorageOperation() {
-        final ZkStorageOperation op = new ZkStorageOperation();
+        final ZkStorageFuture op = new ZkStorageFuture();
 
         registerCoordinateListener(new CoordinateListener() {
 
@@ -66,11 +66,11 @@ public class ZkServiceHandle implements ServiceHandle, ZkUserInterface {
         try {
             statusAndEndpoints.putEndpoints(endpoints);
         } catch (EndpointException e) {
-            return new ZkStorageOperation("EndpointException: " + e.getMessage());
+            return new ZkStorageFuture("EndpointException: " + e.getMessage());
         } catch (CloudnameException e) {
-            return new ZkStorageOperation("CloudnameException: " + e.getMessage());
+            return new ZkStorageFuture("CloudnameException: " + e.getMessage());
         } catch (CoordinateMissingException e) {
-            return new ZkStorageOperation("CoordinateMissingException: " + e.getMessage());
+            return new ZkStorageFuture("CoordinateMissingException: " + e.getMessage());
         }
         return createStorageOperation();
     }
@@ -88,11 +88,11 @@ public class ZkServiceHandle implements ServiceHandle, ZkUserInterface {
         try {
             statusAndEndpoints.removeEndpoints(names);
         } catch (EndpointException e) {
-            return new ZkStorageOperation("EndpointException: " + e.getMessage());
+            return new ZkStorageFuture("EndpointException: " + e.getMessage());
         } catch (CloudnameException e) {
-            return new ZkStorageOperation("CloudnameException: " + e.getMessage());
+            return new ZkStorageFuture("CloudnameException: " + e.getMessage());
         } catch (CoordinateMissingException e) {
-            return new ZkStorageOperation("CoordinateMissingException: " + e.getMessage());
+            return new ZkStorageFuture("CoordinateMissingException: " + e.getMessage());
         }
         return createStorageOperation();
     }

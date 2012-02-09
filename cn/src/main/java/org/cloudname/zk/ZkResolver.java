@@ -4,7 +4,6 @@ import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.WatchedEvent;
 import org.apache.zookeeper.Watcher;
 import org.apache.zookeeper.ZooKeeper;
-import org.apache.zookeeper.data.Stat;
 import org.cloudname.*;
 
 import java.util.*;
@@ -124,8 +123,6 @@ public class ZkResolver implements Resolver, ZkUserInterface {
          * @param addressExpression
          */
         public Parameters(String addressExpression) {
-            log.info("Resolving " + addressExpression);
-            
             if (! (trySetEndPointPattern(addressExpression) ||
                     trySetStrategyPattern(addressExpression) ||
                     trySetEndpointStrategyPattern(addressExpression))) {
@@ -253,7 +250,7 @@ public class ZkResolver implements Resolver, ZkUserInterface {
     }
     
     
-    private Map<String, ZkRemoteStatusAndEndpoints> activelyMonitoredCoordinates = new HashMap<String, ZkRemoteStatusAndEndpoints>();
+    private Map<String, SingleExperssionResolver> activelyMonitoredCoordinates = new HashMap<String, SingleExperssionResolver>();
 
     
     @Override
@@ -274,9 +271,9 @@ public class ZkResolver implements Resolver, ZkUserInterface {
                 throw new CloudnameException(e);
 
             }
-            ZkRemoteStatusAndEndpoints statusAndEndpoints = new ZkRemoteStatusAndEndpoints(statusPath);
+            SingleExperssionResolver statusAndEndpoints = new SingleExperssionResolver(statusPath);
             statusAndEndpoints.newZooKeeperInstance(zk);
-            statusAndEndpoints.load();
+            statusAndEndpoints.load(null);
             addEndpoints(statusAndEndpoints, endpoints, parameters.getEndpointName());
 
         }
@@ -293,10 +290,10 @@ public class ZkResolver implements Resolver, ZkUserInterface {
         synchronized (this) {
             dynamicAddresses.add(dynamicAddress);
         }
-        dynamicAddress.init();
+        dynamicAddress.resolve();
     }
 
-    static private void addEndpoints(ZkRemoteStatusAndEndpoints statusAndEndpoints, List<Endpoint> endpoints, String endpointname) {
+    static private void addEndpoints(SingleExperssionResolver statusAndEndpoints, List<Endpoint> endpoints, String endpointname) {
         if (statusAndEndpoints.getServiceStatus().getState() != ServiceState.RUNNING) {
             return;
         }
@@ -313,24 +310,24 @@ public class ZkResolver implements Resolver, ZkUserInterface {
     class DynamicAddress implements Watcher {
         final private String expression;
 
-        final private Map<String, Endpoint> clientStatus = new HashMap<String, Endpoint>();
+        final private Map<String, Endpoint> clientPicture = new HashMap<String, Endpoint>();
         final private ResolverFuture clientCallback;
         final private Map<String, Long> dirtyTimeMap = new HashMap<String, Long>();
         final private Parameters parameters;
 
-        final private Map<String, ZkRemoteStatusAndEndpoints> zkRemoteStatusAndEndpointsMap =
-                new HashMap<String, ZkRemoteStatusAndEndpoints>();
+        final private Map<String, SingleExperssionResolver> zkRemoteStatusAndEndpointsMap =
+                new HashMap<String, SingleExperssionResolver>();
         
         final private Random random = new Random();
+        private long lastResolve = 0;
         
         public DynamicAddress(String expression, ResolverFuture clientCallback) {
-            log.info("Monitoring: " + expression);
             this.expression = expression;
             this.clientCallback = clientCallback;
             this.parameters = new Parameters(expression);
         }
 
-        public void init() {
+        public void resolve() {
             List<Integer> instances = null;
             try {
                 instances = resolveInstances(parameters);
@@ -338,28 +335,26 @@ public class ZkResolver implements Resolver, ZkUserInterface {
                 log.info("Got cloudname exception " + e.getMessage());
                 return;
             }
-            List<Endpoint> endpoints = new ArrayList<Endpoint>();
+            Map<String, SingleExperssionResolver> tempStatusAndEndpointsMap =
+                    new HashMap<String, SingleExperssionResolver>();
+
             for (Integer instance : instances) {
                 String statusPath = ZkCoordinatePath.getStatusPath(parameters.getCell(), parameters.getUser(),
                         parameters.getService(), instance);
 
                 try {
-                    if (null == zk.exists(statusPath, this)) {
-                        continue;
-                    }
-
-                    ZkRemoteStatusAndEndpoints statusAndEndpoints = new ZkRemoteStatusAndEndpoints(statusPath);
+                    SingleExperssionResolver statusAndEndpoints = new SingleExperssionResolver(statusPath);
                     statusAndEndpoints.newZooKeeperInstance(zk);
-                    statusAndEndpoints.load();
-                    zkRemoteStatusAndEndpointsMap.put(statusPath, statusAndEndpoints);
-
-                } catch (KeeperException e) {
-                    log.info("Got keeper exception " + e.getMessage() + " " + statusPath);
-                } catch (InterruptedException e) {
-                    log.info("Got interrupt: " + e.getMessage()+ " " + statusPath);
-                    return;
+                    statusAndEndpoints.load(this);
+                    tempStatusAndEndpointsMap.put(statusPath, statusAndEndpoints);
                 } catch (CloudnameException e) {
                     log.info("Got cloudname exception: " + e.getMessage()+ " " + statusPath);                }
+            }
+
+            synchronized (this) {
+                zkRemoteStatusAndEndpointsMap.clear();
+                zkRemoteStatusAndEndpointsMap.putAll(tempStatusAndEndpointsMap);
+                lastResolve = System.currentTimeMillis();
             }
             notifyClient();
         }
@@ -367,36 +362,34 @@ public class ZkResolver implements Resolver, ZkUserInterface {
 
         private void notifyClient() {
             // First generate a fresh list of endpoints.
-            System.err.println("Notify client 1");
             List<Endpoint> newEndpoints = new ArrayList<Endpoint>();
             synchronized (this ) {
-                for (Map.Entry<String, ZkRemoteStatusAndEndpoints> statusAndEndpoints : zkRemoteStatusAndEndpointsMap.entrySet()) {
+                for (Map.Entry<String, SingleExperssionResolver> statusAndEndpoints : zkRemoteStatusAndEndpointsMap.entrySet()) {
                     addEndpoints(statusAndEndpoints.getValue(), newEndpoints, parameters.getEndpointName());
 
                 }
 
                 Map<String, Endpoint> newEndpointsByName = new HashMap<String, Endpoint>();
                 for (Endpoint endpoint : newEndpoints) {
-                    System.err.println("NEW CLIENT HAD " + endpoint.toJson());
                     newEndpointsByName.put(endpoint.getCoordinate().asString(), endpoint);
                 }
 
-                for (Map.Entry<String, Endpoint> endpointEntry : clientStatus.entrySet()) {
+                for (Map.Entry<String, Endpoint> endpointEntry : clientPicture.entrySet()) {
                     String key = endpointEntry.getValue().getCoordinate().asString();
 
                     if (! newEndpointsByName.containsKey(key)) {
                         clientCallback.endpointDeleted(endpointEntry.getValue());
-                        clientStatus.remove(key);
+                        clientPicture.remove(key);
                     }
                 }
 
                 for (Endpoint endpoint : newEndpoints) {
                     String key = endpoint.getCoordinate().asString();
 
-                    if (! clientStatus.containsKey(key) ||
-                            ! clientStatus.get(key).toJson().equals(endpoint.toJson())) {
+                    if (! clientPicture.containsKey(key) ||
+                            ! clientPicture.get(key).toJson().equals(endpoint.toJson())) {
                         clientCallback.endpointModified(endpoint);
-                        clientStatus.put(key, endpoint);
+                        clientPicture.put(key, endpoint);
                     }
                 }
 
@@ -417,9 +410,18 @@ public class ZkResolver implements Resolver, ZkUserInterface {
                 dirtyTimeMap.put(path, delayMillis + now);
             }
         }
-        
-        private void wakeUp() {
 
+
+        private boolean timeToReresolve() {
+            synchronized (this) {
+                return lastResolve + 5 * 60 * 1000 < System.currentTimeMillis();
+            }
+        }
+
+        private void wakeUp() {
+            if (timeToReresolve()) {
+                resolve();
+            }
             List<String> paths = new ArrayList<String>();
             synchronized (this) {
                 Long now = System.currentTimeMillis();  // msec
@@ -441,7 +443,7 @@ public class ZkResolver implements Resolver, ZkUserInterface {
         }
         
         private boolean refreshPathWithWatcher(String path) {
-            ZkRemoteStatusAndEndpoints e = zkRemoteStatusAndEndpointsMap.get(path);
+            SingleExperssionResolver e = zkRemoteStatusAndEndpointsMap.get(path);
 
             boolean retVal = true;
             try {
