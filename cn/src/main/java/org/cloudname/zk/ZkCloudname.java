@@ -79,6 +79,9 @@ public class ZkCloudname extends Thread implements Cloudname, Watcher {
 
         while (true) {
             ZooKeeper zk = getZk();
+            if (zk != null && zk.getState() != ZooKeeper.States.CONNECTED) {
+                log.info("Not connected to ZooKeeper: " + zk.getState().name());
+            }
             if (zk != null && zk.getState() == ZooKeeper.States.CLOSED) {
                 retryConnection();
                 try {
