@@ -33,7 +33,7 @@ public class ZkServiceHandle implements ServiceHandle, ZkUserInterface {
 
 
     @Override
-    public StorageFuture setStatus(ServiceStatus status) {
+    public StorageOperation setStatus(ServiceStatus status) {
         try {
             statusAndEndpoints.updateStatus(status);
         } catch (CloudnameException e) {
@@ -44,7 +44,7 @@ public class ZkServiceHandle implements ServiceHandle, ZkUserInterface {
         return createStorageOperation();
     }
 
-    private StorageFuture createStorageOperation() {
+    private StorageOperation createStorageOperation() {
         final ZkStorageFuture op = new ZkStorageFuture();
 
         registerCoordinateListener(new CoordinateListener() {
@@ -60,7 +60,7 @@ public class ZkServiceHandle implements ServiceHandle, ZkUserInterface {
     }
 
     @Override
-    public StorageFuture putEndpoints(List<Endpoint> endpoints) {
+    public StorageOperation putEndpoints(List<Endpoint> endpoints) {
         try {
             statusAndEndpoints.putEndpoints(endpoints);
         } catch (EndpointException e) {
@@ -74,7 +74,7 @@ public class ZkServiceHandle implements ServiceHandle, ZkUserInterface {
     }
 
     @Override
-    public StorageFuture putEndpoint(Endpoint endpoint) {
+    public StorageOperation putEndpoint(Endpoint endpoint) {
         List<Endpoint> endpoints = new ArrayList<Endpoint>();
         endpoints.add(endpoint);
         putEndpoints(endpoints);
@@ -82,7 +82,7 @@ public class ZkServiceHandle implements ServiceHandle, ZkUserInterface {
     }
 
     @Override
-    public StorageFuture removeEndpoints(List<String> names) {
+    public StorageOperation removeEndpoints(List<String> names) {
         try {
             statusAndEndpoints.removeEndpoints(names);
         } catch (EndpointException e) {
@@ -96,7 +96,7 @@ public class ZkServiceHandle implements ServiceHandle, ZkUserInterface {
     }
 
     @Override
-    public StorageFuture removeEndpoint(String name) {
+    public StorageOperation removeEndpoint(String name) {
         List<String> names = new ArrayList<String>();
         names.add(name);
         removeEndpoints(names);

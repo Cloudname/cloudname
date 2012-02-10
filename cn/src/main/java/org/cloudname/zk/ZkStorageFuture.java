@@ -1,6 +1,6 @@
 package org.cloudname.zk;
 
-import org.cloudname.StorageFuture;
+import org.cloudname.StorageOperation;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -9,9 +9,9 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
 
-public class ZkStorageFuture implements StorageFuture {
+public class ZkStorageFuture implements StorageOperation {
     private boolean isDone = false;
-    List<Callback> callbacks = Collections.synchronizedList(new ArrayList());
+    List<Future> futures = Collections.synchronizedList(new ArrayList());
     final String errorMessage;
     
     public ZkStorageFuture() {
@@ -33,7 +33,7 @@ public class ZkStorageFuture implements StorageFuture {
             }
         }
         final CountDownLatch latch = new CountDownLatch(1);
-        registerCallback(new Callback() {
+        registerCallback(new Future() {
             @Override
             public void success() {
                 latch.countDown();
@@ -53,9 +53,9 @@ public class ZkStorageFuture implements StorageFuture {
     }
 
     @Override
-    public void registerCallback(Callback callback) {
+    public void registerCallback(Future future) {
         if (errorMessage !=  null) {
-            callback.failure(errorMessage);
+            future.failure(errorMessage);
             return;
         }
 
@@ -63,11 +63,11 @@ public class ZkStorageFuture implements StorageFuture {
         synchronized (this) {
             runCallback = isDone;
             if (!runCallback) {
-                callbacks.add(callback);
+                futures.add(future);
             }
         }
         if (runCallback)  {
-            callback.success();
+            future.success();
         }
     }
 
@@ -78,9 +78,9 @@ public class ZkStorageFuture implements StorageFuture {
         }
     }
 
-    public Callback getSystemCallback() {
+    public Future getSystemCallback() {
 
-        return new Callback() {
+        return new Future() {
             @Override
             public void success() {
                 synchronized (this) {
@@ -89,8 +89,8 @@ public class ZkStorageFuture implements StorageFuture {
                     }
                     isDone = true;
                 }
-                for (Callback callback : callbacks) {
-                    callback.success();
+                for (Future future : futures) {
+                    future.success();
                 }
             }
 

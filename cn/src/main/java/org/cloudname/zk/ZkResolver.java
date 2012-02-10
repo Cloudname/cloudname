@@ -488,6 +488,7 @@ public class ZkResolver implements Resolver, ZkUserInterface {
                 case NodeDeleted:
                     synchronized (this) {
                         zkRemoteStatusAndEndpointsMap.remove(path);
+                        notifyClient();
                         dirtyTimeMap.remove(path);
                         return;
                     }

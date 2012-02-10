@@ -135,22 +135,22 @@ public class ZkCloudnameTest {
 
         // Try to set the status to something else
         String msg = "Hamster getting quite eager now";
-        StorageFuture op = handle.setStatus(new ServiceStatus(ServiceState.STARTING,msg));
+        StorageOperation op = handle.setStatus(new ServiceStatus(ServiceState.STARTING,msg));
         assertTrue(op.waitForCompletionMillis(10000));
         ServiceStatus status = cn.getStatus(c);
         assertEquals(msg, status.getMessage());
         assertSame(ServiceState.STARTING, status.getState());
 
         // Publish two endpoints
-        StorageFuture op2 = handle.putEndpoint(new Endpoint(c, "foo", "localhost", 1234, "http", null));
-        StorageFuture op3 = handle.putEndpoint(new Endpoint(c, "bar", "localhost", 1235, "http", null));
+        StorageOperation op2 = handle.putEndpoint(new Endpoint(c, "foo", "localhost", 1234, "http", null));
+        StorageOperation op3 = handle.putEndpoint(new Endpoint(c, "bar", "localhost", 1235, "http", null));
 
-        StorageFuture op4 = handle.setStatus(new ServiceStatus(ServiceState.RUNNING, msg));
+        StorageOperation op4 = handle.setStatus(new ServiceStatus(ServiceState.RUNNING, msg));
         assertTrue(op4.waitForCompletionMillis(1000));
         assertTrue(op2.waitForCompletionMillis(1000));
         assertTrue(op3.waitForCompletionMillis(1000));
         // Remove one of them
-        StorageFuture op5 = handle.removeEndpoint("bar");
+        StorageOperation op5 = handle.removeEndpoint("bar");
         assertTrue(op5.waitForCompletionMillis(1000));
 
         List<Endpoint> endpointList = cn.getResolver().resolve("bar.1.service.user.cell");

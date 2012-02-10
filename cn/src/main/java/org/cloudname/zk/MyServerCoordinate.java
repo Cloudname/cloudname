@@ -323,8 +323,6 @@ public class MyServerCoordinate implements Watcher, ZkUserInterface {
             zkArg.create(
                     path, statusAndEndpointsBuilder.build().serialize().getBytes(Util.CHARSET_NAME),
                     ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.EPHEMERAL, new ClaimCallback(), this);
-        } catch (CloudnameException e) {
-            log.info("Could not claim with the new ZooKeeper instance: " + e.getMessage());
         } catch (IOException e) {
             log.info("Got IO exception on claim with new ZooKeeper instance " + e.getMessage());
         }
