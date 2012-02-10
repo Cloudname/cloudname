@@ -44,5 +44,5 @@ public interface CoordinateListener {
      * @param event the event that happened.
      * @param message some message associated with the event.
      */
-    public boolean onCoordinateEvent(Event event, String message);
+    public void onCoordinateEvent(Event event, String message);
 }

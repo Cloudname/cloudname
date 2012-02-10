@@ -47,4 +47,6 @@ public interface Resolver {
     }
 
     public void addResolverListener(String address, ResolverFuture future);
+
+    public void shutdown();
 }

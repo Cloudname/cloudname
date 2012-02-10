@@ -9,9 +9,7 @@ import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.ZooDefs.Ids;
 import org.apache.zookeeper.KeeperException;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 
 import java.util.logging.Level;
@@ -97,7 +95,7 @@ public class ZkCloudname extends Thread implements Cloudname, Watcher {
             }
             zk = getZk();
             if (zk != null && zk.getState() == ZooKeeper.States.CONNECTED) {
-                for (ZkUserInterface user : users) {
+                for (ZkUserInterface user : users.keySet()) {
                     user.timeEvent();
                 }
             }
@@ -132,7 +130,7 @@ public class ZkCloudname extends Thread implements Cloudname, Watcher {
             throw new CloudnameException(e);
         }
         resolver =  new ZkResolver.Builder().addStrategy(new StrategyAll()).addStrategy(new StrategyAny()).build();
-        users.add(resolver);
+        users.put(resolver, 1);
         resolver.newZooKeeperInstance(getZk());
         start();
         return this;
@@ -162,10 +160,14 @@ public class ZkCloudname extends Thread implements Cloudname, Watcher {
         }
     }
 
-    List<ZkUserInterface> users = Collections.synchronizedList(new ArrayList<ZkUserInterface>());
-    
+
+
+    //List<ZkUserInterface> users = Collections.synchronizedList(new ArrayList<ZkUserInterface>());
+
+    Map<ZkUserInterface, Integer> users = Collections.synchronizedMap(new WeakHashMap<ZkUserInterface, Integer>());
+
     private void notifyUsersConnectionDown() {
-        for (ZkUserInterface user : users) {
+        for (ZkUserInterface user : users.keySet()) {
             user.zooKeeperDown();
         }
     } 
@@ -182,7 +184,7 @@ public class ZkCloudname extends Thread implements Cloudname, Watcher {
             // The first connection set up is blocking, this will unblock the connection.
             connectedSignal.countDown();
             // Notify the users that the connection is up.
-            for (ZkUserInterface user : users) {
+            for (ZkUserInterface user : users.keySet()) {
                 user.newZooKeeperInstance(getZk());
             }
             return;
@@ -301,13 +303,13 @@ public class ZkCloudname extends Thread implements Cloudname, Watcher {
         log.info("Claiming " + coordinate.asString() + " (" + statusPath + ")");
 
         MyServerCoordinate statusAndEndpoints = new MyServerCoordinate(statusPath);
-        users.add(statusAndEndpoints);
+        users.put(statusAndEndpoints, 1);
 
         // If we have come thus far we have succeeded in creating the
         // CN_STATUS_NAME node within the service coordinate directory
         // in ZooKeeper and we can give the client a ServiceHandle.
         ZkServiceHandle handle = new ZkServiceHandle(coordinate, statusAndEndpoints);
-        users.add(handle);
+        users.put(handle, 1);
         handle.newZooKeeperInstance(getZk());
         statusAndEndpoints.newZooKeeperInstance(getZk());
         statusAndEndpoints.start();
@@ -324,7 +326,7 @@ public class ZkCloudname extends Thread implements Cloudname, Watcher {
     public ServiceStatus getStatus(Coordinate coordinate) throws CloudnameException {
         String statusPath = ZkCoordinatePath.getStatusPath(coordinate);
         SingleExpressionResolver statusAndEndpoints = new SingleExpressionResolver(statusPath);
-        users.add(statusAndEndpoints);
+        users.put(statusAndEndpoints, 1);
         statusAndEndpoints.newZooKeeperInstance(getZk());
         statusAndEndpoints.load(null);
         return statusAndEndpoints.getServiceStatus();

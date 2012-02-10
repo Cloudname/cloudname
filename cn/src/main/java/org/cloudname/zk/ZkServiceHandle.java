@@ -50,12 +50,10 @@ public class ZkServiceHandle implements ServiceHandle, ZkUserInterface {
         registerCoordinateListener(new CoordinateListener() {
 
             @Override
-            public boolean onCoordinateEvent(Event event, String message) {
+            public void onCoordinateEvent(Event event, String message) {
                 if (event == Event.COORDINATE_OK) {
                     op.getSystemCallback().success();
-                    return false;
                 }
-                return true;
             }
         });
         return op;

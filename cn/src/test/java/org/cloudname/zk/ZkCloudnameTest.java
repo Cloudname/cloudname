@@ -117,12 +117,10 @@ public class ZkCloudnameTest {
         handle.registerCoordinateListener(new CoordinateListener() {
 
             @Override
-            public boolean onCoordinateEvent(Event event, String message) {
+            public void onCoordinateEvent(Event event, String message) {
                 if (event == Event.COORDINATE_OK) {
                     latch.countDown();
-                    return false;
                 }
-                return true;
             }
         });
         latch.await(2, TimeUnit.SECONDS);
@@ -201,7 +199,7 @@ public class ZkCloudnameTest {
         CoordinateListener listener = new CoordinateListener() {
 
             @Override
-            public boolean onCoordinateEvent(Event event, String message) {
+            public void onCoordinateEvent(Event event, String message) {
                 switch (event) {
 
                     case COORDINATE_OK:
@@ -220,7 +218,6 @@ public class ZkCloudnameTest {
                         fail("not expected");
                         break;
                 }
-                return true;
             }
         };
         
@@ -288,12 +285,11 @@ public class ZkCloudnameTest {
         }
 
         @Override
-        public boolean onCoordinateEvent(Event event, String message) {
+        public void onCoordinateEvent(Event event, String message) {
             System.err.println("Got unit test even " + event.toString() + " " + message);
             events.add(event);
             latch1.countDown();
             latch2.countDown();
-            return true;
         }
     }
 

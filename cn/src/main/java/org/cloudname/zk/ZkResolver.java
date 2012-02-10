@@ -248,9 +248,6 @@ public class ZkResolver implements Resolver, ZkUserInterface {
         }
         return instances;
     }
-    
-    
-    private Map<String, SingleExpressionResolver> activelyMonitoredCoordinates = new HashMap<String, SingleExpressionResolver>();
 
     
     @Override
@@ -291,6 +288,13 @@ public class ZkResolver implements Resolver, ZkUserInterface {
             dynamicAddresses.add(dynamicAddress);
         }
         dynamicAddress.resolve();
+    }
+
+    @Override
+    public void shutdown() {
+        synchronized (this) {
+            dynamicAddresses.clear();
+        }
     }
 
     static private void addEndpoints(SingleExpressionResolver statusAndEndpoints, List<Endpoint> endpoints, String endpointname) {
