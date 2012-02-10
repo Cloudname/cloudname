@@ -24,7 +24,7 @@ public class SingleExpressionResolver implements Watcher, ZkUserInterface {
     private Storage storage = Storage.NO_CONNECTION;
 
     private int lastStatusVersion = -1000;
-    private RemoteStatusAndEndpoints remoteStatusAndEndpoints = null;
+    private StatusAndEndpoints statusAndEndpoints = null;
     
     private static final Logger log = Logger.getLogger(SingleExpressionResolver.class.getName());
     private ZooKeeper zk;
@@ -78,7 +78,7 @@ public class SingleExpressionResolver implements Watcher, ZkUserInterface {
      * @return ServiceStatus.
      */
     public ServiceStatus getServiceStatus() {
-        return remoteStatusAndEndpoints.getServiceStatus();
+        return statusAndEndpoints.getServiceStatus();
     }
 
     /**
@@ -87,7 +87,7 @@ public class SingleExpressionResolver implements Watcher, ZkUserInterface {
      * @return Endpoint.
      */
     public Endpoint getEndpoint(String name) {
-        return remoteStatusAndEndpoints.getEndpoint(name);
+        return statusAndEndpoints.getEndpoint(name);
     }
 
     /**
@@ -95,7 +95,7 @@ public class SingleExpressionResolver implements Watcher, ZkUserInterface {
      * @param endpoints The endpoints are put in this list.
      */
     public void returnAllEndpoints(List<Endpoint> endpoints) {
-        remoteStatusAndEndpoints.returnAllEndpoints(endpoints);
+        statusAndEndpoints.returnAllEndpoints(endpoints);
     }
 
 
@@ -105,7 +105,7 @@ public class SingleExpressionResolver implements Watcher, ZkUserInterface {
      * @return serialized version of the instance data.
      */
     public String toString() {
-        return remoteStatusAndEndpoints.toString();
+        return statusAndEndpoints.toString();
     }
 
     /**
@@ -221,7 +221,7 @@ public class SingleExpressionResolver implements Watcher, ZkUserInterface {
                 data = getZooKeeper().getData(path, watcher, stat);
             }
 
-            remoteStatusAndEndpoints = new RemoteStatusAndEndpoints(data);
+            statusAndEndpoints = new StatusAndEndpoints.Builder().deserialize(data).build();
 
         } catch (KeeperException e) {
             throw new CloudnameException(e);

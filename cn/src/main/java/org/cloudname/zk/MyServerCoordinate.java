@@ -30,7 +30,7 @@ public class MyServerCoordinate implements Watcher, ZkUserInterface {
     private ZooKeeper zk;
     private final String path;
 
-    private LocalStatusAndEndpoints localStatusAndEndpoints = new LocalStatusAndEndpoints();
+    private StatusAndEndpoints.Builder statusAndEndpointsBuilder = new StatusAndEndpoints.Builder();
     private List<CoordinateListener> coordinateListenerList =
             Collections.synchronizedList(new ArrayList<CoordinateListener>());
 
@@ -161,7 +161,7 @@ public class MyServerCoordinate implements Watcher, ZkUserInterface {
      * @param status The new value for serviceStatus.
      */
     public void updateStatus(ServiceStatus status) throws CloudnameException, CoordinateMissingException {
-        localStatusAndEndpoints.updateStatus(status);
+        statusAndEndpointsBuilder.updateStatus(status);
         writeStatusEndpoint();
     }
 
@@ -171,7 +171,7 @@ public class MyServerCoordinate implements Watcher, ZkUserInterface {
      */
     public void putEndpoints(List<Endpoint> newEndpoints)
             throws EndpointException, CloudnameException, CoordinateMissingException {
-        localStatusAndEndpoints.putEndpoints(newEndpoints);
+        statusAndEndpointsBuilder.putEndpoints(newEndpoints);
         writeStatusEndpoint();
     }
 
@@ -181,7 +181,7 @@ public class MyServerCoordinate implements Watcher, ZkUserInterface {
      */
     public void removeEndpoints(List<String> names)
             throws EndpointException, CloudnameException, CoordinateMissingException {
-        localStatusAndEndpoints.removeEndpoints(names);
+        statusAndEndpointsBuilder.removeEndpoints(names);
         writeStatusEndpoint();
     }
 
@@ -199,7 +199,7 @@ public class MyServerCoordinate implements Watcher, ZkUserInterface {
             } catch (KeeperException e) {
                 throw new CloudnameException(e);
             }
-            localStatusAndEndpoints = null;
+            statusAndEndpointsBuilder = null;
             lastStatusVersion = -1;
         }
     }
@@ -209,7 +209,7 @@ public class MyServerCoordinate implements Watcher, ZkUserInterface {
      * @return serialized version of the instance data.
      */
     public synchronized String toString() {
-       return localStatusAndEndpoints.toString();
+       return statusAndEndpointsBuilder.build().toString();
     }
 
     /**
@@ -321,7 +321,7 @@ public class MyServerCoordinate implements Watcher, ZkUserInterface {
     private void claim(ZooKeeper zkArg) {
         try {
             zkArg.create(
-                    path, localStatusAndEndpoints.serialize().getBytes(Util.CHARSET_NAME),
+                    path, statusAndEndpointsBuilder.build().serialize().getBytes(Util.CHARSET_NAME),
                     ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.EPHEMERAL, new ClaimCallback(), this);
         } catch (CloudnameException e) {
             log.info("Could not claim with the new ZooKeeper instance: " + e.getMessage());
@@ -384,7 +384,7 @@ public class MyServerCoordinate implements Watcher, ZkUserInterface {
             try {
 
                 Stat stat = getZooKeeper().setData(path,
-                        localStatusAndEndpoints.serialize().getBytes(Util.CHARSET_NAME),
+                        statusAndEndpointsBuilder.build().serialize().getBytes(Util.CHARSET_NAME),
                         lastStatusVersion);
                 lastStatusVersion = stat.getVersion();
                 storage = Storage.SYNCED;
