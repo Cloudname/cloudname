@@ -1,6 +1,5 @@
 package org.cloudname;
 
-import sun.jvm.hotspot.tools.FinalizerInfo;
 
 import java.util.List;
 
