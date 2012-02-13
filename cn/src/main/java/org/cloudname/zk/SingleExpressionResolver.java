@@ -57,6 +57,7 @@ public class SingleExpressionResolver implements Watcher, ZkUserInterface {
     
     @Override
     public void newZooKeeperInstance(ZooKeeper zk) {
+        log.info("MyServerCoordinate: Got new ZooKeeper.");
         synchronized (this) {
             this.zk = zk;
         }

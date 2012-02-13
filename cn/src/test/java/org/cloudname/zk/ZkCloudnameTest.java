@@ -37,6 +37,8 @@ public class ZkCloudnameTest {
     private int zkport;
     private PortForwarder forwarder;
     private int forwarderPort;
+    private ZkCloudname cn = null;
+    private ServiceHandle serviceHandle;
 
     @Rule public TemporaryFolder temp = new TemporaryFolder();
 
@@ -100,7 +102,7 @@ public class ZkCloudnameTest {
     @Test
     public void testSimple() throws Exception {
         Coordinate c = Coordinate.parse("1.service.user.cell");
-        ZkCloudname cn = new ZkCloudname.Builder().setConnectString("localhost:" + zkport).build().connect();
+        cn = new ZkCloudname.Builder().setConnectString("localhost:" + zkport).build().connect();
 
         assertFalse(pathExists("/cn/cell/user/service/1"));
         cn.createCoordinate(c);
@@ -298,7 +300,10 @@ public class ZkCloudnameTest {
         forwarderPort = Net.getFreePort();
         forwarder = new PortForwarder(forwarderPort, "127.0.0.1", zkport);
         Coordinate c = Coordinate.parse("1.service.user.cell");
-        ZkCloudname cn = new ZkCloudname.Builder().setConnectString("localhost:" + forwarderPort).build().connect();
+
+
+
+        cn = new ZkCloudname.Builder().setConnectString("localhost:" + forwarderPort).build().connect();
         try {
             cn.createCoordinate(c);
         } catch (CoordinateException e) {
@@ -306,8 +311,9 @@ public class ZkCloudnameTest {
         }
         UnitTestCoordinateListener listener = new UnitTestCoordinateListener(connectedLatch1, connectedLatch2);
 
-        cn.claim(c).registerCoordinateListener(listener);
-
+        serviceHandle = cn.claim(c);
+        serviceHandle.registerCoordinateListener(listener);
+ 
         return listener;
     }
 
@@ -335,6 +341,41 @@ public class ZkCloudnameTest {
         assertEquals(3, listener.events.size());
         assertEquals(CoordinateListener.Event.NO_CONNECTION_TO_STORAGE, listener.events.get(2));
     }
+
+    @Test
+    public void testZookeeperRestarts() throws  Exception {
+        final CountDownLatch connectedLatch1 = new CountDownLatch(1);
+        final CountDownLatch connectedLatch2 = new CountDownLatch(3);
+        UnitTestCoordinateListener listener = setUpListenerEnvironment(connectedLatch1, connectedLatch2);
+        assertTrue(connectedLatch1.await(20, TimeUnit.SECONDS));
+        log.info("Killing zookeeper");
+        forwarder.terminate();
+        //Thread.sleep(50);
+        ezk.shutdown();
+        //Thread.sleep(1500);
+        ezk.del();
+
+        ezk.init();
+        Thread.sleep(2000);
+        forwarder = new PortForwarder(forwarderPort, "127.0.0.1", zkport);
+
+        //assertTrue(connectedLatch2.await(20, TimeUnit.SECONDS));
+        //assertEquals(3, listener.events.size());
+        int timeoutSecs = 50;
+        while (--timeoutSecs > 0) {
+            Thread.sleep(1000);
+
+
+        }
+        Coordinate c = Coordinate.parse("1.service.user.cell");
+        cn.createCoordinate(c);
+
+        Thread.sleep(9000);
+
+        assertEquals(listener.events.get(listener.events.size() - 1), CoordinateListener.Event.COORDINATE_OK);
+    }
+
+
                 /*
                 To make this test pass, the data has to be read after a change has occurred. However, this will add
                 extra load on ZooKeeper.
@@ -371,7 +412,6 @@ public class ZkCloudnameTest {
         assertTrue(connectedLatch2.await(20, TimeUnit.SECONDS));
 
         assertEquals(CoordinateListener.Event.NOT_OWNER, listener.events.get(3));
-
         forwarder.terminate();
     }
 

@@ -67,6 +67,7 @@ public class ZkCloudname extends Thread implements Cloudname, Watcher {
 
     private ZkResolver resolver = null;
 
+    private int connectingCounter = 0;
 
     private ZkCloudname(Builder builder) {
         connectString = builder.getConnectString();
@@ -82,6 +83,25 @@ public class ZkCloudname extends Thread implements Cloudname, Watcher {
             if (zk != null && zk.getState() != ZooKeeper.States.CONNECTED) {
                 log.info("Not connected to ZooKeeper: " + zk.getState().name());
             }
+
+            if (zk != null && zk.getState() == ZooKeeper.States.CONNECTED) {
+                connectingCounter = 0;
+            }
+
+            if (zk != null && zk.getState() == ZooKeeper.States.CONNECTING) {
+                connectingCounter++;
+                if (connectingCounter > 20) {
+                    log.info("Long time in connecting, trying a close first.");
+                    try {
+                        zk.close();
+                        connectingCounter = 0;
+                    } catch (InterruptedException e) {
+                        log.info("Interrupted while closing, exiting loop: " + e.getMessage());
+                        return;
+                    }
+                }
+            }
+
             if (zk != null && zk.getState() == ZooKeeper.States.CLOSED) {
                 retryConnection();
                 try {

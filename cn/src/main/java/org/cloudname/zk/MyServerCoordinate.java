@@ -62,7 +62,7 @@ public class MyServerCoordinate implements Watcher, ZkUserInterface {
 
             KeeperException.Code returnCode =  KeeperException.Code.get(rawReturnCode);
             MyServerCoordinate statusAndEndpoints =  (MyServerCoordinate) parent;
-           
+            log.info("Claim callback with " + returnCode.name() + " " + statusAndEndpoints.path);
             switch (returnCode) {
 
                 case OK:
@@ -71,6 +71,7 @@ public class MyServerCoordinate implements Watcher, ZkUserInterface {
                             lastStatusVersion = -1;
                             statusAndEndpoints.writeStatusEndpoint();
                             storage = Storage.SYNCED;
+                            log.info("Claimed processed");
 
                         } catch (CoordinateMissingException e) {
                             log.info("Problems writing config, coordinate missing");
@@ -132,6 +133,7 @@ public class MyServerCoordinate implements Watcher, ZkUserInterface {
         synchronized (this) {
             this.zk = zk;
             // We always start by assuming it is unclaimed.
+            log.info("Marking storage out of sync due to new zookeeper.");
             storage = Storage.OUT_OF_SYNC;
 
             if (! started) {
@@ -149,7 +151,7 @@ public class MyServerCoordinate implements Watcher, ZkUserInterface {
             if ( storage == Storage.SYNCED || zk == null || ! started) {
                 return;
             }
-            System.out.println("Monitor thread sees problems, trying to reclaim.");
+            log.info("Monitor thread sees problems, trying to reclaim.");
             claim(zk);
         }
 
@@ -275,22 +277,26 @@ public class MyServerCoordinate implements Watcher, ZkUserInterface {
             sendEventToCoordinateListener(CoordinateListener.Event.NOT_OWNER, event.toString());
             return;
         }
-        if (event.getState() == Event.KeeperState.SyncConnected &&  event.getType() == Event.EventType.NodeDataChanged) {
-            try {
-                registerWatcher();
-
-            } catch (CloudnameException e) {
-                sendEventToCoordinateListener(CoordinateListener.Event.NO_CONNECTION_TO_STORAGE,
-                        "Failed setting up new watcher, CloudnameException.");
-                return;
-            } catch (InterruptedException e) {
-                sendEventToCoordinateListener(CoordinateListener.Event.NO_CONNECTION_TO_STORAGE,
-                        "Failed setting up new watcher, InterruptedException.");
-                return;
-            }
-            return;
-        }
+      
         if (event.getType() == Event.EventType.NodeDataChanged) {
+            log.info("Node data changed, will synchronize and test version.");
+            synchronized (this) {
+                try {                   
+                    Stat stat = getZooKeeper().exists(path, this);
+                    log.info("Previous version is " + lastStatusVersion + " now is " + stat.getVersion());
+                    if (stat.getVersion() != lastStatusVersion) {
+                        log.info("Version mismatch, sending out of sync.");
+                        storage = Storage.OUT_OF_SYNC;
+                    }
+                } catch (KeeperException e) {
+                    log.info("Problems with zookeeper, sending storage out of sync: " + e.getMessage());
+                    storage = Storage.OUT_OF_SYNC;
+                } catch (InterruptedException e) {
+                    log.info("Got interrupted: " + e.getMessage());
+                    return;
+                }
+                
+            }
             sendEventToCoordinateListener(CoordinateListener.Event.COORDINATE_OUT_OF_SYNC, event.toString());
             return;
 
@@ -350,7 +356,6 @@ public class MyServerCoordinate implements Watcher, ZkUserInterface {
      */
     private void sendEventToCoordinateListener(CoordinateListener.Event event, String message) {
         synchronized (this) {
-            storage = Storage.OUT_OF_SYNC;
             log.info("Event " + event.name() + " " + message);
             for (CoordinateListener listener : coordinateListenerList) {
                 listener.onCoordinateEvent(event, message);

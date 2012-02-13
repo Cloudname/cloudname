@@ -34,6 +34,7 @@ public class ZkResolver implements Resolver, ZkUserInterface {
 
     @Override
     public void newZooKeeperInstance(ZooKeeper zk) {
+        log.info("ZkResolver, new zeekeeper instance.");
         synchronized (this) {
             this.zk = zk;
         }

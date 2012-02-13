@@ -46,6 +46,27 @@ public final class EmbeddedZooKeeper {
         }
     }
 
+
+    private void delDir(File path) {
+        for(File f : path.listFiles())
+        {
+            if(f.isDirectory()) {
+                delDir(f);
+                f.delete();
+            } else {
+                f.delete();
+            }
+        }
+        path.delete();
+
+    }
+    
+    public void del() {
+        File  path = new File(rootDir, "data");
+        delDir(path);
+    }
+
+
     /**
      * Set up the ZooKeeper instance.
      */
