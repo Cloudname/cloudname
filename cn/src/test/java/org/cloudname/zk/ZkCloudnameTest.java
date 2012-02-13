@@ -375,10 +375,6 @@ public class ZkCloudnameTest {
         assertEquals(listener.events.get(listener.events.size() - 1), CoordinateListener.Event.COORDINATE_OK);
     }
 
-
-                /*
-                To make this test pass, the data has to be read after a change has occurred. However, this will add
-                extra load on ZooKeeper.
     @Test
     public void testCoordinateListenerCoordinateCorrupted() throws  Exception {
         final CountDownLatch connectedLatch1 = new CountDownLatch(2);
@@ -394,7 +390,7 @@ public class ZkCloudnameTest {
         assertEquals(3, listener.events.size());
         assertEquals(CoordinateListener.Event.COORDINATE_OUT_OF_SYNC, listener.events.get(2));
         forwarder.terminate();
-    }             */
+    }
 
     @Test
     public void testCoordinateListenerCoordinateOutOfSync() throws  Exception {
