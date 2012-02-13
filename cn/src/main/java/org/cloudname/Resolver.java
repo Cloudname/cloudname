@@ -21,12 +21,32 @@ public interface Resolver {
     public List<Endpoint> resolve(String address) throws CloudnameException;
 
 
+    /**
+     * Implement this interface to get dynamic information about what endpoints that are available.
+     */
     public interface ResolverFuture {
+        /**
+         * The endpoint has become available or something has changed.
+         */
         void endpointModified(final Endpoint endpoint);
+
+        /**
+         * The endpoint should no longer be accessed.
+         * @param endpoint
+         */
         void endpointDeleted(final Endpoint endpoint);
     }
 
+    /**
+     * Registers a ResolverFuture to get dynamic information about an address.
+     * You will only get updates as long as you keep a reference to Resolver. If you don't have a reference
+     * it is up to the garbage collector to decide how long you will receive callbacks.
+     */
     public void addResolverListener(String address, ResolverFuture future);
 
+    /**
+     * This stops the futures from being called. Not allowed to do operations on the object after this method has been
+     * called.
+     */
     public void shutdown();
 }

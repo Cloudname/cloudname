@@ -350,9 +350,9 @@ public class ZkCloudnameTest {
         assertTrue(connectedLatch1.await(20, TimeUnit.SECONDS));
         log.info("Killing zookeeper");
         forwarder.terminate();
-        //Thread.sleep(50);
+
         ezk.shutdown();
-        //Thread.sleep(1500);
+
         ezk.del();
 
         ezk.init();
