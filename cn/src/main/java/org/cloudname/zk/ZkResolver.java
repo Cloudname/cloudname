@@ -449,7 +449,10 @@ public class ZkResolver implements Resolver, ZkUserInterface {
         
         private boolean refreshPathWithWatcher(String path) {
             SingleExpressionResolver e = zkRemoteStatusAndEndpointsMap.get(path);
-
+            if (e == null) {
+                // Endpoint has been removed while waiting for refresh.
+                return true;
+            }
             boolean retVal = true;
             try {
                 e.load(this);
