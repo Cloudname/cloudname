@@ -297,7 +297,9 @@ public class MyServerCoordinate implements Watcher, ZkUserInterface {
                 }
                 
             }
-            sendEventToCoordinateListener(CoordinateListener.Event.COORDINATE_OUT_OF_SYNC, event.toString());
+            if (storage == Storage.OUT_OF_SYNC) {
+              sendEventToCoordinateListener(CoordinateListener.Event.COORDINATE_OUT_OF_SYNC, event.toString());
+            }
             return;
 
         }

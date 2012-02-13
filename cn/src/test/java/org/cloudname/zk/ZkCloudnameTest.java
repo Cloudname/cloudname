@@ -361,7 +361,7 @@ public class ZkCloudnameTest {
 
         //assertTrue(connectedLatch2.await(20, TimeUnit.SECONDS));
         //assertEquals(3, listener.events.size());
-        int timeoutSecs = 50;
+        int timeoutSecs = 30;
         while (--timeoutSecs > 0) {
             Thread.sleep(1000);
 

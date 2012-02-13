@@ -90,7 +90,7 @@ public class ZkCloudname extends Thread implements Cloudname, Watcher {
 
             if (zk != null && zk.getState() == ZooKeeper.States.CONNECTING) {
                 connectingCounter++;
-                if (connectingCounter > 20) {
+                if (connectingCounter > 10) {
                     log.info("Long time in connecting, trying a close first.");
                     try {
                         zk.close();
