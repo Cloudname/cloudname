@@ -62,7 +62,7 @@ public class MyServerCoordinate implements Watcher, ZkUserInterface {
 
             KeeperException.Code returnCode =  KeeperException.Code.get(rawReturnCode);
             MyServerCoordinate statusAndEndpoints =  (MyServerCoordinate) parent;
-            log.info("Claim callback with " + returnCode.name() + " " + statusAndEndpoints.path);
+            log.info("Claim callback with " + returnCode.name() + " " + statusAndEndpoints.path + " " + storage.name());
             switch (returnCode) {
 
                 case OK:
@@ -106,6 +106,7 @@ public class MyServerCoordinate implements Watcher, ZkUserInterface {
                     synchronized (statusAndEndpoints) {
                         // If everything is fine, this is not a true negative, so ignore it.
                         if (storage == Storage.SYNCED && started) {
+                            log.info("Everything is fine, ignoring NODEEXISTS message.");
                             break;
                         }
                     }
@@ -146,14 +147,18 @@ public class MyServerCoordinate implements Watcher, ZkUserInterface {
 
     @Override
     public void timeEvent() {
-        
+        ZooKeeper localZk;
         synchronized (this) {
             if ( storage == Storage.SYNCED || zk == null || ! started) {
                 return;
             }
-            log.info("Monitor thread sees problems, trying to reclaim.");
-            claim(zk);
+            localZk = zk;
         }
+        log.info("Monitor thread sees problems, trying to reclaim.");
+        // I can't see why claim can not be called from within synchronized. The only potential problem could
+        // be if ZooKeeper internally calls claim callback from the same thread. This would be a bit unexpected,
+        // but we really don't want deadlocks, better safe than sorry.
+        claim(localZk);
 
     }
 
@@ -386,6 +391,13 @@ public class MyServerCoordinate implements Watcher, ZkUserInterface {
             if (! started) {
                 throw new IllegalStateException("Not started yet: " + storage.name());
             }
+            
+            if (storage == Storage.OUT_OF_SYNC) {
+                log.info("Don't dare to write since I am out of sync.");
+                return;
+            }
+            
+            
             try {
 
                 Stat stat = getZooKeeper().setData(path,

@@ -211,11 +211,7 @@ public class ZkCloudnameTest {
                         failCounter.countDown();
                         break;
                     case COORDINATE_CORRUPTED:
-                        fail("not expected");
-                        break;
                     case COORDINATE_OUT_OF_SYNC:
-                        fail("not expected");
-                        break;
                     case NOT_OWNER:
                         fail("not expected");
                         break;
@@ -301,8 +297,6 @@ public class ZkCloudnameTest {
         forwarder = new PortForwarder(forwarderPort, "127.0.0.1", zkport);
         Coordinate c = Coordinate.parse("1.service.user.cell");
 
-
-
         cn = new ZkCloudname.Builder().setConnectString("localhost:" + forwarderPort).build().connect();
         try {
             cn.createCoordinate(c);
@@ -331,15 +325,15 @@ public class ZkCloudnameTest {
     @Test
     public void testCoordinateListenerConnectionDies() throws  Exception {
         final CountDownLatch connectedLatch1 = new CountDownLatch(1);
-        final CountDownLatch connectedLatch2 = new CountDownLatch(3);
+        final CountDownLatch connectedLatch2 = new CountDownLatch(2);
         UnitTestCoordinateListener listener = setUpListenerEnvironment(connectedLatch1, connectedLatch2);
         assertTrue(connectedLatch1.await(20, TimeUnit.SECONDS));
         log.info("Killing zookeeper");
         ezk.shutdown();
         forwarder.terminate();
         assertTrue(connectedLatch2.await(20, TimeUnit.SECONDS));
-        assertEquals(3, listener.events.size());
-        assertEquals(CoordinateListener.Event.NO_CONNECTION_TO_STORAGE, listener.events.get(2));
+        assertEquals(2, listener.events.size());
+        assertEquals(CoordinateListener.Event.NO_CONNECTION_TO_STORAGE, listener.events.get(1));
     }
 
     @Test
@@ -359,8 +353,6 @@ public class ZkCloudnameTest {
         Thread.sleep(2000);
         forwarder = new PortForwarder(forwarderPort, "127.0.0.1", zkport);
 
-        //assertTrue(connectedLatch2.await(20, TimeUnit.SECONDS));
-        //assertEquals(3, listener.events.size());
         int timeoutSecs = 30;
         while (--timeoutSecs > 0) {
             Thread.sleep(1000);
@@ -467,7 +459,7 @@ public class ZkCloudnameTest {
 
             Thread.sleep(10);
             ++i;
-            if (i > 100) {
+            if (i > 1000) {
                 fail("Did not get NOT_OWNER");
             }
         }
@@ -567,6 +559,57 @@ public class ZkCloudnameTest {
             fail("Expected exception to happen");
         } catch (CoordinateException e) {
         }
+    }
+
+    /**
+     * Tests that one process claims a coordinate, then another process tries to claim the same coordinate.
+     * The first coordinate looses connection to ZooKeeper and the other process gets the coordinate.
+     * @throws Exception
+     */
+    @Test
+    public void testFastHardRestart() throws Exception {
+        Coordinate c = Coordinate.parse("1.service.user.cell");
+        final CountDownLatch claimLatch1 = new CountDownLatch(1);
+        forwarderPort = Net.getFreePort();
+        forwarder = new PortForwarder(forwarderPort, "127.0.0.1", zkport);
+        Cloudname cn1 = new ZkCloudname.Builder().setConnectString("localhost:" + forwarderPort).build().connect();
+        cn1.createCoordinate(c);
+         
+        ServiceHandle handle1 = cn1.claim(c);
+        handle1.registerCoordinateListener(new CoordinateListener() {
+
+            @Override
+            public void onCoordinateEvent(Event event, String message) {
+                 if (event == Event.COORDINATE_OK) {
+                     claimLatch1.countDown();
+                 }
+            }
+        });
+        assertTrue(claimLatch1.await(5, TimeUnit.SECONDS));
+        final CountDownLatch claimLatch2 = new CountDownLatch(1);
+        Cloudname cn2 = new ZkCloudname.Builder().setConnectString("localhost:" + zkport).build().connect();
+
+
+        
+
+        ServiceHandle handle2 = cn2.claim(c);
+        handle2.registerCoordinateListener(new CoordinateListener() {
+
+            @Override
+            public void onCoordinateEvent(Event event, String message) {
+                if (event == Event.COORDINATE_OK) {
+                    claimLatch2.countDown();
+                }
+            }
+        });
+        log.info("Waiting a bit before killing first owner.");
+        Thread.sleep(600);
+        forwarder.terminate();
+
+        log.info("Waiting for other claimer to time-out.");
+        assertTrue(claimLatch2.await(35, TimeUnit.SECONDS));
+
+        
     }
 
     private boolean pathExists(String path) throws Exception {
