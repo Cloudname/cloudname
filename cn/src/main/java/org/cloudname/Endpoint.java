@@ -75,6 +75,14 @@ public class Endpoint {
         return endpointData;
     }
 
+    /**
+     * Returns a stable ID based on coordinate and endpoint name.
+     */
+    static public String getEndpointKey(Endpoint endpoint) {
+        return endpoint.getCoordinate().asString() + endpoint.getName();
+
+    }
+    
     public static Endpoint fromJson(String json) throws IOException {
         return new ObjectMapper().readValue(json, Endpoint.class);
     }

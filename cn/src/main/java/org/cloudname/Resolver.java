@@ -12,41 +12,59 @@ import java.util.List;
 public interface Resolver {
 
     /**
-     * Resolve an address to a list of endpoints.  The order of the
+     * Resolve an expression to a list of endpoints.  The order of the
      * endpoints may be subject to ranking criteria.
      *
-     * @param address the address of the endpoint(s).
+     * @param expression The expression to resolve, e.g. for ZooKeeper implementation there are various formats like
+     *                   endpoint.instance.service.user.cell (see ZkResolver for details).
      * @throws CloudnameException if problems talking with storage.
      */
-    public List<Endpoint> resolve(String address) throws CloudnameException;
+    public List<Endpoint> resolve(String expression) throws CloudnameException;
 
 
     /**
      * Implement this interface to get dynamic information about what endpoints that are available.
      */
-    public interface ResolverFuture {
-        /**
-         * The endpoint has become available or something has changed.
-         */
-        void endpointModified(final Endpoint endpoint);
+    public interface ResolverListener {
+        public enum Event {
+            /**
+             * New endpoint was added.
+             */
+            NEW_ENDPOINT,
+            /**
+             * Port, host, protocol or some other endpoint data was changed.
+             * If name of endpoint is changed it is considered as two events (new + remove).
+             */
+            MODIFIED_ENDPOINT,
+            /**
+             * Endpoint removed. This include when the coordinate goes to draining.
+             */
+            REMOVED_ENDPOINT,
+            /**
+             * Lost connection to storage. The list of endpoints will get stale. The system will reconnect
+             * automatically.
+             */
+            LOST_CONNECTION,
+            /**
+             * Connection to storage is good, list of endpoints will be updated.
+             */
+            CONNECTION_OK
+        }
 
         /**
-         * The endpoint should no longer be accessed.
-         * @param endpoint
+         * Something happened to the endpoint. It is said to be removed if it moved from state RUNNING
+         * to any other state. It is modified if e.g. port changes.
+         * @param endpointId this is a unique id for the endpoint and coordinate.
          */
-        void endpointDeleted(final Endpoint endpoint);
+        void endpointEvent(Event event, String endpointId, final Endpoint endpoint);
     }
 
     /**
-     * Registers a ResolverFuture to get dynamic information about an address.
+     * Registers a ResolverListener to get dynamic information about an expression.
      * You will only get updates as long as you keep a reference to Resolver. If you don't have a reference
      * it is up to the garbage collector to decide how long you will receive callbacks.
+     * @param expression The expression to resolve, e.g. for ZooKeeper implementation there are various formats like
+     *                   endpoint.instance.service.user.cell (see ZkResolver for details).
      */
-    public void addResolverListener(String address, ResolverFuture future);
-
-    /**
-     * This stops the futures from being called. Not allowed to do operations on the object after this method has been
-     * called.
-     */
-    public void shutdown();
+    public void addResolverListener(String expression, ResolverListener listener);
 }

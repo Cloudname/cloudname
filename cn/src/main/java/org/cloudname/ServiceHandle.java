@@ -24,7 +24,7 @@ public interface ServiceHandle {
      *
      * @param status the new status.
      */
-    public StorageOperation setStatus(ServiceStatus status);
+    public StorageFuture setStatus(ServiceStatus status);
 
     /**
      * Publish a named endpoint.  If the endpoint already exists an
@@ -33,28 +33,28 @@ public interface ServiceHandle {
      *
      * @param endpoint the endpoint data.
      */
-    public StorageOperation putEndpoint(Endpoint endpoint);
+    public StorageFuture putEndpoint(Endpoint endpoint);
 
     /**
      * Same as putEndpoints, but takes a list.
      *
      * @param endpoints the endpoints data.
      */
-    public StorageOperation putEndpoints(List<Endpoint> endpoints);
+    public StorageFuture putEndpoints(List<Endpoint> endpoints);
 
     /**
      * Remove a published endpoint.
      *
      * @param name the name of the endpoint we wish to remove.
      */
-    public StorageOperation removeEndpoint(String name);
+    public StorageFuture removeEndpoint(String name);
 
     /**
      * Same as removeEndpoint() but takes a list of names.
      *
      * @param names
      */
-    public StorageOperation removeEndpoints(List<String> names);
+    public StorageFuture removeEndpoints(List<String> names);
 
 
     /**

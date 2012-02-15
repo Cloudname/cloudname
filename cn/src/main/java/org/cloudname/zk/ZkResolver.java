@@ -29,6 +29,9 @@ public class ZkResolver implements Resolver, ZkUserInterface {
     public void zooKeeperDown() {
         synchronized (this) {
             this.zk = null;
+            for (DynamicAddress a : dynamicAddresses) {
+                a.notifyClientZooKeeperState(false);
+            }
         }
     }
 
@@ -37,6 +40,9 @@ public class ZkResolver implements Resolver, ZkUserInterface {
         log.info("ZkResolver, new zeekeeper instance.");
         synchronized (this) {
             this.zk = zk;
+            for (DynamicAddress a : dynamicAddresses) {
+                a.notifyClientZooKeeperState(true);
+            }
         }
     }
 
@@ -226,7 +232,7 @@ public class ZkResolver implements Resolver, ZkUserInterface {
     }
 
     /**
-     * Constructor, to be called from the inner Builder class.
+     * Constructor, to be called from the inner Dynamic class.
      * @param builder
      */
     private ZkResolver(Builder builder) {
@@ -283,19 +289,12 @@ public class ZkResolver implements Resolver, ZkUserInterface {
     }
 
     @Override
-    public void addResolverListener(String address, ResolverFuture future) {
+    public void addResolverListener(String address, ResolverListener future) {
         DynamicAddress dynamicAddress = new DynamicAddress(address, future);
         synchronized (this) {
             dynamicAddresses.add(dynamicAddress);
         }
         dynamicAddress.resolve();
-    }
-
-    @Override
-    public void shutdown() {
-        synchronized (this) {
-            dynamicAddresses.clear();
-        }
     }
 
     static private void addEndpoints(SingleExpressionResolver statusAndEndpoints, List<Endpoint> endpoints, String endpointname) {
@@ -316,7 +315,7 @@ public class ZkResolver implements Resolver, ZkUserInterface {
         final private String expression;
 
         final private Map<String, Endpoint> clientPicture = new HashMap<String, Endpoint>();
-        final private ResolverFuture clientCallback;
+        final private ResolverListener clientCallback;
         final private Map<String, Long> dirtyTimeMap = new HashMap<String, Long>();
         final private Parameters parameters;
 
@@ -326,7 +325,7 @@ public class ZkResolver implements Resolver, ZkUserInterface {
         final private Random random = new Random();
         private long lastResolve = 0;
         
-        public DynamicAddress(String expression, ResolverFuture clientCallback) {
+        public DynamicAddress(String expression, ResolverListener clientCallback) {
             this.expression = expression;
             this.clientCallback = clientCallback;
             this.parameters = new Parameters(expression);
@@ -364,37 +363,53 @@ public class ZkResolver implements Resolver, ZkUserInterface {
             notifyClient();
         }
 
-
+        public void notifyClientZooKeeperState(boolean connected) {
+            synchronized (this) {
+                if (connected) {
+                    clientCallback.endpointEvent(ResolverListener.Event.CONNECTION_OK, null, null);
+                } else {
+                    clientCallback.endpointEvent(ResolverListener.Event.LOST_CONNECTION, null, null);
+                }
+            }
+        }
         private void notifyClient() {
             // First generate a fresh list of endpoints.
             List<Endpoint> newEndpoints = new ArrayList<Endpoint>();
-            synchronized (this ) {
+            synchronized (this) {
                 for (Map.Entry<String, SingleExpressionResolver> statusAndEndpoints : zkRemoteStatusAndEndpointsMap.entrySet()) {
                     addEndpoints(statusAndEndpoints.getValue(), newEndpoints, parameters.getEndpointName());
-
                 }
 
                 Map<String, Endpoint> newEndpointsByName = new HashMap<String, Endpoint>();
                 for (Endpoint endpoint : newEndpoints) {
-                    newEndpointsByName.put(endpoint.getCoordinate().asString(), endpoint);
+                    newEndpointsByName.put(Endpoint.getEndpointKey(endpoint), endpoint);
+                    System.err.println("NOTIFY CLIENT:" + Endpoint.getEndpointKey(endpoint) + " " + endpoint.toString());
                 }
 
                 for (Map.Entry<String, Endpoint> endpointEntry : clientPicture.entrySet()) {
-                    String key = endpointEntry.getValue().getCoordinate().asString();
+                    String key = endpointEntry.getKey();
 
                     if (! newEndpointsByName.containsKey(key)) {
-                        clientCallback.endpointDeleted(endpointEntry.getValue());
                         clientPicture.remove(key);
+                        clientCallback.endpointEvent(
+                                ResolverListener.Event.REMOVED_ENDPOINT, key, endpointEntry.getValue());
                     }
                 }
 
                 for (Endpoint endpoint : newEndpoints) {
-                    String key = endpoint.getCoordinate().asString();
+                    String key = Endpoint.getEndpointKey(endpoint);
 
-                    if (! clientPicture.containsKey(key) ||
-                            ! clientPicture.get(key).toJson().equals(endpoint.toJson())) {
-                        clientCallback.endpointModified(endpoint);
+                    if (! clientPicture.containsKey(key)) {
+                        clientCallback.endpointEvent(
+                                ResolverListener.Event.NEW_ENDPOINT, key, endpoint);
                         clientPicture.put(key, endpoint);
+                    } else {
+                        System.err.println(clientPicture.get(key).toJson() + " !=! " + endpoint.toJson());
+                        if (! clientPicture.get(key).toJson().equals(endpoint.toJson())) {
+                            clientCallback.endpointEvent(
+                                    ResolverListener.Event.MODIFIED_ENDPOINT, key, endpoint);
+                            clientPicture.put(key, endpoint);
+                        }
                     }
                 }
 

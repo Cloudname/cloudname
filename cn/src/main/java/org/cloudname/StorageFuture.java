@@ -2,23 +2,24 @@ package org.cloudname;
 
 
 /**
- * StorageOperation are returned on various asynchronous operations like modify endpoints etc.
+ * Instances of StorageFuture are returned on various asynchronous operations like modify endpoints etc.
  * This object makes it possible to wait for the operation to finish with a timeout, or register a listener
- * that is called when it is done.
+ * that is called when it is done. If the event happens before you start waiting or register a listener,
+ * the event is sent, e.g. you are guaranteed to be notified.
  *
  * @auther dybdahl
  */
-public interface StorageOperation {
+public interface StorageFuture {
     /**
-     * Waits for the operation to finish up to some tine limit.
+     * Waits for the operation to finish up to some time limit.
      * @return true if operation was finished withing timeout period, false if it timeout or failed in any other way.
      */
     boolean waitForCompletionMillis(int milliSeconds);
 
     /**
-     * The interface for receiving a callback when the operation is finished, used by registerCallback().
+     * The interface for receiving a callback when the operation is finished, used by registerListener().
      */
-    public interface Future {
+    public interface Listener {
         /**
          * Operation finished successfully.
          */
@@ -32,9 +33,9 @@ public interface StorageOperation {
     }
 
     /**
-     * Registers a new future. It is allowed to register multiple futures.
+     * Registers a new listener. It is allowed to register multiple futures.
      */
-    public void registerCallback(Future future);
+    public void registerListener(Listener listener);
 
     /**
      * For checking if operation was finished.

@@ -12,7 +12,7 @@ import java.util.logging.Logger;
 
 /**
  * This class keeps track of serviceStatus and endpoints for a coordinate.
- * It has an inner class for building an instance (Builder).
+ * It has an inner class for building an instance (Dynamic).
  *
  * TODO(dybdahl): Add support for claiming an existing node. This could be used for
  * recovery after network failure etc.
@@ -24,7 +24,7 @@ public class SingleExpressionResolver implements Watcher, ZkUserInterface {
     private Storage storage = Storage.NO_CONNECTION;
 
     private int lastStatusVersion = -1000;
-    private StatusAndEndpoints statusAndEndpoints = null;
+    private CoordinateDataSnapshot coordinateDataSnapshot = null;
     
     private static final Logger log = Logger.getLogger(SingleExpressionResolver.class.getName());
     private ZooKeeper zk;
@@ -79,7 +79,7 @@ public class SingleExpressionResolver implements Watcher, ZkUserInterface {
      * @return ServiceStatus.
      */
     public ServiceStatus getServiceStatus() {
-        return statusAndEndpoints.getServiceStatus();
+        return coordinateDataSnapshot.getServiceStatus();
     }
 
     /**
@@ -88,7 +88,7 @@ public class SingleExpressionResolver implements Watcher, ZkUserInterface {
      * @return Endpoint.
      */
     public Endpoint getEndpoint(String name) {
-        return statusAndEndpoints.getEndpoint(name);
+        return coordinateDataSnapshot.getEndpoint(name);
     }
 
     /**
@@ -96,7 +96,7 @@ public class SingleExpressionResolver implements Watcher, ZkUserInterface {
      * @param endpoints The endpoints are put in this list.
      */
     public void returnAllEndpoints(List<Endpoint> endpoints) {
-        statusAndEndpoints.returnAllEndpoints(endpoints);
+        coordinateDataSnapshot.appendAllEndpoints(endpoints);
     }
 
 
@@ -106,7 +106,7 @@ public class SingleExpressionResolver implements Watcher, ZkUserInterface {
      * @return serialized version of the instance data.
      */
     public String toString() {
-        return statusAndEndpoints.toString();
+        return coordinateDataSnapshot.toString();
     }
 
     /**
@@ -222,7 +222,7 @@ public class SingleExpressionResolver implements Watcher, ZkUserInterface {
                 data = getZooKeeper().getData(path, watcher, stat);
             }
 
-            statusAndEndpoints = new StatusAndEndpoints.Builder().deserialize(data).build();
+            coordinateDataSnapshot = new CoordinateDataSnapshot.Dynamic().deserialize(data).snapshot();
 
         } catch (KeeperException e) {
             throw new CloudnameException(e);

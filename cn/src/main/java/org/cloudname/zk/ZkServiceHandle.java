@@ -33,7 +33,7 @@ public class ZkServiceHandle implements ServiceHandle, ZkUserInterface {
 
 
     @Override
-    public StorageOperation setStatus(ServiceStatus status) {
+    public StorageFuture setStatus(ServiceStatus status) {
         try {
             statusAndEndpoints.updateStatus(status);
         } catch (CloudnameException e) {
@@ -44,7 +44,7 @@ public class ZkServiceHandle implements ServiceHandle, ZkUserInterface {
         return createStorageOperation();
     }
 
-    private StorageOperation createStorageOperation() {
+    private StorageFuture createStorageOperation() {
         final ZkStorageFuture op = new ZkStorageFuture();
 
         registerCoordinateListener(new CoordinateListener() {
@@ -60,11 +60,9 @@ public class ZkServiceHandle implements ServiceHandle, ZkUserInterface {
     }
 
     @Override
-    public StorageOperation putEndpoints(List<Endpoint> endpoints) {
+    public StorageFuture putEndpoints(List<Endpoint> endpoints) {
         try {
             statusAndEndpoints.putEndpoints(endpoints);
-        } catch (EndpointException e) {
-            return new ZkStorageFuture("EndpointException: " + e.getMessage());
         } catch (CloudnameException e) {
             return new ZkStorageFuture("CloudnameException: " + e.getMessage());
         } catch (CoordinateMissingException e) {
@@ -74,7 +72,7 @@ public class ZkServiceHandle implements ServiceHandle, ZkUserInterface {
     }
 
     @Override
-    public StorageOperation putEndpoint(Endpoint endpoint) {
+    public StorageFuture putEndpoint(Endpoint endpoint) {
         List<Endpoint> endpoints = new ArrayList<Endpoint>();
         endpoints.add(endpoint);
         putEndpoints(endpoints);
@@ -82,11 +80,9 @@ public class ZkServiceHandle implements ServiceHandle, ZkUserInterface {
     }
 
     @Override
-    public StorageOperation removeEndpoints(List<String> names) {
+    public StorageFuture removeEndpoints(List<String> names) {
         try {
             statusAndEndpoints.removeEndpoints(names);
-        } catch (EndpointException e) {
-            return new ZkStorageFuture("EndpointException: " + e.getMessage());
         } catch (CloudnameException e) {
             return new ZkStorageFuture("CloudnameException: " + e.getMessage());
         } catch (CoordinateMissingException e) {
@@ -96,7 +92,7 @@ public class ZkServiceHandle implements ServiceHandle, ZkUserInterface {
     }
 
     @Override
-    public StorageOperation removeEndpoint(String name) {
+    public StorageFuture removeEndpoint(String name) {
         List<String> names = new ArrayList<String>();
         names.add(name);
         removeEndpoints(names);

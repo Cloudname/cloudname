@@ -6,7 +6,6 @@ import com.sun.net.httpserver.HttpServer;
 import org.cloudname.*;
 import org.cloudname.testtools.Net;
 import org.cloudname.CoordinateException;
-import org.cloudname.EndpointException;
 import org.cloudname.zk.ZkCloudname;
 
 import java.io.IOException;
@@ -48,7 +47,7 @@ public class ServerExampleCloudname {
      * Method to set-up and start the web server.
      * @throws IOException
      */
-    public  void runServer() throws IOException, CloudnameException, CoordinateException, EndpointException {
+    public  void runServer() throws IOException, CloudnameException, CoordinateException {
         port = Net.getFreePort();
         System.err.println("I think that port " + Integer.toString(port) + " is free and will use it.");
         Cloudname cloudName = new ZkCloudname.Builder().setConnectString("127.0.0.1:5454").build().connect();
@@ -67,8 +66,9 @@ public class ServerExampleCloudname {
      * @param args The first and only argument is the instance number
      * @throws IOException
      */
-    public static void main(String[] args) throws IOException, CloudnameException, EndpointException, CoordinateException {
-        ServerExampleCloudname server = new ServerExampleCloudname(Integer.parseInt(args[0]));
+    public static void main(String[] args) throws IOException, CloudnameException, CoordinateException {
+        //ServerExampleCloudname server = new ServerExampleCloudname(Integer.parseInt(args[0]));
+        ServerExampleCloudname server = new ServerExampleCloudname(0);
         server.runServer();
     }
 }

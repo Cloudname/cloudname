@@ -13,7 +13,7 @@ import java.util.logging.Logger;
 
 /**
  * This class keeps track of serviceStatus and endpoints for a coordinate.
- * It has an inner class for building an instance (Builder).
+ * It has an inner class for building an instance (Dynamic).
  *
  * TODO(dybdahl): Add support for claiming an existing node. This could be used for
  * recovery after network failure etc.
@@ -22,6 +22,10 @@ import java.util.logging.Logger;
  */
 public class MyServerCoordinate implements Watcher, ZkUserInterface {
 
+    /**
+     * The storage is either OUT OF SYNC or SYNCED. It is SYNCED if the current data model in memory is the same as
+     * the model in ZooKeeper.
+     */
     private Storage storage = Storage.OUT_OF_SYNC;
     private boolean started = false;
 
@@ -30,7 +34,7 @@ public class MyServerCoordinate implements Watcher, ZkUserInterface {
     private ZooKeeper zk;
     private final String path;
 
-    private StatusAndEndpoints.Builder statusAndEndpointsBuilder = new StatusAndEndpoints.Builder();
+    private CoordinateDataSnapshot.Dynamic coordinateDataDynamic = new CoordinateDataSnapshot.Dynamic();
     private List<CoordinateListener> coordinateListenerList =
             Collections.synchronizedList(new ArrayList<CoordinateListener>());
 
@@ -69,8 +73,8 @@ public class MyServerCoordinate implements Watcher, ZkUserInterface {
                     synchronized (statusAndEndpoints) {
                         try {
                             lastStatusVersion = -1;
-                            statusAndEndpoints.writeStatusEndpoint();
                             storage = Storage.SYNCED;
+                            statusAndEndpoints.writeStatusEndpoint();
                             log.info("Claimed processed");
 
                         } catch (CoordinateMissingException e) {
@@ -168,7 +172,7 @@ public class MyServerCoordinate implements Watcher, ZkUserInterface {
      * @param status The new value for serviceStatus.
      */
     public void updateStatus(ServiceStatus status) throws CloudnameException, CoordinateMissingException {
-        statusAndEndpointsBuilder.updateStatus(status);
+        coordinateDataDynamic.setStatus(status);
         writeStatusEndpoint();
     }
 
@@ -176,9 +180,8 @@ public class MyServerCoordinate implements Watcher, ZkUserInterface {
      * Adds new endpoints and persist them. Requires that this instance owns the claim to the coordinate.
      * @param newEndpoints endpoints to be added.
      */
-    public void putEndpoints(List<Endpoint> newEndpoints)
-            throws EndpointException, CloudnameException, CoordinateMissingException {
-        statusAndEndpointsBuilder.putEndpoints(newEndpoints);
+    public void putEndpoints(List<Endpoint> newEndpoints) throws CloudnameException, CoordinateMissingException {
+        coordinateDataDynamic.putEndpoints(newEndpoints);
         writeStatusEndpoint();
     }
 
@@ -186,9 +189,8 @@ public class MyServerCoordinate implements Watcher, ZkUserInterface {
      * Remove endpoints and persist it. Requires that this instance owns the claim to the coordinate.
      * @param names names of endpoints to be removed.
      */
-    public void removeEndpoints(List<String> names)
-            throws EndpointException, CloudnameException, CoordinateMissingException {
-        statusAndEndpointsBuilder.removeEndpoints(names);
+    public void removeEndpoints(List<String> names) throws CloudnameException, CoordinateMissingException {
+        coordinateDataDynamic.removeEndpoints(names);
         writeStatusEndpoint();
     }
 
@@ -206,7 +208,7 @@ public class MyServerCoordinate implements Watcher, ZkUserInterface {
             } catch (KeeperException e) {
                 throw new CloudnameException(e);
             }
-            statusAndEndpointsBuilder = null;
+            coordinateDataDynamic = null;
             lastStatusVersion = -1;
         }
     }
@@ -216,7 +218,7 @@ public class MyServerCoordinate implements Watcher, ZkUserInterface {
      * @return serialized version of the instance data.
      */
     public synchronized String toString() {
-       return statusAndEndpointsBuilder.build().toString();
+       return coordinateDataDynamic.snapshot().toString();
     }
 
     /**
@@ -334,7 +336,7 @@ public class MyServerCoordinate implements Watcher, ZkUserInterface {
     private void claim(ZooKeeper zkArg) {
         try {
             zkArg.create(
-                    path, statusAndEndpointsBuilder.build().serialize().getBytes(Util.CHARSET_NAME),
+                    path, coordinateDataDynamic.snapshot().serialize().getBytes(Util.CHARSET_NAME),
                     ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.EPHEMERAL, new ClaimCallback(), this);
         } catch (IOException e) {
             log.info("Got IO exception on claim with new ZooKeeper instance " + e.getMessage());
@@ -393,18 +395,15 @@ public class MyServerCoordinate implements Watcher, ZkUserInterface {
             }
             
             if (storage == Storage.OUT_OF_SYNC) {
-                log.info("Don't dare to write since I am out of sync.");
-                return;
+                throw new CloudnameException("No proper connection with zookeeper.");
             }
-            
             
             try {
 
                 Stat stat = getZooKeeper().setData(path,
-                        statusAndEndpointsBuilder.build().serialize().getBytes(Util.CHARSET_NAME),
+                        coordinateDataDynamic.snapshot().serialize().getBytes(Util.CHARSET_NAME),
                         lastStatusVersion);
                 lastStatusVersion = stat.getVersion();
-                storage = Storage.SYNCED;
             } catch (KeeperException.NoNodeException e) {
                 throw new CoordinateMissingException("Coordinate does not exist " + path);
             } catch (KeeperException e) {

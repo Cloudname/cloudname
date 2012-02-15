@@ -65,28 +65,41 @@ public class ZkResolverTest {
         cn = new ZkCloudname.Builder().setConnectString("localhost:" + zkport).build().connect();
         cn.createCoordinate(coordinateRunning);
         ServiceHandle handleRunning = cn.claim(coordinateRunning);
-        handleRunning.putEndpoint(new Endpoint(coordinateRunning, "foo", "localhost", 1234, "http", "data"));
-        handleRunning.putEndpoint(new Endpoint(coordinateRunning, "bar", "localhost", 1235, "http", null));
+
+        handleRunning.putEndpoint(new Endpoint(coordinateRunning, "foo", "localhost", 1234, "http", "data")).
+                waitForCompletionMillis(5999);
+        handleRunning.putEndpoint(new Endpoint(coordinateRunning, "bar", "localhost", 1235, "http", null))
+                .waitForCompletionMillis(5999);
         ServiceStatus statusRunning = new ServiceStatus(ServiceState.RUNNING, "Running message");
-        handleRunning.setStatus(statusRunning);
+        handleRunning.setStatus(statusRunning).waitForCompletionMillis(5999);;
 
         coordinateDraining = Coordinate.parse("0.service.user.cell");
         cn.createCoordinate(coordinateDraining);
         handleDraining = cn.claim(coordinateDraining);
-        handleDraining.putEndpoint(new Endpoint(coordinateDraining, "foo", "localhost", 5555, "http", "data"));
-        handleDraining.putEndpoint(new Endpoint(coordinateDraining, "bar", "localhost", 5556, "http", null));
+        handleDraining.putEndpoint(new Endpoint(coordinateDraining, "foo", "localhost", 5555, "http", "data"))
+                .waitForCompletionMillis(5999);;
+        handleDraining.putEndpoint(new Endpoint(coordinateDraining, "bar", "localhost", 5556, "http", null))
+                .waitForCompletionMillis(5999);
 
-        ServiceStatus statusDraining = new ServiceStatus(ServiceState.DRAIN, "Draining message");
-        handleDraining.setStatus(statusDraining);
+        ServiceStatus statusDraining = new ServiceStatus(ServiceState.DRAINING, "Draining message");
+        handleDraining.setStatus(statusDraining).waitForCompletionMillis(5999);;
     }
 
     public void undrain() {
         ServiceStatus statusDraining = new ServiceStatus(ServiceState.RUNNING, "alive");
-        handleDraining.setStatus(statusDraining);
+        StorageFuture future = handleDraining.setStatus(statusDraining);
+        future.waitForCompletionMillis(5999);
     }
     public void drain() {
-        ServiceStatus statusDraining = new ServiceStatus(ServiceState.DRAIN, "alive");
-        handleDraining.setStatus(statusDraining);
+        ServiceStatus statusDraining = new ServiceStatus(ServiceState.DRAINING, "dead");
+        StorageFuture future = handleDraining.setStatus(statusDraining);
+        future.waitForCompletionMillis(5999);
+    }
+
+    public void changeEndpoint() {
+        handleDraining.removeEndpoint("foo").waitForCompletionMillis(4999);
+        handleDraining.putEndpoint(new Endpoint(coordinateDraining, "foo", "localhost", 4, "http", "data"))
+                .waitForCompletionMillis(5000);
     }
 
     @After
@@ -119,6 +132,7 @@ public class ZkResolverTest {
     public void testStatus() throws Exception {
         ServiceStatus status = cn.getStatus(coordinateRunning);
         assertEquals(ServiceState.RUNNING, status.getState());
+
         assertEquals("Running message", status.getMessage());
     }
     
@@ -141,44 +155,63 @@ public class ZkResolverTest {
         final CountDownLatch latch1 = new CountDownLatch(1);
         final CountDownLatch latch2 = new CountDownLatch(2);
         final CountDownLatch latch3 = new CountDownLatch(1);
-        final List<Endpoint> endpointList = new ArrayList<Endpoint>();
-        resolver.addResolverListener("foo.all.service.user.cell", new Resolver.ResolverFuture() {
-            @Override
-            public void endpointModified(Endpoint endpoint) {
-                System.err.println("UNIT TEEST CALL BACK");
+        final CountDownLatch latchModified = new CountDownLatch(1);
 
-                endpointList.add(endpoint);
-                latch1.countDown();
-                latch2.countDown();
-            }
+        final List<Endpoint> endpointListNew = new ArrayList<Endpoint>();
+        final List<Endpoint> endpointListModified = new ArrayList<Endpoint>();
+        final List<Endpoint> endpointListRemoved = new ArrayList<Endpoint>();
+        resolver.addResolverListener("foo.all.service.user.cell", new Resolver.ResolverListener() {
 
             @Override
-            public void endpointDeleted(Endpoint endpoint) {
-                endpointList.add(endpoint);
-                latch3.countDown();
+            public void endpointEvent(Event event, String endpointId, Endpoint endpoint) {
+                switch (event) {
 
+                    case NEW_ENDPOINT:
+                        System.err.println("Got new endpoint.");
+                        endpointListNew.add(endpoint);
+                        latch1.countDown();
+                        latch2.countDown();
+                        break;
+                    case MODIFIED_ENDPOINT:
+                        System.err.println("Modified endpoint.");
+                        endpointListModified.add(endpoint);
+                        latchModified.countDown();
+                        break;
+                    case REMOVED_ENDPOINT:
+                        System.err.println("Removed endpoint.");
+                        endpointListRemoved.add(endpoint);
+                        latch3.countDown();
+                        break;
+                }
             }
         });
         assertTrue(latch1.await(5000, TimeUnit.MILLISECONDS));
-
+        assertEquals(1, endpointListNew.size());
+        assertEquals("foo", endpointListNew.get(0).getName());
+        assertEquals("1.service.user.cell", endpointListNew.get(0).getCoordinate().toString());
         undrain();
 
         assertTrue(latch2.await(5000, TimeUnit.MILLISECONDS));
+        assertEquals(2, endpointListNew.size());
+
+        assertEquals("foo", endpointListNew.get(1).getName());
+        assertEquals("0.service.user.cell", endpointListNew.get(1).getCoordinate().toString());
+
+        changeEndpoint();
+
+        assertTrue(latchModified.await(2500, TimeUnit.MILLISECONDS));
+        assertEquals("foo", endpointListModified.get(0).getName());
+        assertEquals("0.service.user.cell", endpointListModified.get(0).getCoordinate().toString());
+        assertEquals(4, endpointListModified.get(0).getPort());
 
         drain();
 
         assertTrue(latch3.await(5000, TimeUnit.MILLISECONDS));
 
-        assertEquals(3, endpointList.size());
-        assertEquals("foo", endpointList.get(0).getName());
-        assertEquals("1.service.user.cell", endpointList.get(0).getCoordinate().toString());
+        assertEquals(1, endpointListRemoved.size());
 
-        assertEquals("foo", endpointList.get(1).getName());
-        assertEquals("0.service.user.cell", endpointList.get(1).getCoordinate().toString());
-
-
-        assertEquals("foo", endpointList.get(2).getName());
-        assertEquals("0.service.user.cell", endpointList.get(2).getCoordinate().toString());
+        assertEquals("foo", endpointListRemoved.get(0).getName());
+        assertEquals("0.service.user.cell", endpointListRemoved.get(0).getCoordinate().toString());
     }
     
     @Test

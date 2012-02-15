@@ -1,6 +1,8 @@
-package org.cloudname;
+package org.cloudname.zk;
 
-import org.cloudname.zk.Util;
+import org.cloudname.Endpoint;
+import org.cloudname.ServiceState;
+import org.cloudname.ServiceStatus;
 import org.codehaus.jackson.JsonFactory;
 import org.codehaus.jackson.JsonGenerator;
 import org.codehaus.jackson.JsonParser;
@@ -9,35 +11,35 @@ import org.codehaus.jackson.type.TypeReference;
 
 import java.io.IOException;
 import java.io.StringWriter;
-import java.io.UnsupportedEncodingException;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 /**
- *  StatusAndEndpoints represent the data about a coordinate. It is immutable as it represent a state.
+ *  CoordinateDataSnapshot represent the data about a coordinate. It is immutable as it represent a state.
  *  There is an inner public class that is responsible for building.
  *  The class has support for deserializing and serializing the data and methods for accessing endpoints.
  *
  *  @auther dybdahl
  */
-public class StatusAndEndpoints {
+public class CoordinateDataSnapshot {
 
     /**
      * The status of the coordinate, is it running etc.
      */
-    final private ServiceStatus serviceStatus;
+    private final ServiceStatus serviceStatus;
 
     /**
      * The endpoints registered at the coordinate mapped by endpoint name.
      */
-    final private Map<String, Endpoint> endpointsByName;
+    private final Map<String, Endpoint> endpointsByName;
 
     /**
      * Getter for status of coordiante.
      * @return the service status of the coordinate.
      */
-    public synchronized ServiceStatus getServiceStatus() {
+    public ServiceStatus getServiceStatus() {
         return serviceStatus;
     }
 
@@ -46,7 +48,7 @@ public class StatusAndEndpoints {
      * @param name of the endpoint.
      * @return the endpoint or null if non-existing.
      */
-    public synchronized Endpoint getEndpoint(String name) {
+    public Endpoint getEndpoint(String name) {
         return endpointsByName.get(name);
     }
 
@@ -54,10 +56,8 @@ public class StatusAndEndpoints {
      * Return all endpoints.
      * @param endpoints The endpoints are put in this list.
      */
-    public synchronized void returnAllEndpoints(List<Endpoint> endpoints) {
-        for (Endpoint endpoint : endpointsByName.values()) {
-            endpoints.add(endpoint);
-        }
+    public void appendAllEndpoints(Collection<Endpoint> endpoints) {
+        endpoints.addAll(endpointsByName.values());
     }
 
     /**
@@ -65,7 +65,7 @@ public class StatusAndEndpoints {
      * @return The serialized string.
      * @throws IOException if something goes wrong, should not be a common problem though.
      */
-    public synchronized String serialize()  throws IOException {
+    public String serialize()  throws IOException {
         StringWriter stringWriter = new StringWriter();
         JsonGenerator generator;
 
@@ -81,74 +81,72 @@ public class StatusAndEndpoints {
     }
 
     /**
-     * Private constructor, use the Builder to create an instance.
+     * Private constructor, use the Dynamic to create an instance.
      */
-    private StatusAndEndpoints(ServiceStatus serviceStatus, Map<String, Endpoint> endpointsByName) {
+    private CoordinateDataSnapshot(ServiceStatus serviceStatus, Map<String, Endpoint> endpointsByName) {
         this.serviceStatus = serviceStatus;
         this.endpointsByName = endpointsByName;
     }
 
     /**
-     * Class for building StatusAndEndpoints. It is ok to call build() multiple times and modify the builder
-     * after build, however this will of course not modified the previous built objects.
+     * Class for building CoordinateDataSnapshot. It is ok to call snapshot() multiple times and modify the builder
+     * after snapshot, however this will of course not modified the previous built objects.
      */
-    static public class Builder {
+    static public class Dynamic {
         private ObjectMapper objectMapper = new ObjectMapper();
         private ServiceStatus serviceStatus = new ServiceStatus(ServiceState.UNASSIGNED,
                 "No service state has been assigned");
         private Map<String, Endpoint> endpointsByName = new HashMap<String, Endpoint>();
 
         /**
-         * Build a new immutable StatusAndEndpoints object.
+         * Create a new immutable CoordinateDataSnapshot object.
          */
-        public StatusAndEndpoints build() {
-            return new StatusAndEndpoints(serviceStatus, endpointsByName);
+        public CoordinateDataSnapshot snapshot() {
+            return new CoordinateDataSnapshot(serviceStatus, endpointsByName);
         }
 
         /**
-         * Updates status, overwrite any existing status information.
+         * Sets status, overwrite any existing status information.
          */
-        public synchronized Builder updateStatus(ServiceStatus status)  {
+        public Dynamic setStatus(ServiceStatus status)  {
             this.serviceStatus = status;
             return this;
         }
 
         /**
-         * Adds new endpoints to the builder.
-         * @throws EndpointException if any of the endpoints already exists.
+         * Adds new endpoints to the builder. It is not legal to add a new endpoint with an endpoint that already
+         * exists.
          */
-        public synchronized Builder putEndpoints(List<Endpoint> newEndpoints) throws EndpointException {
+        public Dynamic putEndpoints(List<Endpoint> newEndpoints) {
             for (Endpoint endpoint : newEndpoints) {
-                if (endpointsByName.containsKey(endpoint.getName())) {
-                    throw new EndpointException("endpoint already exists: " +  endpoint.getName());
+                if (null != endpointsByName.put(endpoint.getName(), endpoint)) {
+                    throw new IllegalArgumentException("endpoint already exists: " +  endpoint.getName());
                 }
-                endpointsByName.put(endpoint.getName(), endpoint);
             }
             return this;
         }
 
         /**
-         * Remove endpoints from the Builder object.
-         * @throws EndpointException if any endpoints does not exist.
+         * Remove endpoints from the Dynamic object.
          */
-        public synchronized Builder removeEndpoints(List<String> names) throws EndpointException {
+        public Dynamic removeEndpoints(List<String> names)  {
             for (String name : names) {
                 if (! endpointsByName.containsKey(name)) {
-                    throw new EndpointException("endpoint does not exist: " +  name);
+                    throw new IllegalArgumentException("endpoint does not exist: " +  name);
                 }
                 if (null == endpointsByName.remove(name)) {
-                    throw new EndpointException("End point does not exists.");
+                    throw new IllegalArgumentException("Endpoint does not exists.");
                 }
             }
             return this;
         }
 
         /**
-         * Sets the state of the Builder object based on a serialized byte string.
+         * Sets the state of the Dynamic object based on a serialized byte string.
          * Any old data is overwritten.
          * @throws IOException if something went wrong, should not happen on valid data.
          */
-        public synchronized Builder deserialize(byte[] data) throws IOException {
+        public Dynamic deserialize(byte[] data) throws IOException {
             String stringData = new String(data, Util.CHARSET_NAME);
             JsonFactory jsonFactory = new JsonFactory();
             JsonParser jp = jsonFactory.createJsonParser(data);
