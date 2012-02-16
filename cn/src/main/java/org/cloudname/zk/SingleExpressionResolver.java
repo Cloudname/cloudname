@@ -24,7 +24,7 @@ public class SingleExpressionResolver implements Watcher, ZkUserInterface {
     private Storage storage = Storage.NO_CONNECTION;
 
     private int lastStatusVersion = -1000;
-    private CoordinateDataSnapshot coordinateDataSnapshot = null;
+    private CoordinateData.Snapshot coordinateData = null;
     
     private static final Logger log = Logger.getLogger(SingleExpressionResolver.class.getName());
     private ZooKeeper zk;
@@ -79,7 +79,7 @@ public class SingleExpressionResolver implements Watcher, ZkUserInterface {
      * @return ServiceStatus.
      */
     public ServiceStatus getServiceStatus() {
-        return coordinateDataSnapshot.getServiceStatus();
+        return coordinateData.getServiceStatus();
     }
 
     /**
@@ -88,7 +88,7 @@ public class SingleExpressionResolver implements Watcher, ZkUserInterface {
      * @return Endpoint.
      */
     public Endpoint getEndpoint(String name) {
-        return coordinateDataSnapshot.getEndpoint(name);
+        return coordinateData.getEndpoint(name);
     }
 
     /**
@@ -96,7 +96,7 @@ public class SingleExpressionResolver implements Watcher, ZkUserInterface {
      * @param endpoints The endpoints are put in this list.
      */
     public void returnAllEndpoints(List<Endpoint> endpoints) {
-        coordinateDataSnapshot.appendAllEndpoints(endpoints);
+        coordinateData.appendAllEndpoints(endpoints);
     }
 
 
@@ -106,7 +106,7 @@ public class SingleExpressionResolver implements Watcher, ZkUserInterface {
      * @return serialized version of the instance data.
      */
     public String toString() {
-        return coordinateDataSnapshot.toString();
+        return coordinateData.toString();
     }
 
     /**
@@ -222,7 +222,7 @@ public class SingleExpressionResolver implements Watcher, ZkUserInterface {
                 data = getZooKeeper().getData(path, watcher, stat);
             }
 
-            coordinateDataSnapshot = new CoordinateDataSnapshot.Dynamic().deserialize(data).snapshot();
+            coordinateData = new CoordinateData().deserialize(data).snapshot();
 
         } catch (KeeperException e) {
             throw new CloudnameException(e);

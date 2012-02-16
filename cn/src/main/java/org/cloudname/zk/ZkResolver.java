@@ -383,7 +383,6 @@ public class ZkResolver implements Resolver, ZkUserInterface {
                 Map<String, Endpoint> newEndpointsByName = new HashMap<String, Endpoint>();
                 for (Endpoint endpoint : newEndpoints) {
                     newEndpointsByName.put(Endpoint.getEndpointKey(endpoint), endpoint);
-                    System.err.println("NOTIFY CLIENT:" + Endpoint.getEndpointKey(endpoint) + " " + endpoint.toString());
                 }
 
                 for (Map.Entry<String, Endpoint> endpointEntry : clientPicture.entrySet()) {
@@ -404,7 +403,6 @@ public class ZkResolver implements Resolver, ZkUserInterface {
                                 ResolverListener.Event.NEW_ENDPOINT, key, endpoint);
                         clientPicture.put(key, endpoint);
                     } else {
-                        System.err.println(clientPicture.get(key).toJson() + " !=! " + endpoint.toJson());
                         if (! clientPicture.get(key).toJson().equals(endpoint.toJson())) {
                             clientCallback.endpointEvent(
                                     ResolverListener.Event.REMOVED_ENDPOINT, key, clientPicture.get(key));

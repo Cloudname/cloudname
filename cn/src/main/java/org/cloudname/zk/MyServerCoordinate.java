@@ -34,7 +34,7 @@ public class MyServerCoordinate implements Watcher, ZkUserInterface {
     private ZooKeeper zk;
     private final String path;
 
-    private CoordinateDataSnapshot.Dynamic coordinateDataDynamic = new CoordinateDataSnapshot.Dynamic();
+    private CoordinateData coordinateDataDynamic = new CoordinateData();
     private List<CoordinateListener> coordinateListenerList =
             Collections.synchronizedList(new ArrayList<CoordinateListener>());
 
