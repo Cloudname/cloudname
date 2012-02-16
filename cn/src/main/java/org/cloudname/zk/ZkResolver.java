@@ -407,7 +407,9 @@ public class ZkResolver implements Resolver, ZkUserInterface {
                         System.err.println(clientPicture.get(key).toJson() + " !=! " + endpoint.toJson());
                         if (! clientPicture.get(key).toJson().equals(endpoint.toJson())) {
                             clientCallback.endpointEvent(
-                                    ResolverListener.Event.MODIFIED_ENDPOINT, key, endpoint);
+                                    ResolverListener.Event.REMOVED_ENDPOINT, key, clientPicture.get(key));
+                            clientCallback.endpointEvent(
+                                    ResolverListener.Event.NEW_ENDPOINT, key, endpoint);
                             clientPicture.put(key, endpoint);
                         }
                     }

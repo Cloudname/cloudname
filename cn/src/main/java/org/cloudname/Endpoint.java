@@ -79,7 +79,7 @@ public class Endpoint {
      * Returns a stable ID based on coordinate and endpoint name.
      */
     static public String getEndpointKey(Endpoint endpoint) {
-        return endpoint.getCoordinate().asString() + endpoint.getName();
+        return endpoint.getCoordinate().asString() + "@" + endpoint.getName();
 
     }
     

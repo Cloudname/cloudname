@@ -32,11 +32,6 @@ public interface Resolver {
              */
             NEW_ENDPOINT,
             /**
-             * Port, host, protocol or some other endpoint data was changed.
-             * If name of endpoint is changed it is considered as two events (new + remove).
-             */
-            MODIFIED_ENDPOINT,
-            /**
              * Endpoint removed. This include when the coordinate goes to draining.
              */
             REMOVED_ENDPOINT,
@@ -52,9 +47,9 @@ public interface Resolver {
         }
 
         /**
-         * Something happened to the endpoint. It is said to be removed if it moved from state RUNNING
-         * to any other state. It is modified if e.g. port changes.
+         * An Event happened related to the expression, see enum Event above.
          * @param endpointId this is a unique id for the endpoint and coordinate.
+         * @param endpoint is only populated for the Event NEW_ENDPOINT and REMOVED_ENDPOINT.
          */
         void endpointEvent(Event event, String endpointId, final Endpoint endpoint);
     }

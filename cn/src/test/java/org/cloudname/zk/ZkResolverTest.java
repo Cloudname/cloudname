@@ -152,14 +152,19 @@ public class ZkResolverTest {
     @Test
     public void testBasicAsyncResolving() throws Exception {
         Resolver resolver = cn.getResolver();
-        final CountDownLatch latch1 = new CountDownLatch(1);
-        final CountDownLatch latch2 = new CountDownLatch(2);
-        final CountDownLatch latch3 = new CountDownLatch(1);
-        final CountDownLatch latchModified = new CountDownLatch(1);
-
+            
         final List<Endpoint> endpointListNew = new ArrayList<Endpoint>();
-        final List<Endpoint> endpointListModified = new ArrayList<Endpoint>();
-        final List<Endpoint> endpointListRemoved = new ArrayList<Endpoint>();
+        final List<String> endpointListRemoved = new ArrayList<String>();
+        final List<CountDownLatch> countDownLatches  = new ArrayList<CountDownLatch>();
+
+        // This class is needed since the abstract resolver listener class can only access final variables.
+        class LatchWrapper {
+            public CountDownLatch latch;
+        }
+        final LatchWrapper latchWrapper = new LatchWrapper();
+
+        latchWrapper.latch = new CountDownLatch(1);
+
         resolver.addResolverListener("foo.all.service.user.cell", new Resolver.ResolverListener() {
 
             @Override
@@ -169,49 +174,56 @@ public class ZkResolverTest {
                     case NEW_ENDPOINT:
                         System.err.println("Got new endpoint.");
                         endpointListNew.add(endpoint);
-                        latch1.countDown();
-                        latch2.countDown();
-                        break;
-                    case MODIFIED_ENDPOINT:
-                        System.err.println("Modified endpoint.");
-                        endpointListModified.add(endpoint);
-                        latchModified.countDown();
+                        latchWrapper.latch.countDown();
                         break;
                     case REMOVED_ENDPOINT:
                         System.err.println("Removed endpoint.");
-                        endpointListRemoved.add(endpoint);
-                        latch3.countDown();
+                        endpointListRemoved.add(endpointId);
+                        latchWrapper.latch.countDown();
                         break;
                 }
             }
         });
-        assertTrue(latch1.await(5000, TimeUnit.MILLISECONDS));
+        assertTrue(latchWrapper.latch.await(5000, TimeUnit.MILLISECONDS));
         assertEquals(1, endpointListNew.size());
         assertEquals("foo", endpointListNew.get(0).getName());
         assertEquals("1.service.user.cell", endpointListNew.get(0).getCoordinate().toString());
+        endpointListNew.clear();
+
+        latchWrapper.latch = new CountDownLatch(1);
+
         undrain();
 
-        assertTrue(latch2.await(5000, TimeUnit.MILLISECONDS));
-        assertEquals(2, endpointListNew.size());
+        assertTrue(latchWrapper.latch.await(5000, TimeUnit.MILLISECONDS));
+        assertEquals(1, endpointListNew.size());
 
-        assertEquals("foo", endpointListNew.get(1).getName());
-        assertEquals("0.service.user.cell", endpointListNew.get(1).getCoordinate().toString());
+        assertEquals("foo", endpointListNew.get(0).getName());
+        assertEquals("0.service.user.cell", endpointListNew.get(0).getCoordinate().toString());
+
+        latchWrapper.latch = new CountDownLatch(2);
+        endpointListNew.clear();
 
         changeEndpoint();
 
-        assertTrue(latchModified.await(2500, TimeUnit.MILLISECONDS));
-        assertEquals("foo", endpointListModified.get(0).getName());
-        assertEquals("0.service.user.cell", endpointListModified.get(0).getCoordinate().toString());
-        assertEquals(4, endpointListModified.get(0).getPort());
+        assertTrue(latchWrapper.latch.await(5000, TimeUnit.MILLISECONDS));
+
+        assertEquals(1, endpointListRemoved.size());
+        assertEquals("0.service.user.cell@foo", endpointListRemoved.get(0));
+        assertEquals("foo", endpointListNew.get(0).getName());
+        assertEquals("0.service.user.cell", endpointListNew.get(0).getCoordinate().toString());
+        assertEquals(4, endpointListNew.get(0).getPort());
+
+        endpointListNew.clear();
+        endpointListRemoved.clear();
+        latchWrapper.latch = new CountDownLatch(1);
 
         drain();
 
-        assertTrue(latch3.await(5000, TimeUnit.MILLISECONDS));
+        assertTrue(latchWrapper.latch.await(5000, TimeUnit.MILLISECONDS));
 
         assertEquals(1, endpointListRemoved.size());
 
-        assertEquals("foo", endpointListRemoved.get(0).getName());
-        assertEquals("0.service.user.cell", endpointListRemoved.get(0).getCoordinate().toString());
+        assertEquals("0.service.user.cell@foo", endpointListRemoved.get(0));
     }
     
     @Test
