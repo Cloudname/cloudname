@@ -15,7 +15,7 @@ import java.util.List;
  */
 public class ZkServiceHandle implements ServiceHandle, ZkUserInterface {
     private final Coordinate coordinate;
-    private MyServerCoordinate statusAndEndpoints;
+    private ClaimedCoordinate statusAndEndpoints;
     private static final Logger log = Logger.getLogger(ZkServiceHandle.class.getName());
     private ZooKeeper zk = null;
 
@@ -25,11 +25,10 @@ public class ZkServiceHandle implements ServiceHandle, ZkUserInterface {
      *
      * @param coordinate the coordinate for this service handle.
      */
-    public ZkServiceHandle(Coordinate coordinate, MyServerCoordinate statusAndEndpoints) {
+    public ZkServiceHandle(Coordinate coordinate, ClaimedCoordinate statusAndEndpoints) {
         this.coordinate = coordinate;
         this.statusAndEndpoints = statusAndEndpoints;
     }
-
 
 
     @Override

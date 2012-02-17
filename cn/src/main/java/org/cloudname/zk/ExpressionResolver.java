@@ -14,19 +14,17 @@ import java.util.logging.Logger;
  * This class keeps track of serviceStatus and endpoints for a coordinate.
  * It has an inner class for building an instance (Dynamic).
  *
- * TODO(dybdahl): Add support for claiming an existing node. This could be used for
- * recovery after network failure etc.
  *
  * @author dybdahl
  */
-public class SingleExpressionResolver implements Watcher, ZkUserInterface {
+public class ExpressionResolver implements Watcher, ZkUserInterface {
  
     private Storage storage = Storage.NO_CONNECTION;
 
     private int lastStatusVersion = -1000;
     private CoordinateData.Snapshot coordinateData = null;
     
-    private static final Logger log = Logger.getLogger(SingleExpressionResolver.class.getName());
+    private static final Logger log = Logger.getLogger(ExpressionResolver.class.getName());
     private ZooKeeper zk;
     private final String path;
     private List<CoordinateListener> coordinateListenerList =
@@ -38,14 +36,14 @@ public class SingleExpressionResolver implements Watcher, ZkUserInterface {
      * is not ready to be used before the ZooKeeper instance is received.
      * @param path is the path of the status of the coordinate.
      */
-    public SingleExpressionResolver(String path) {
+    public ExpressionResolver(String path) {
         this.path = path;
     }
 
 
     @Override
     public void zooKeeperDown() {
-        log.info("MyServerCoordinate: Got event ZooKeeper is down.");
+        log.info("ClaimedCoordinate: Got event ZooKeeper is down.");
         synchronized (this) {
             zk = null;
             storage = Storage.NO_CONNECTION;
@@ -57,7 +55,7 @@ public class SingleExpressionResolver implements Watcher, ZkUserInterface {
     
     @Override
     public void newZooKeeperInstance(ZooKeeper zk) {
-        log.info("MyServerCoordinate: Got new ZooKeeper.");
+        log.info("ClaimedCoordinate: Got new ZooKeeper.");
         synchronized (this) {
             this.zk = zk;
         }
@@ -212,7 +210,7 @@ public class SingleExpressionResolver implements Watcher, ZkUserInterface {
      * @return this.
      */
 
-    public SingleExpressionResolver load(Watcher watcher) throws CloudnameException {
+    public ExpressionResolver load(Watcher watcher) throws CloudnameException {
         Stat stat = new Stat();
         try {
             byte[] data;

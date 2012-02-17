@@ -275,7 +275,7 @@ public class ZkResolver implements Resolver, ZkUserInterface {
                 throw new CloudnameException(e);
 
             }
-            SingleExpressionResolver statusAndEndpoints = new SingleExpressionResolver(statusPath);
+            ExpressionResolver statusAndEndpoints = new ExpressionResolver(statusPath);
             statusAndEndpoints.newZooKeeperInstance(zk);
             statusAndEndpoints.load(null);
             addEndpoints(statusAndEndpoints, endpoints, parameters.getEndpointName());
@@ -297,7 +297,7 @@ public class ZkResolver implements Resolver, ZkUserInterface {
         dynamicAddress.resolve();
     }
 
-    static private void addEndpoints(SingleExpressionResolver statusAndEndpoints, List<Endpoint> endpoints, String endpointname) {
+    static private void addEndpoints(ExpressionResolver statusAndEndpoints, List<Endpoint> endpoints, String endpointname) {
         if (statusAndEndpoints.getServiceStatus().getState() != ServiceState.RUNNING) {
             return;
         }
@@ -319,8 +319,8 @@ public class ZkResolver implements Resolver, ZkUserInterface {
         final private Map<String, Long> dirtyTimeMap = new HashMap<String, Long>();
         final private Parameters parameters;
 
-        final private Map<String, SingleExpressionResolver> zkRemoteStatusAndEndpointsMap =
-                new HashMap<String, SingleExpressionResolver>();
+        final private Map<String, ExpressionResolver> zkRemoteStatusAndEndpointsMap =
+                new HashMap<String, ExpressionResolver>();
         
         final private Random random = new Random();
         private long lastResolve = 0;
@@ -339,15 +339,15 @@ public class ZkResolver implements Resolver, ZkUserInterface {
                 log.info("Got cloudname exception " + e.getMessage());
                 return;
             }
-            Map<String, SingleExpressionResolver> tempStatusAndEndpointsMap =
-                    new HashMap<String, SingleExpressionResolver>();
+            Map<String, ExpressionResolver> tempStatusAndEndpointsMap =
+                    new HashMap<String, ExpressionResolver>();
 
             for (Integer instance : instances) {
                 String statusPath = ZkCoordinatePath.getStatusPath(parameters.getCell(), parameters.getUser(),
                         parameters.getService(), instance);
 
                 try {
-                    SingleExpressionResolver statusAndEndpoints = new SingleExpressionResolver(statusPath);
+                    ExpressionResolver statusAndEndpoints = new ExpressionResolver(statusPath);
                     statusAndEndpoints.newZooKeeperInstance(zk);
                     statusAndEndpoints.load(this);
                     tempStatusAndEndpointsMap.put(statusPath, statusAndEndpoints);
@@ -376,7 +376,7 @@ public class ZkResolver implements Resolver, ZkUserInterface {
             // First generate a fresh list of endpoints.
             List<Endpoint> newEndpoints = new ArrayList<Endpoint>();
             synchronized (this) {
-                for (Map.Entry<String, SingleExpressionResolver> statusAndEndpoints : zkRemoteStatusAndEndpointsMap.entrySet()) {
+                for (Map.Entry<String, ExpressionResolver> statusAndEndpoints : zkRemoteStatusAndEndpointsMap.entrySet()) {
                     addEndpoints(statusAndEndpoints.getValue(), newEndpoints, parameters.getEndpointName());
                 }
 
@@ -463,7 +463,7 @@ public class ZkResolver implements Resolver, ZkUserInterface {
         }
         
         private boolean refreshPathWithWatcher(String path) {
-            SingleExpressionResolver e = zkRemoteStatusAndEndpointsMap.get(path);
+            ExpressionResolver e = zkRemoteStatusAndEndpointsMap.get(path);
             if (e == null) {
                 // Endpoint has been removed while waiting for refresh.
                 return true;

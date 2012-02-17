@@ -28,13 +28,6 @@ import java.io.IOException;
  * semantics of things under this prefix are defined by this library
  * and will be subject to change.
  *
- * TODO(borud):
- *
- *  - We need a recovery mechanism for when the ZK server we are
- *    connected to goes down.
- *
- *  - when the ZkCloudname instance is releaseClaim()d the handles should
- *    perhaps be invalidated.
  *
  * @author borud
  */
@@ -325,7 +318,7 @@ public class ZkCloudname extends Thread implements Cloudname, Watcher {
         String statusPath = ZkCoordinatePath.getStatusPath(coordinate);
         log.info("Claiming " + coordinate.asString() + " (" + statusPath + ")");
 
-        MyServerCoordinate statusAndEndpoints = new MyServerCoordinate(statusPath);
+        ClaimedCoordinate statusAndEndpoints = new ClaimedCoordinate(statusPath);
         users.put(statusAndEndpoints, 1);
 
         // If we have come thus far we have succeeded in creating the
@@ -348,7 +341,7 @@ public class ZkCloudname extends Thread implements Cloudname, Watcher {
     @Override
     public ServiceStatus getStatus(Coordinate coordinate) throws CloudnameException {
         String statusPath = ZkCoordinatePath.getStatusPath(coordinate);
-        SingleExpressionResolver statusAndEndpoints = new SingleExpressionResolver(statusPath);
+        ExpressionResolver statusAndEndpoints = new ExpressionResolver(statusPath);
         users.put(statusAndEndpoints, 1);
         statusAndEndpoints.newZooKeeperInstance(getZk());
         statusAndEndpoints.load(null);
