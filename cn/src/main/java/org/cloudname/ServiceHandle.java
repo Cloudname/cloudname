@@ -12,11 +12,10 @@ import java.util.List;
 public interface ServiceHandle {
 
     /**
-     * Wait for any previous operation to be complete and coordinate to be claimed state (initial claim, put endpoints etc)
-     * @return
+     * This is a convenient function for waiting for the connection to storage to be ok. It is the same as
+     * registering a CoordinateListener and waiting for event coordinate ok.
      */
- //   public boolean waitForSynchronized();
-//     public boolean waitForConnectionToStorageMillis(long millis) throws CloudnameException;
+    public void waitForCoordinateOk() throws InterruptedException;
 
     /**
      * Set the status of this service.
@@ -24,7 +23,7 @@ public interface ServiceHandle {
      *
      * @param status the new status.
      */
-    public StorageFuture setStatus(ServiceStatus status);
+    public void setStatus(ServiceStatus status) throws CoordinateMissingException, CloudnameException;
 
     /**
      * Publish a named endpoint.  If the endpoint already exists an
@@ -33,28 +32,28 @@ public interface ServiceHandle {
      *
      * @param endpoint the endpoint data.
      */
-    public StorageFuture putEndpoint(Endpoint endpoint);
+    public void putEndpoint(Endpoint endpoint) throws CoordinateMissingException, CloudnameException;
 
     /**
      * Same as putEndpoints, but takes a list.
      *
      * @param endpoints the endpoints data.
      */
-    public StorageFuture putEndpoints(List<Endpoint> endpoints);
+    public void putEndpoints(List<Endpoint> endpoints) throws CoordinateMissingException, CloudnameException;
 
     /**
      * Remove a published endpoint.
      *
      * @param name the name of the endpoint we wish to remove.
      */
-    public StorageFuture removeEndpoint(String name);
+    public void removeEndpoint(String name) throws CoordinateMissingException, CloudnameException;
 
     /**
      * Same as removeEndpoint() but takes a list of names.
      *
      * @param names
      */
-    public StorageFuture removeEndpoints(List<String> names);
+    public void removeEndpoints(List<String> names) throws CoordinateMissingException, CloudnameException;
 
 
     /**

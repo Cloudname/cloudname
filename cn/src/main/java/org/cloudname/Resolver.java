@@ -48,18 +48,28 @@ public interface Resolver {
 
         /**
          * An Event happened related to the expression, see enum Event above.
-         * @param endpointId this is a unique id for the endpoint and coordinate.
          * @param endpoint is only populated for the Event NEW_ENDPOINT and REMOVED_ENDPOINT.
          */
-        void endpointEvent(Event event, String endpointId, final Endpoint endpoint);
+        void endpointEvent(Event event, final Endpoint endpoint);
+
+        /**
+         * The expression to resolve, e.g. for ZooKeeper implementation there are various formats like
+         * endpoint.instance.service.user.cell (see ZkResolver for details). This should be static data, i.e.
+         * the function might be called only once.
+         */
+        public String getExpression();
     }
+    
+    /**
+     * Registers a ResolverListener to get dynamic information about an expression. The expression is set in the
+     * ResolverListener. You will only get updates as long as you keep a reference to Resolver.
+     * If you don't have a reference, it is up to the garbage collector to decide how long you will receive callbacks.
+     **/
+    public void addResolverListener(ResolverListener listener);
 
     /**
-     * Registers a ResolverListener to get dynamic information about an expression.
-     * You will only get updates as long as you keep a reference to Resolver. If you don't have a reference
-     * it is up to the garbage collector to decide how long you will receive callbacks.
-     * @param expression The expression to resolve, e.g. for ZooKeeper implementation there are various formats like
-     *                   endpoint.instance.service.user.cell (see ZkResolver for details).
+     * Calling this function unregisters the listener, i.e. stopping future callbacks.
+     * The listener must be registered.
      */
-    public void addResolverListener(String expression, ResolverListener listener);
+    public void removeResolverListener(ResolverListener listener);
 }

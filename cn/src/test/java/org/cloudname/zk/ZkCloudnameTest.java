@@ -137,23 +137,19 @@ public class ZkCloudnameTest {
 
         // Try to set the status to something else
         String msg = "Hamster getting quite eager now";
-        StorageFuture op = handle.setStatus(new ServiceStatus(ServiceState.STARTING,msg));
-        assertTrue(op.waitForCompletionMillis(10000));
+        handle.setStatus(new ServiceStatus(ServiceState.STARTING,msg));
         ServiceStatus status = cn.getStatus(c);
         assertEquals(msg, status.getMessage());
         assertSame(ServiceState.STARTING, status.getState());
 
         // Publish two endpoints
-        StorageFuture op2 = handle.putEndpoint(new Endpoint(c, "foo", "localhost", 1234, "http", null));
-        StorageFuture op3 = handle.putEndpoint(new Endpoint(c, "bar", "localhost", 1235, "http", null));
+        handle.putEndpoint(new Endpoint(c, "foo", "localhost", 1234, "http", null));
+        handle.putEndpoint(new Endpoint(c, "bar", "localhost", 1235, "http", null));
 
-        StorageFuture op4 = handle.setStatus(new ServiceStatus(ServiceState.RUNNING, msg));
-        assertTrue(op4.waitForCompletionMillis(1000));
-        assertTrue(op2.waitForCompletionMillis(1000));
-        assertTrue(op3.waitForCompletionMillis(1000));
+        handle.setStatus(new ServiceStatus(ServiceState.RUNNING, msg));
+
         // Remove one of them
-        StorageFuture op5 = handle.removeEndpoint("bar");
-        assertTrue(op5.waitForCompletionMillis(1000));
+        handle.removeEndpoint("bar");
 
         List<Endpoint> endpointList = cn.getResolver().resolve("bar.1.service.user.cell");
         assertEquals(0, endpointList.size());
@@ -591,22 +587,12 @@ public class ZkCloudnameTest {
 
         ServiceHandle handle2 = cn2.claim(c);
 
-        ServiceStatus status = new ServiceStatus(ServiceState.RUNNING, "updated status");
-        handle2.setStatus(status);
-        handle2.registerCoordinateListener(new CoordinateListener() {
-
-            @Override
-            public void onCoordinateEvent(Event event, String message) {
-                if (event == Event.COORDINATE_OK) {
-                    claimLatch2.countDown();
-                }
-            }
-        });
-
         forwarder.terminate();
 
-        log.info("Waiting for other claimer to time-out.");
-        assertTrue(claimLatch2.await(35, TimeUnit.SECONDS));
+        handle2.waitForCoordinateOk();
+
+        ServiceStatus status = new ServiceStatus(ServiceState.RUNNING, "updated status");
+        handle2.setStatus(status);
 
         Cloudname cn3 = new ZkCloudname.Builder().setConnectString("localhost:" + zkport).build().connect();
         ServiceStatus statusRetrieved = cn3.getStatus(c);

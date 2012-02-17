@@ -226,7 +226,7 @@ public class ClaimedCoordinate implements Watcher, ZkUserInterface {
     @Override
     public void timeEvent() {
         synchronized (this) {
-            if ( consistencyState == ConsistencyState.SYNCED || zk == null || ! started) {
+            if (consistencyState == ConsistencyState.SYNCED || zk == null || ! started) {
                 return;
             }
             log.info("Monitor thread sees problems, trying to reclaim.");

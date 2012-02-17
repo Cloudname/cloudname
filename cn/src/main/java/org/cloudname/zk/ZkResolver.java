@@ -29,8 +29,8 @@ public class ZkResolver implements Resolver, ZkUserInterface {
     public void zooKeeperDown() {
         synchronized (this) {
             this.zk = null;
-            for (DynamicAddress a : dynamicAddresses) {
-                a.notifyClientZooKeeperState(false);
+            for (ResolverListener listener : dynamicAddressesByListener.keySet()) {
+                listener.endpointEvent(ResolverListener.Event.LOST_CONNECTION, null);
             }
         }
     }
@@ -40,20 +40,20 @@ public class ZkResolver implements Resolver, ZkUserInterface {
         log.info("ZkResolver, new zeekeeper instance.");
         synchronized (this) {
             this.zk = zk;
-            for (DynamicAddress a : dynamicAddresses) {
-                a.notifyClientZooKeeperState(true);
+            for (ResolverListener listener : dynamicAddressesByListener.keySet()) {
+                listener.endpointEvent(ResolverListener.Event.CONNECTION_OK, null);
             }
         }
     }
 
-    List<DynamicAddress> dynamicAddresses = new ArrayList<DynamicAddress>();
+
+    Map<ResolverListener, DynamicAddress> dynamicAddressesByListener = new HashMap<ResolverListener, DynamicAddress>();
     
     @Override
     public void timeEvent() {
-        for (DynamicAddress dynamicAddress : dynamicAddresses) {
+        for (DynamicAddress dynamicAddress : dynamicAddressesByListener.values()) {
             dynamicAddress.wakeUp();
-        }
-        
+        }     
     }
 
     private ZooKeeper getZooKeeper() throws CloudnameException {
@@ -247,7 +247,8 @@ public class ZkResolver implements Resolver, ZkUserInterface {
             instances.add(parameters.getInstance());
         } else {
             try {
-                instances = getInstances(getZooKeeper(), ZkCoordinatePath.coordinateWithoutInstanceAsPath(parameters.getCell(),
+                instances = getInstances(getZooKeeper(),
+                        ZkCoordinatePath.coordinateWithoutInstanceAsPath(parameters.getCell(),
                         parameters.getUser(), parameters.getService()));
             } catch (InterruptedException e) {
                 throw new CloudnameException(e);
@@ -288,11 +289,25 @@ public class ZkResolver implements Resolver, ZkUserInterface {
         return strategy.order(strategy.filter(endpoints));
     }
 
+
+
     @Override
-    public void addResolverListener(String address, ResolverListener future) {
-        DynamicAddress dynamicAddress = new DynamicAddress(address, future);
+    public void removeResolverListener(ResolverListener listener) {
         synchronized (this) {
-            dynamicAddresses.add(dynamicAddress);
+            DynamicAddress address = dynamicAddressesByListener.remove(listener);
+            if (address == null) {
+                throw new IllegalArgumentException("Do not have the listener in my list.");
+            }
+            address.stop();
+        }
+        log.info("Removed listener.");
+    }
+
+    @Override
+    public void addResolverListener(ResolverListener listener) {
+        DynamicAddress dynamicAddress = new DynamicAddress(listener);
+        synchronized (this) {
+            dynamicAddressesByListener.put(listener, dynamicAddress);
         }
         dynamicAddress.resolve();
     }
@@ -312,7 +327,6 @@ public class ZkResolver implements Resolver, ZkUserInterface {
     }
 
     class DynamicAddress implements Watcher {
-        final private String expression;
 
         final private Map<String, Endpoint> clientPicture = new HashMap<String, Endpoint>();
         final private ResolverListener clientCallback;
@@ -324,13 +338,17 @@ public class ZkResolver implements Resolver, ZkUserInterface {
         
         final private Random random = new Random();
         private long lastResolve = 0;
+        private boolean stopped = false;
         
-        public DynamicAddress(String expression, ResolverListener clientCallback) {
-            this.expression = expression;
+        public DynamicAddress(ResolverListener clientCallback) {
             this.clientCallback = clientCallback;
-            this.parameters = new Parameters(expression);
+            this.parameters = new Parameters(clientCallback.getExpression());
         }
 
+        public void stop() {
+            stopped = true;
+        }
+        
         public void resolve() {
             List<Integer> instances = null;
             try {
@@ -362,16 +380,11 @@ public class ZkResolver implements Resolver, ZkUserInterface {
             }
             notifyClient();
         }
-
-        public void notifyClientZooKeeperState(boolean connected) {
-            synchronized (this) {
-                if (connected) {
-                    clientCallback.endpointEvent(ResolverListener.Event.CONNECTION_OK, null, null);
-                } else {
-                    clientCallback.endpointEvent(ResolverListener.Event.LOST_CONNECTION, null, null);
-                }
-            }
+        
+        private String getEndpointKey(Endpoint endpoint) {
+            return endpoint.getCoordinate().asString() + "@" + endpoint.getName();
         }
+        
         private void notifyClient() {
             // First generate a fresh list of endpoints.
             List<Endpoint> newEndpoints = new ArrayList<Endpoint>();
@@ -382,7 +395,7 @@ public class ZkResolver implements Resolver, ZkUserInterface {
 
                 Map<String, Endpoint> newEndpointsByName = new HashMap<String, Endpoint>();
                 for (Endpoint endpoint : newEndpoints) {
-                    newEndpointsByName.put(Endpoint.getEndpointKey(endpoint), endpoint);
+                    newEndpointsByName.put(getEndpointKey(endpoint), endpoint);
                 }
 
                 for (Map.Entry<String, Endpoint> endpointEntry : clientPicture.entrySet()) {
@@ -391,23 +404,23 @@ public class ZkResolver implements Resolver, ZkUserInterface {
                     if (! newEndpointsByName.containsKey(key)) {
                         clientPicture.remove(key);
                         clientCallback.endpointEvent(
-                                ResolverListener.Event.REMOVED_ENDPOINT, key, endpointEntry.getValue());
+                                ResolverListener.Event.REMOVED_ENDPOINT, endpointEntry.getValue());
                     }
                 }
 
                 for (Endpoint endpoint : newEndpoints) {
-                    String key = Endpoint.getEndpointKey(endpoint);
+                    String key = getEndpointKey(endpoint);
 
                     if (! clientPicture.containsKey(key)) {
                         clientCallback.endpointEvent(
-                                ResolverListener.Event.NEW_ENDPOINT, key, endpoint);
+                                ResolverListener.Event.NEW_ENDPOINT, endpoint);
                         clientPicture.put(key, endpoint);
                     } else {
-                        if (! clientPicture.get(key).toJson().equals(endpoint.toJson())) {
+                        if (! clientPicture.get(key).equals(endpoint)) {
                             clientCallback.endpointEvent(
-                                    ResolverListener.Event.REMOVED_ENDPOINT, key, clientPicture.get(key));
+                                    ResolverListener.Event.REMOVED_ENDPOINT, clientPicture.get(key));
                             clientCallback.endpointEvent(
-                                    ResolverListener.Event.NEW_ENDPOINT, key, endpoint);
+                                    ResolverListener.Event.NEW_ENDPOINT, endpoint);
                             clientPicture.put(key, endpoint);
                         }
                     }
@@ -481,6 +494,12 @@ public class ZkResolver implements Resolver, ZkUserInterface {
         
         @Override
         public void process(WatchedEvent watchedEvent) {
+            synchronized (this) {
+                if (stopped) {
+                    log.info("Got callback from ZooKeeper on a dead listener. No worries.");
+                    return;
+            }
+            }
             String path = watchedEvent.getPath();
             Event.KeeperState state = watchedEvent.getState();
             Event.EventType type = watchedEvent.getType();

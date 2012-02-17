@@ -176,10 +176,6 @@ public class ZkCloudname extends Thread implements Cloudname, Watcher {
         }
     }
 
-
-
-    //List<ZkUserInterface> users = Collections.synchronizedList(new ArrayList<ZkUserInterface>());
-
     Map<ZkUserInterface, Integer> users = Collections.synchronizedMap(new WeakHashMap<ZkUserInterface, Integer>());
 
     private void notifyUsersConnectionDown() {
@@ -319,14 +315,12 @@ public class ZkCloudname extends Thread implements Cloudname, Watcher {
         log.info("Claiming " + coordinate.asString() + " (" + statusPath + ")");
 
         ClaimedCoordinate statusAndEndpoints = new ClaimedCoordinate(statusPath);
-        users.put(statusAndEndpoints, 1);
+        users.put(statusAndEndpoints, 1 /* random number due to there is no weak hash set, only map */);
 
         // If we have come thus far we have succeeded in creating the
         // CN_STATUS_NAME node within the service coordinate directory
         // in ZooKeeper and we can give the client a ServiceHandle.
         ZkServiceHandle handle = new ZkServiceHandle(coordinate, statusAndEndpoints);
-        users.put(handle, 1);
-        handle.newZooKeeperInstance(getZk());
         statusAndEndpoints.newZooKeeperInstance(getZk());
         statusAndEndpoints.start();
         return handle;

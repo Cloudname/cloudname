@@ -35,7 +35,7 @@ public class ZkResolverTest {
     private Coordinate coordinateDraining;
     @Rule public TemporaryFolder temp = new TemporaryFolder();
     private ServiceHandle handleDraining;
-
+    
     /**
      * Set up an embedded ZooKeeper instance backed by a temporary
      * directory.  The setup procedure also allocates a port that is
@@ -65,41 +65,38 @@ public class ZkResolverTest {
         cn = new ZkCloudname.Builder().setConnectString("localhost:" + zkport).build().connect();
         cn.createCoordinate(coordinateRunning);
         ServiceHandle handleRunning = cn.claim(coordinateRunning);
+        handleRunning.waitForCoordinateOk();
 
-        handleRunning.putEndpoint(new Endpoint(coordinateRunning, "foo", "localhost", 1234, "http", "data")).
-                waitForCompletionMillis(5999);
-        handleRunning.putEndpoint(new Endpoint(coordinateRunning, "bar", "localhost", 1235, "http", null))
-                .waitForCompletionMillis(5999);
+        handleRunning.putEndpoint(new Endpoint(coordinateRunning, "foo", "localhost", 1234, "http", "data"));
+        handleRunning.putEndpoint(new Endpoint(coordinateRunning, "bar", "localhost", 1235, "http", null));
         ServiceStatus statusRunning = new ServiceStatus(ServiceState.RUNNING, "Running message");
-        handleRunning.setStatus(statusRunning).waitForCompletionMillis(5999);;
+        handleRunning.setStatus(statusRunning);
 
         coordinateDraining = Coordinate.parse("0.service.user.cell");
         cn.createCoordinate(coordinateDraining);
         handleDraining = cn.claim(coordinateDraining);
-        handleDraining.putEndpoint(new Endpoint(coordinateDraining, "foo", "localhost", 5555, "http", "data"))
-                .waitForCompletionMillis(5999);;
-        handleDraining.putEndpoint(new Endpoint(coordinateDraining, "bar", "localhost", 5556, "http", null))
-                .waitForCompletionMillis(5999);
+        handleDraining.waitForCoordinateOk();
+        handleDraining.putEndpoint(new Endpoint(coordinateDraining, "foo", "localhost", 5555, "http", "data"));
+        handleDraining.putEndpoint(new Endpoint(coordinateDraining, "bar", "localhost", 5556, "http", null));
 
         ServiceStatus statusDraining = new ServiceStatus(ServiceState.DRAINING, "Draining message");
-        handleDraining.setStatus(statusDraining).waitForCompletionMillis(5999);;
+        handleDraining.setStatus(statusDraining);
     }
 
-    public void undrain() {
+    public void undrain() throws CoordinateMissingException, CloudnameException {
         ServiceStatus statusDraining = new ServiceStatus(ServiceState.RUNNING, "alive");
-        StorageFuture future = handleDraining.setStatus(statusDraining);
-        future.waitForCompletionMillis(5999);
-    }
-    public void drain() {
-        ServiceStatus statusDraining = new ServiceStatus(ServiceState.DRAINING, "dead");
-        StorageFuture future = handleDraining.setStatus(statusDraining);
-        future.waitForCompletionMillis(5999);
+        handleDraining.setStatus(statusDraining);
     }
 
-    public void changeEndpoint() {
-        handleDraining.removeEndpoint("foo").waitForCompletionMillis(4999);
-        handleDraining.putEndpoint(new Endpoint(coordinateDraining, "foo", "localhost", 4, "http", "data"))
-                .waitForCompletionMillis(5000);
+    public void drain() throws CoordinateMissingException, CloudnameException {
+        ServiceStatus statusDraining = new ServiceStatus(ServiceState.DRAINING, "dead");
+        handleDraining.setStatus(statusDraining);
+    }
+
+    public void changeEndpoint() throws CoordinateMissingException, CloudnameException {
+        handleDraining.removeEndpoint("foo");
+        handleDraining.putEndpoint(new Endpoint(coordinateDraining, "foo", "localhost", 4, "http", "data"));
+
     }
 
     @After
@@ -154,7 +151,7 @@ public class ZkResolverTest {
         Resolver resolver = cn.getResolver();
             
         final List<Endpoint> endpointListNew = new ArrayList<Endpoint>();
-        final List<String> endpointListRemoved = new ArrayList<String>();
+        final List<Endpoint> endpointListRemoved = new ArrayList<Endpoint>();
         final List<CountDownLatch> countDownLatches  = new ArrayList<CountDownLatch>();
 
         // This class is needed since the abstract resolver listener class can only access final variables.
@@ -165,10 +162,10 @@ public class ZkResolverTest {
 
         latchWrapper.latch = new CountDownLatch(1);
 
-        resolver.addResolverListener("foo.all.service.user.cell", new Resolver.ResolverListener() {
+        resolver.addResolverListener(new Resolver.ResolverListener() {
 
             @Override
-            public void endpointEvent(Event event, String endpointId, Endpoint endpoint) {
+            public void endpointEvent(Event event, Endpoint endpoint) {
                 switch (event) {
 
                     case NEW_ENDPOINT:
@@ -178,10 +175,15 @@ public class ZkResolverTest {
                         break;
                     case REMOVED_ENDPOINT:
                         System.err.println("Removed endpoint.");
-                        endpointListRemoved.add(endpointId);
+                        endpointListRemoved.add(endpoint);
                         latchWrapper.latch.countDown();
                         break;
                 }
+            }
+
+            @Override
+            public String getExpression() {
+                return "foo.all.service.user.cell";
             }
         });
         assertTrue(latchWrapper.latch.await(5000, TimeUnit.MILLISECONDS));
@@ -208,7 +210,9 @@ public class ZkResolverTest {
         assertTrue(latchWrapper.latch.await(5000, TimeUnit.MILLISECONDS));
 
         assertEquals(1, endpointListRemoved.size());
-        assertEquals("0.service.user.cell@foo", endpointListRemoved.get(0));
+
+        assertEquals("0.service.user.cell", endpointListRemoved.get(0).getCoordinate().toString());
+        assertEquals("foo", endpointListRemoved.get(0).getName());
         assertEquals("foo", endpointListNew.get(0).getName());
         assertEquals("0.service.user.cell", endpointListNew.get(0).getCoordinate().toString());
         assertEquals(4, endpointListNew.get(0).getPort());
@@ -223,7 +227,76 @@ public class ZkResolverTest {
 
         assertEquals(1, endpointListRemoved.size());
 
-        assertEquals("0.service.user.cell@foo", endpointListRemoved.get(0));
+        assertEquals("0.service.user.cell", endpointListRemoved.get(0).getCoordinate().toString());
+        assertEquals("foo", endpointListRemoved.get(0).getName());
+    }
+
+
+
+
+
+    @Test
+    public void testStopAsyncResolving() throws Exception {
+        Resolver resolver = cn.getResolver();
+
+        final List<Endpoint> endpointListNew = new ArrayList<Endpoint>();
+        final List<Endpoint> endpointListRemoved = new ArrayList<Endpoint>();
+        final List<CountDownLatch> countDownLatches  = new ArrayList<CountDownLatch>();
+
+        // This class is needed since the abstract resolver listener class can only access final variables.
+        class LatchWrapper {
+            public CountDownLatch latch;
+        }
+        final LatchWrapper latchWrapper = new LatchWrapper();
+
+        latchWrapper.latch = new CountDownLatch(1);
+
+      
+        Resolver.ResolverListener resolverListener = new Resolver.ResolverListener() {
+            @Override
+            public void endpointEvent(Event event, Endpoint endpoint) {
+                switch (event) {
+
+                    case NEW_ENDPOINT:
+                        System.err.println("Got new endpoint.");
+                        endpointListNew.add(endpoint);
+                        latchWrapper.latch.countDown();
+                        break;
+                    case REMOVED_ENDPOINT:
+                        System.err.println("Removed endpoint.");
+                        endpointListRemoved.add(endpoint);
+                        latchWrapper.latch.countDown();
+                        break;
+                }
+            }
+                    
+            @Override
+            public String getExpression() {
+                return "foo.all.service.user.cell";
+            }
+        };
+        resolver.addResolverListener(resolverListener);
+        assertTrue(latchWrapper.latch.await(5000, TimeUnit.MILLISECONDS));
+        assertEquals(1, endpointListNew.size());
+        assertEquals("foo", endpointListNew.get(0).getName());
+        assertEquals("1.service.user.cell", endpointListNew.get(0).getCoordinate().toString());
+        endpointListNew.clear();
+
+        latchWrapper.latch = new CountDownLatch(1);
+
+        resolver.removeResolverListener(resolverListener);
+        
+        undrain();
+
+        assertFalse(latchWrapper.latch.await(100, TimeUnit.MILLISECONDS));
+
+        try {
+            resolver.removeResolverListener(resolverListener);
+        } catch (IllegalArgumentException e) {
+            // This is expected.
+            return;
+        }
+        fail("Did not throw an exception on deleting a non existing listener.");
     }
     
     @Test

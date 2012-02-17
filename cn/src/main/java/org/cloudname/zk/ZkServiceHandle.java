@@ -1,23 +1,24 @@
 package org.cloudname.zk;
 
-import org.apache.zookeeper.ZooKeeper;
 import org.cloudname.*;
 
 import java.util.ArrayList;
+import java.util.concurrent.CountDownLatch;
 import java.util.logging.Logger;
 
 import java.util.List;
 
 /**
- * A service handle implementation.
+ * A service handle implementation. It does not have a lot of logic, it wraps ClaimedCoordinate, and will
+ * in the future handle some config logic.
  *
  * @author borud
  */
-public class ZkServiceHandle implements ServiceHandle, ZkUserInterface {
+public class ZkServiceHandle implements ServiceHandle {
     private final Coordinate coordinate;
-    private ClaimedCoordinate statusAndEndpoints;
+    private ClaimedCoordinate claimedCoordinate;
     private static final Logger log = Logger.getLogger(ZkServiceHandle.class.getName());
-    private ZooKeeper zk = null;
+
 
     /**
      * Create a ZkServiceHandle for a given coordinate.
@@ -25,118 +26,75 @@ public class ZkServiceHandle implements ServiceHandle, ZkUserInterface {
      *
      * @param coordinate the coordinate for this service handle.
      */
-    public ZkServiceHandle(Coordinate coordinate, ClaimedCoordinate statusAndEndpoints) {
+    public ZkServiceHandle(Coordinate coordinate, ClaimedCoordinate claimedCoordinate) {
         this.coordinate = coordinate;
-        this.statusAndEndpoints = statusAndEndpoints;
+        this.claimedCoordinate = claimedCoordinate;
     }
 
 
     @Override
-    public StorageFuture setStatus(ServiceStatus status) {
-        try {
-            statusAndEndpoints.updateStatus(status);
-        } catch (CloudnameException e) {
-           return new ZkStorageFuture("CloudnameException:" + e.getMessage());
-        } catch (CoordinateMissingException e) {
-            return new ZkStorageFuture("CoordinateMissingException:" + e.getMessage());
-        }
-        return createStorageOperation();
-    }
-
-    private StorageFuture createStorageOperation() {
-        final ZkStorageFuture op = new ZkStorageFuture();
-
+    public void waitForCoordinateOk() throws InterruptedException {
+        final CountDownLatch latch = new CountDownLatch(1);
         registerCoordinateListener(new CoordinateListener() {
 
             @Override
             public void onCoordinateEvent(Event event, String message) {
                 if (event == Event.COORDINATE_OK) {
-                    op.getSystemCallback().success();
+                    latch.countDown();
                 }
             }
         });
-        return op;
+        latch.await();
+    }
+
+
+    @Override
+    public void setStatus(ServiceStatus status) throws CoordinateMissingException, CloudnameException {
+        claimedCoordinate.updateStatus(status);
     }
 
     @Override
-    public StorageFuture putEndpoints(List<Endpoint> endpoints) {
-        try {
-            statusAndEndpoints.putEndpoints(endpoints);
-        } catch (CloudnameException e) {
-            return new ZkStorageFuture("CloudnameException: " + e.getMessage());
-        } catch (CoordinateMissingException e) {
-            return new ZkStorageFuture("CoordinateMissingException: " + e.getMessage());
-        }
-        return createStorageOperation();
+    public void putEndpoints(List<Endpoint> endpoints) throws CoordinateMissingException, CloudnameException {
+        claimedCoordinate.putEndpoints(endpoints);
     }
 
     @Override
-    public StorageFuture putEndpoint(Endpoint endpoint) {
+    public void putEndpoint(Endpoint endpoint) throws CoordinateMissingException, CloudnameException {
         List<Endpoint> endpoints = new ArrayList<Endpoint>();
         endpoints.add(endpoint);
         putEndpoints(endpoints);
-        return createStorageOperation();
     }
 
     @Override
-    public StorageFuture removeEndpoints(List<String> names) {
-        try {
-            statusAndEndpoints.removeEndpoints(names);
-        } catch (CloudnameException e) {
-            return new ZkStorageFuture("CloudnameException: " + e.getMessage());
-        } catch (CoordinateMissingException e) {
-            return new ZkStorageFuture("CoordinateMissingException: " + e.getMessage());
-        }
-        return createStorageOperation();
+    public void removeEndpoints(List<String> names) throws CoordinateMissingException, CloudnameException {
+        claimedCoordinate.removeEndpoints(names);
     }
 
     @Override
-    public StorageFuture removeEndpoint(String name) {
+    public void removeEndpoint(String name) throws CoordinateMissingException, CloudnameException {
         List<String> names = new ArrayList<String>();
         names.add(name);
         removeEndpoints(names);
-        return createStorageOperation();
     }
 
     @Override
     public void registerConfigListener(ConfigListener listener) {
-
+        log.info("Config listener not implemented.");
     }
 
     @Override
     public void registerCoordinateListener(CoordinateListener listener)  {
-        statusAndEndpoints.registerCoordinateListener(listener);
+        claimedCoordinate.registerCoordinateListener(listener);
     }
 
     @Override
     public void close() throws CloudnameException {
-
-        statusAndEndpoints.releaseClaim();
-
-        statusAndEndpoints = null;
+        claimedCoordinate.releaseClaim();
+        claimedCoordinate = null;
     }
 
     @Override
     public String toString() {
-        return "StatusEndpoint instance: "+ statusAndEndpoints.toString();
-    }
-
-    @Override
-    public void zooKeeperDown() {
-        synchronized (this) {
-            zk = null;
-        }
-    }
-
-    @Override
-    public void newZooKeeperInstance(ZooKeeper zk) {
-        synchronized (this)  {
-            this.zooKeeperDown();
-        }
-    }
-
-    @Override
-    public void timeEvent() {
-        //To change body of implemented methods use File | Settings | File Templates.
+        return "Claimed coordinate instance: "+ claimedCoordinate.toString();
     }
 }
