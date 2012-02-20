@@ -39,7 +39,6 @@
      <dependency>
       <groupId>org.cloudname</groupId>
       <artifactId>flags</artifactId>
-      <version>${cn.version}</version>
     </dependency>
 
     <dependency>
