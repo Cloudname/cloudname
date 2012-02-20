@@ -65,7 +65,7 @@ public class ZkResolverTest {
         cn = new ZkCloudname.Builder().setConnectString("localhost:" + zkport).build().connect();
         cn.createCoordinate(coordinateRunning);
         ServiceHandle handleRunning = cn.claim(coordinateRunning);
-        handleRunning.waitForCoordinateOk();
+        assertTrue(handleRunning.waitForCoordinateOkSeconds(30));
 
         handleRunning.putEndpoint(new Endpoint(coordinateRunning, "foo", "localhost", 1234, "http", "data"));
         handleRunning.putEndpoint(new Endpoint(coordinateRunning, "bar", "localhost", 1235, "http", null));
@@ -75,7 +75,7 @@ public class ZkResolverTest {
         coordinateDraining = Coordinate.parse("0.service.user.cell");
         cn.createCoordinate(coordinateDraining);
         handleDraining = cn.claim(coordinateDraining);
-        handleDraining.waitForCoordinateOk();
+        assertTrue(handleDraining.waitForCoordinateOkSeconds(10));
         handleDraining.putEndpoint(new Endpoint(coordinateDraining, "foo", "localhost", 5555, "http", "data"));
         handleDraining.putEndpoint(new Endpoint(coordinateDraining, "bar", "localhost", 5556, "http", null));
 

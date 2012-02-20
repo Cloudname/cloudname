@@ -8,11 +8,17 @@ package org.cloudname;
 public interface Cloudname {
     /**
      * Claim a coordinate returning a {@link ServiceHandle} through
-     * which the service can interact with the system.  If the
-     * coordinate has already been claimed by a different running
-     * instance of the service, the claim will block until the coordinate is available for claim.
+     * which the service can interact with the system. This is an asynchronous operation, to check result
+     * use the returned Servicehandle. E.g. for waiting up to ten seconds for a claim to happen:
+     *
+     * Cloudname cn = ...
+     * Coordinate coordinate = ...
+     * ServiceHandle serviceHandle = cn.claim(coordinate);
+     * final CountDownLatch latch = new CountDownLatch(1);
+     * boolean claimSuccess = serviceHandle.waitForCoordinateOkSeconds(10);
      *
      * @param coordinate of the service we wish to claim.
+     * @return a ServiceHandle that can wait for the claim to be successful and listen to the state of the claim.
      */
     public ServiceHandle claim(Coordinate coordinate);
 

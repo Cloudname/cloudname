@@ -64,7 +64,9 @@ public class CoordinateData {
     public CoordinateData putEndpoints(List<Endpoint> newEndpoints) {
         synchronized (this) {
             for (Endpoint endpoint : newEndpoints) {
-                if (null != endpointsByName.put(endpoint.getName(), endpoint)) {
+                Endpoint previousEndpoint = endpointsByName.put(endpoint.getName(), endpoint);
+                // Calling put on an existing endpoint is not allowed.
+                if (null != previousEndpoint) {
                     throw new IllegalArgumentException("endpoint already exists: " +  endpoint.getName());
                 }
             }
@@ -82,7 +84,7 @@ public class CoordinateData {
                     throw new IllegalArgumentException("endpoint does not exist: " +  name);
                 }
                 if (null == endpointsByName.remove(name)) {
-                    throw new IllegalArgumentException("Endpoint does not exists.");
+                    throw new IllegalArgumentException("Endpoint does not exists, null in internal structure." + name);
                 }
             }
         }

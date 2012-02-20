@@ -4,6 +4,7 @@ import org.cloudname.*;
 
 import java.util.ArrayList;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
 
 import java.util.List;
@@ -33,7 +34,7 @@ public class ZkServiceHandle implements ServiceHandle {
 
 
     @Override
-    public void waitForCoordinateOk() throws InterruptedException {
+    public boolean waitForCoordinateOkSeconds(int seconds) throws InterruptedException {
         final CountDownLatch latch = new CountDownLatch(1);
         registerCoordinateListener(new CoordinateListener() {
 
@@ -44,7 +45,7 @@ public class ZkServiceHandle implements ServiceHandle {
                 }
             }
         });
-        latch.await();
+        return latch.await(seconds, TimeUnit.SECONDS);
     }
 
 

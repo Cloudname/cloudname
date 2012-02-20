@@ -589,7 +589,7 @@ public class ZkCloudnameTest {
 
         forwarder.terminate();
 
-        handle2.waitForCoordinateOk();
+        assertTrue(handle2.waitForCoordinateOkSeconds(20));
 
         ServiceStatus status = new ServiceStatus(ServiceState.RUNNING, "updated status");
         handle2.setStatus(status);

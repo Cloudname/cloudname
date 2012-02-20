@@ -21,7 +21,7 @@ public interface CoordinateListener {
         NO_CONNECTION_TO_STORAGE,
 
         /**
-         * Problems with parsing the data in ZooKeeper for this coordinate.
+         * Problems with parsing the data in storage for this coordinate.
          */
         COORDINATE_CORRUPTED,
 

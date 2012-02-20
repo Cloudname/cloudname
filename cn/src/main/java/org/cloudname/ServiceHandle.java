@@ -15,13 +15,15 @@ public interface ServiceHandle {
      * This is a convenient function for waiting for the connection to storage to be ok. It is the same as
      * registering a CoordinateListener and waiting for event coordinate ok.
      */
-    public void waitForCoordinateOk() throws InterruptedException;
+    public boolean waitForCoordinateOkSeconds(int seconds) throws InterruptedException;
 
     /**
      * Set the status of this service.
      *
-     *
      * @param status the new status.
+     * @throws CoordinateMissingException if coordinate does not exist.
+     * @throws CloudnameException if coordinate is not claimed, connection to storage is down, or problems
+     * with ZooKeeper.
      */
     public void setStatus(ServiceStatus status) throws CoordinateMissingException, CloudnameException;
 
@@ -31,6 +33,9 @@ public interface ServiceHandle {
      * endpoint you first have to remove it.
      *
      * @param endpoint the endpoint data.
+     * @throws CoordinateMissingException if coordinate does not exist.
+     * @throws CloudnameException if coordinate is not claimed, connection to storage is down, or problems
+     * with ZooKeeper.
      */
     public void putEndpoint(Endpoint endpoint) throws CoordinateMissingException, CloudnameException;
 
@@ -38,6 +43,9 @@ public interface ServiceHandle {
      * Same as putEndpoints, but takes a list.
      *
      * @param endpoints the endpoints data.
+     * @throws CloudnameException if coordinate is not claimed, connection to storage is down, or problems
+     * with ZooKeeper.
+     * @throws CoordinateMissingException if coordinate does not exist.
      */
     public void putEndpoints(List<Endpoint> endpoints) throws CoordinateMissingException, CloudnameException;
 
@@ -45,13 +53,19 @@ public interface ServiceHandle {
      * Remove a published endpoint.
      *
      * @param name the name of the endpoint we wish to remove.
+     * @throws CoordinateMissingException if coordinate does not exist.
+     * @throws CloudnameException if coordinate is not claimed, connection to storage is down, or problems
+     * with ZooKeeper.
      */
     public void removeEndpoint(String name) throws CoordinateMissingException, CloudnameException;
 
     /**
      * Same as removeEndpoint() but takes a list of names.
      *
-     * @param names
+     * @throws CloudnameException if coordinate is not claimed, connection to storage is down, or problems
+     * with ZooKeeper.
+     * @throws CoordinateMissingException if coordinate does not exist.
+     * @throws CoordinateMissingException if coordinate does not exist.
      */
     public void removeEndpoints(List<String> names) throws CoordinateMissingException, CloudnameException;
 
@@ -73,7 +87,6 @@ public interface ServiceHandle {
      * Don't call the cloudname library, do any heavy lifting, or do any IO operation from this callback thread.
      * That might deadlock as there is no guarantee what kind of thread that runs the callback.
      *
-     * @param listener
      * @throws CloudnameException if problems talking with storage.
      */
     public void registerCoordinateListener(CoordinateListener listener)
@@ -84,7 +97,7 @@ public interface ServiceHandle {
      * be claimed by others.  After close() has been called all
      * operations on this instance of the service handle will result
      * in an exception being thrown. All endpoints are deleted.
-     * @throws CloudnameException if problems talking with storage.
+     * @throws CloudnameException if problems removing the claim.
      */
     public void close()
             throws CloudnameException;
