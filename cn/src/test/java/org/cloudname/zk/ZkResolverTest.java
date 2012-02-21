@@ -162,7 +162,7 @@ public class ZkResolverTest {
 
         latchWrapper.latch = new CountDownLatch(1);
 
-        resolver.addResolverListener(new Resolver.ResolverListener() {
+        resolver.addResolverListener("foo.all.service.user.cell", new Resolver.ResolverListener() {
 
             @Override
             public void endpointEvent(Event event, Endpoint endpoint) {
@@ -179,11 +179,6 @@ public class ZkResolverTest {
                         latchWrapper.latch.countDown();
                         break;
                 }
-            }
-
-            @Override
-            public String getExpression() {
-                return "foo.all.service.user.cell";
             }
         });
         assertTrue(latchWrapper.latch.await(5000, TimeUnit.MILLISECONDS));
@@ -232,7 +227,18 @@ public class ZkResolverTest {
     }
 
 
+    @Test(expected=IllegalArgumentException.class)
+    public void testRegisterSameListenerTwice() throws Exception {
+        Resolver resolver = cn.getResolver();
+        Resolver.ResolverListener resolverListener = new Resolver.ResolverListener() {
+            @Override
+            public void endpointEvent(Event event, Endpoint endpoint) {
 
+            }
+        };
+        resolver.addResolverListener("foo.all.service.user.cell", resolverListener);
+        resolver.addResolverListener("bar.all.service.user.cell", resolverListener);
+    }
 
 
     @Test
@@ -269,13 +275,8 @@ public class ZkResolverTest {
                         break;
                 }
             }
-                    
-            @Override
-            public String getExpression() {
-                return "foo.all.service.user.cell";
-            }
         };
-        resolver.addResolverListener(resolverListener);
+        resolver.addResolverListener("foo.all.service.user.cell", resolverListener);
         assertTrue(latchWrapper.latch.await(5000, TimeUnit.MILLISECONDS));
         assertEquals(1, endpointListNew.size());
         assertEquals("foo", endpointListNew.get(0).getName());

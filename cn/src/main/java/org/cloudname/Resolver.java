@@ -24,6 +24,8 @@ public interface Resolver {
 
     /**
      * Implement this interface to get dynamic information about what endpoints that are available.
+     * If you want to register more than 1000 listeners in the same resolver, you might want to override
+     * equals() and hashCode(), but the default implementation should work in all normal cases.
      */
     public interface ResolverListener {
         public enum Event {
@@ -51,25 +53,24 @@ public interface Resolver {
          * @param endpoint is only populated for the Event NEW_ENDPOINT and REMOVED_ENDPOINT.
          */
         void endpointEvent(Event event, final Endpoint endpoint);
-
-        /**
-         * The expression to resolve, e.g. for ZooKeeper implementation there are various formats like
-         * endpoint.instance.service.user.cell (see ZkResolver for details). This should be static data, i.e.
-         * the function might be called only once.
-         */
-        public String getExpression();
     }
     
     /**
      * Registers a ResolverListener to get dynamic information about an expression. The expression is set in the
      * ResolverListener. You will only get updates as long as you keep a reference to Resolver.
      * If you don't have a reference, it is up to the garbage collector to decide how long you will receive callbacks.
-     **/
-    public void addResolverListener(ResolverListener listener);
+     * One listener can only be registered once.
+     *
+     * @param expression The expression to resolve, e.g. for ZooKeeper implementation there are various formats like
+     * endpoint.instance.service.user.cell (see ZkResolver for details). This should be static data, i.e.
+     * the function might be called only once.
+     */
+    public void addResolverListener(String expression, ResolverListener listener);
 
     /**
      * Calling this function unregisters the listener, i.e. stopping future callbacks.
-     * The listener must be registered.
+     * The listener must be registered. A listener is defined by hashCode() and equals() in the listener
+     * which defaults to object instance. This should be fine for most cases.
      */
     public void removeResolverListener(ResolverListener listener);
 }

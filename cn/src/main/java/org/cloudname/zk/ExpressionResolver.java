@@ -43,7 +43,7 @@ public class ExpressionResolver implements Watcher, ZkUserInterface {
 
     @Override
     public void zooKeeperDown() {
-        log.info("ClaimedCoordinate: Got event ZooKeeper is down.");
+        log.fine("ClaimedCoordinate: Got event ZooKeeper is down.");
         synchronized (this) {
             zk = null;
             storage = Storage.NO_CONNECTION;
@@ -55,7 +55,7 @@ public class ExpressionResolver implements Watcher, ZkUserInterface {
     
     @Override
     public void newZooKeeperInstance(ZooKeeper zk) {
-        log.info("ClaimedCoordinate: Got new ZooKeeper.");
+        log.fine("ClaimedCoordinate: Got new ZooKeeper.");
         synchronized (this) {
             this.zk = zk;
         }
@@ -123,55 +123,44 @@ public class ExpressionResolver implements Watcher, ZkUserInterface {
      * @param event
      */
     @Override public void process(WatchedEvent event) {
-        log.info("Got an event from ZooKeeper " + event.toString());
+        log.fine("Got an event from ZooKeeper " + event.toString() + " path: " + path);
 
-
-        // If we lost connection, we don't attempt to register another watcher as this might be blocking forever.
-        // Parent might try to reconnect.
-        if (event.getType() == Event.EventType.None &&
-                (event.getState() == Event.KeeperState.Disconnected
-                        || event.getState() == Event.KeeperState.AuthFailed)) {
-            updateCoordinateListeners(CoordinateListener.Event.NO_CONNECTION_TO_STORAGE, event.toString());
-            return;
+        switch (event.getType()) {
+            case None:
+                switch (event.getState()) {
+                    case Disconnected:
+                    case AuthFailed:
+                    case Expired:
+                    default:
+                        // If we lost connection, we don't attempt to register another watcher as this might
+                        // be blocking forever. Parent might try to reconnect.
+                        updateCoordinateListeners(CoordinateListener.Event.NO_CONNECTION_TO_STORAGE, event.toString());
+                        return;
+                    case SyncConnected:
+                }
+                break;
+            case NodeDeleted:
+                // If node is deleted, we have no node to place a new watcher so we stop watching.
+                updateCoordinateListeners(CoordinateListener.Event.NOT_OWNER, event.toString());
+                return;
+            case NodeDataChanged:
+                updateCoordinateListeners(CoordinateListener.Event.COORDINATE_OUT_OF_SYNC, event.toString());
+                return;
+            case NodeChildrenChanged:
+            case NodeCreated:
+                log.info("Unexpected event, ignoring, try to register new listener to get next event, path: " + path);
+                try {
+                    registerWatcher();
+                } catch (CloudnameException e) {
+                    updateCoordinateListeners(CoordinateListener.Event.NO_CONNECTION_TO_STORAGE,
+                            "Failed setting up new watcher, CloudnameException.");
+                    return;
+                } catch (InterruptedException e) {
+                    updateCoordinateListeners(CoordinateListener.Event.NO_CONNECTION_TO_STORAGE,
+                            "Failed setting up new watcher, InterruptedException.");
+                    return;
+                }
         }
-        if (event.getType() == Event.EventType.None &&
-                (event.getState() == Event.KeeperState.Expired)) {
-            updateCoordinateListeners(CoordinateListener.Event.NO_CONNECTION_TO_STORAGE, event.toString());
-            return;
-        }
-
-        // If node is deleted, we have no node to place a new watcher so we stop watching.
-        if (event.getType() == Event.EventType.NodeDeleted) {
-            updateCoordinateListeners(CoordinateListener.Event.NOT_OWNER, event.toString());
-            return;
-        }
-
-        if (event.getType() == Event.EventType.NodeDataChanged) {
-            updateCoordinateListeners(CoordinateListener.Event.COORDINATE_OUT_OF_SYNC, event.toString());
-            return;
-
-        }
-
-        // Seems like we are connected, do sanity checking after we have registered a new watcher just to be safe.
-        if (event.getState() == Event.KeeperState.SyncConnected) {
-            log.info("Signing up for more events.");
-        } else {
-            log.log(Level.WARNING, "Got some events I don't know how to handle, sanity checking " +
-                    "(hopefully this will not create another event):" + event.toString());
-        }
-        try {
-            registerWatcher();
-        } catch (CloudnameException e) {
-            updateCoordinateListeners(CoordinateListener.Event.NO_CONNECTION_TO_STORAGE,
-                    "Failed setting up new watcher, CloudnameException.");
-            return;
-        } catch (InterruptedException e) {
-            updateCoordinateListeners(CoordinateListener.Event.NO_CONNECTION_TO_STORAGE,
-                    "Failed setting up new watcher, InterruptedException.");
-            return;
-        }
-        log.info("Checking state of coordinate and sending event: " + path);
-
     }
 
     /**

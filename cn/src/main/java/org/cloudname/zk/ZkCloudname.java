@@ -70,11 +70,10 @@ public class ZkCloudname extends Thread implements Cloudname, Watcher {
     @Override
     public void run() {
 
-
         while (true) {
             ZooKeeper zk = getZk();
             if (zk != null && zk.getState() != ZooKeeper.States.CONNECTED) {
-                log.info("Not connected to ZooKeeper: " + zk.getState().name());
+                log.fine("Not connected to ZooKeeper: " + zk.getState().name());
             }
 
             if (zk != null && zk.getState() == ZooKeeper.States.CONNECTED) {
@@ -84,12 +83,12 @@ public class ZkCloudname extends Thread implements Cloudname, Watcher {
             if (zk != null && zk.getState() == ZooKeeper.States.CONNECTING) {
                 connectingCounter++;
                 if (connectingCounter > 10) {
-                    log.info("Long time in connecting, trying a close first.");
+                    log.fine("Long time in connecting, trying a close first.");
                     try {
                         zk.close();
                         connectingCounter = 0;
                     } catch (InterruptedException e) {
-                        log.info("Interrupted while closing, exiting loop: " + e.getMessage());
+                        log.fine("Interrupted while closing, exiting loop: " + e.getMessage());
                         return;
                     }
                 }
@@ -139,7 +138,7 @@ public class ZkCloudname extends Thread implements Cloudname, Watcher {
             if (! connectedSignal.await(waitTime, waitUnit)) {
                 throw new CloudnameException("Connecting to ZooKeeper timed out.");
             }
-            log.info("Connected to ZooKeeper " + connectString);
+            log.fine("Connected to ZooKeeper " + connectString);
         } catch (IOException e) {
             throw new CloudnameException(e);
         } catch (InterruptedException e) {
@@ -168,7 +167,7 @@ public class ZkCloudname extends Thread implements Cloudname, Watcher {
      * @return
      */
     public synchronized void retryConnection() {
-        log.info("Retrying connection to ZooKeeper.");
+        log.fine("Retrying connection to ZooKeeper.");
         try {
             setZk(new ZooKeeper(connectString, SESSION_TIMEOUT, this));
         } catch (IOException e) {
@@ -186,7 +185,7 @@ public class ZkCloudname extends Thread implements Cloudname, Watcher {
 
     @Override
     public void process(WatchedEvent event) {
-        log.info("Got event in ZkCloudname: " + event.toString());
+        log.fine("Got event in ZkCloudname: " + event.toString());
         if (event.getState() == Event.KeeperState.Disconnected || event.getState() == Event.KeeperState.Expired) {
             notifyUsersConnectionDown();
         }
@@ -236,7 +235,7 @@ public class ZkCloudname extends Thread implements Cloudname, Watcher {
         // Create the nodes that represent subdirectories.
         String configPath = ZkCoordinatePath.getConfigPath(coordinate, null);
         try {
-            log.info("Creating config node " + configPath);
+            log.fine("Creating config node " + configPath);
             getZk().create(configPath, null, Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
         } catch (KeeperException e) {
             throw new CloudnameException(e);
@@ -312,7 +311,7 @@ public class ZkCloudname extends Thread implements Cloudname, Watcher {
     @Override
     public ServiceHandle claim(Coordinate coordinate) {
         String statusPath = ZkCoordinatePath.getStatusPath(coordinate);
-        log.info("Claiming " + coordinate.asString() + " (" + statusPath + ")");
+        log.fine("Claiming " + coordinate.asString() + " (" + statusPath + ")");
 
         ClaimedCoordinate statusAndEndpoints = new ClaimedCoordinate(statusPath);
         users.put(statusAndEndpoints, 1 /* random number due to there is no weak hash set, only map */);
@@ -350,7 +349,7 @@ public class ZkCloudname extends Thread implements Cloudname, Watcher {
             throw new IllegalStateException("Cannot releaseClaim(): Not connected to ZooKeeper");
         }
         getZk().close();
-        log.info("ZooKeeper session closed for " + connectString);
+        log.fine("ZooKeeper session closed for " + connectString);
         synchronized (isClosed) {
             isClosed = true;
         }

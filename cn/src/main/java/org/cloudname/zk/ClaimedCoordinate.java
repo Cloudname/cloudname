@@ -199,7 +199,7 @@ public class ClaimedCoordinate implements Watcher, ZkUserInterface {
                             return;
                         }
                     }
-                    log.info("Claimed fail, node already exists and probably not by us, path: " +path);
+                    log.info("Claimed fail, node already exists and probably not by us, path: " + path);
                     claimedCoordinate.sendEventToCoordinateListener(
                             CoordinateListener.Event.NOT_OWNER, "Node already exists.");
                     return;
@@ -316,77 +316,69 @@ public class ClaimedCoordinate implements Watcher, ZkUserInterface {
     @Override public void process(WatchedEvent event) {
         log.fine("Got an event from ZooKeeper " + event.toString());
 
+        switch (event.getType()) {
 
-        // If we lost connection, we don't attempt to register another watcher as this might be blocking forever.
-        // Parent will try to reconnect (reclaim) later.
-        if (event.getType() == Event.EventType.None &&
-                (event.getState() == Event.KeeperState.Disconnected
-                        || event.getState() == Event.KeeperState.AuthFailed)) {
-            synchronized (this) {
-                consistencyState = ConsistencyState.OUT_OF_SYNC;
-            }
-            sendEventToCoordinateListener(CoordinateListener.Event.NO_CONNECTION_TO_STORAGE, event.toString());
-            return;
-        }
-        if (event.getType() == Event.EventType.None &&
-                (event.getState() == Event.KeeperState.Expired)) {
-            synchronized (this) {
-                consistencyState = ConsistencyState.OUT_OF_SYNC;
-            }
-            sendEventToCoordinateListener(CoordinateListener.Event.NO_CONNECTION_TO_STORAGE, event.toString());
-            return;
-        }
-
-        // If node is deleted, we have no node to place a new watcher so we stop watching.
-        if (event.getType() == Event.EventType.NodeDeleted) {
-            synchronized (this) {
-                consistencyState = ConsistencyState.OUT_OF_SYNC;
-            }
-            sendEventToCoordinateListener(CoordinateListener.Event.NOT_OWNER, event.toString());
-            return;
-        }
-
-        // If we are in sync, and we were the last writer to the path (in terms of version) we are good,
-        // otherwise someone else changed the data and we are out of sync.
-        if (event.getType() == Event.EventType.NodeDataChanged) {
-            log.fine("Node data changed, check versions.");
-            synchronized (this) {
-                try {                   
-                    Stat stat = getZooKeeper().exists(path, this);
-                    log.fine("Previous version is " + lastStatusVersion + " now is " + stat.getVersion());
-                    if (stat.getVersion() != lastStatusVersion) {
-                        log.info("Version mismatch, sending out of sync.");
-                        consistencyState = ConsistencyState.OUT_OF_SYNC;
-                    }
-                } catch (KeeperException e) {
-                    log.fine("Problems with zookeeper, sending consistencyState out of sync: " + e.getMessage());
-                    consistencyState = ConsistencyState.OUT_OF_SYNC;
-                } catch (InterruptedException e) {
-                    log.fine("Got interrupted: " + e.getMessage());
-                    consistencyState = ConsistencyState.OUT_OF_SYNC;
-                    return;
+            case None:
+                switch (event.getState()) {
+                    case Disconnected:
+                    case AuthFailed:
+                    case Expired:
+                    default:
+                        // If we lost connection, we don't attempt to register another watcher as this might be
+                        // blocking forever. Parent will try to reconnect (reclaim) later.
+                        synchronized (this) {
+                            consistencyState = ConsistencyState.OUT_OF_SYNC;
+                        }
+                        sendEventToCoordinateListener(CoordinateListener.Event.NO_CONNECTION_TO_STORAGE,
+                                event.toString());
+                        return;
+                    case SyncConnected:
+                       break;
                 }
-                
-            }
-            if (consistencyState == ConsistencyState.OUT_OF_SYNC) {
-              sendEventToCoordinateListener(CoordinateListener.Event.COORDINATE_OUT_OF_SYNC, event.toString());
-            }
-            return;
-        }
+                return;
 
-        try {
-            registerWatcher();
-        } catch (CloudnameException e) {
-            sendEventToCoordinateListener(CoordinateListener.Event.NO_CONNECTION_TO_STORAGE,
-                    "Failed setting up new watcher, CloudnameException.");
-            return;
-        } catch (InterruptedException e) {
-            sendEventToCoordinateListener(CoordinateListener.Event.NO_CONNECTION_TO_STORAGE,
-                    "Failed setting up new watcher, InterruptedException.");
-            return;
-        }
-        log.info("Checking state of coordinate and sending event: " + path);
+            case NodeDeleted:
+                // If node is deleted, we have no node to place a new watcher so we stop watching.
+                synchronized (this) {
+                    consistencyState = ConsistencyState.OUT_OF_SYNC;
+                }
+                sendEventToCoordinateListener(CoordinateListener.Event.NOT_OWNER, event.toString());
+                return;
 
+            case NodeDataChanged:
+                log.fine("Node data changed, check versions.");
+                synchronized (this) {
+                    try {
+                        Stat stat = getZooKeeper().exists(path, this);
+                        log.fine("Previous version is " + lastStatusVersion + " now is " + stat.getVersion());
+                        if (stat.getVersion() != lastStatusVersion) {
+                            log.info("Version mismatch, sending out of sync.");
+                            consistencyState = ConsistencyState.OUT_OF_SYNC;
+                        }
+                    } catch (KeeperException e) {
+                        log.fine("Problems with zookeeper, sending consistencyState out of sync: " + e.getMessage());
+                        consistencyState = ConsistencyState.OUT_OF_SYNC;
+                    } catch (InterruptedException e) {
+                        log.fine("Got interrupted: " + e.getMessage());
+                        consistencyState = ConsistencyState.OUT_OF_SYNC;
+                        return;
+                    }
+
+                }
+                if (consistencyState == ConsistencyState.OUT_OF_SYNC) {
+                    sendEventToCoordinateListener(CoordinateListener.Event.COORDINATE_OUT_OF_SYNC, event.toString());
+                }
+                return;
+
+            case NodeChildrenChanged:
+            case NodeCreated:
+                // This should not happen..
+                synchronized (this) {
+                    consistencyState = ConsistencyState.OUT_OF_SYNC;
+                }
+                sendEventToCoordinateListener(CoordinateListener.Event.COORDINATE_OUT_OF_SYNC, event.toString());
+                return;
+        }
     }
 
     /**
@@ -403,8 +395,6 @@ public class ClaimedCoordinate implements Watcher, ZkUserInterface {
             log.info("Got IO exception on claim with new ZooKeeper instance " + e.getMessage());
         }
     }
-
-    
 
     /**
      * Safe way to get a ZooKeeper instance.
@@ -423,7 +413,7 @@ public class ClaimedCoordinate implements Watcher, ZkUserInterface {
      */
     private void sendEventToCoordinateListener(CoordinateListener.Event event, String message) {
         synchronized (this) {
-            log.info("Event " + event.name() + " " + message);
+            log.fine("Event " + event.name() + " " + message);
             for (CoordinateListener listener : coordinateListenerList) {
                 listener.onCoordinateEvent(event, message);
             }
@@ -434,7 +424,7 @@ public class ClaimedCoordinate implements Watcher, ZkUserInterface {
      * Register a watcher for the coordinate.
      */
     private void registerWatcher() throws CloudnameException, InterruptedException {
-        log.info("Register watcher for ZooKeeper..");
+        log.fine("Register watcher for ZooKeeper..");
         try {
             getZooKeeper().exists(path, this);
         } catch (KeeperException e) {
@@ -459,7 +449,6 @@ public class ClaimedCoordinate implements Watcher, ZkUserInterface {
             }
 
             try {
-
                 Stat stat = getZooKeeper().setData(path,
                         coordinateData.snapshot().serialize().getBytes(Util.CHARSET_NAME),
                         lastStatusVersion);

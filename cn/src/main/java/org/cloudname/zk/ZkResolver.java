@@ -37,7 +37,7 @@ public class ZkResolver implements Resolver, ZkUserInterface {
 
     @Override
     public void newZooKeeperInstance(ZooKeeper zk) {
-        log.info("ZkResolver, new zeekeeper instance.");
+        log.fine("ZkResolver, new zeekeeper instance.");
         synchronized (this) {
             this.zk = zk;
             for (ResolverListener listener : dynamicAddressesByListener.keySet()) {
@@ -300,14 +300,17 @@ public class ZkResolver implements Resolver, ZkUserInterface {
             }
             address.stop();
         }
-        log.info("Removed listener.");
+        log.fine("Removed listener.");
     }
 
     @Override
-    public void addResolverListener(ResolverListener listener) {
-        DynamicAddress dynamicAddress = new DynamicAddress(listener);
+    public void addResolverListener(String expression, ResolverListener listener) {
+        DynamicAddress dynamicAddress = new DynamicAddress(expression, listener);
         synchronized (this) {
-            dynamicAddressesByListener.put(listener, dynamicAddress);
+            DynamicAddress previousAddress = dynamicAddressesByListener.put(listener, dynamicAddress);
+            if (previousAddress != null) {
+                throw new IllegalArgumentException("It is not legal to register a listener twice.");
+            }
         }
         dynamicAddress.resolve();
     }
@@ -340,9 +343,9 @@ public class ZkResolver implements Resolver, ZkUserInterface {
         private long lastResolve = 0;
         private boolean stopped = false;
         
-        public DynamicAddress(ResolverListener clientCallback) {
+        public DynamicAddress(String expression, ResolverListener clientCallback) {
             this.clientCallback = clientCallback;
-            this.parameters = new Parameters(clientCallback.getExpression());
+            this.parameters = new Parameters(expression);
         }
 
         public void stop() {
@@ -354,7 +357,7 @@ public class ZkResolver implements Resolver, ZkUserInterface {
             try {
                 instances = resolveInstances(parameters);
             } catch (CloudnameException e) {
-                log.info("Got cloudname exception " + e.getMessage());
+                log.fine("Got cloudname exception " + e.getMessage());
                 return;
             }
             Map<String, ExpressionResolver> tempStatusAndEndpointsMap =
@@ -370,7 +373,7 @@ public class ZkResolver implements Resolver, ZkUserInterface {
                     statusAndEndpoints.load(this);
                     tempStatusAndEndpointsMap.put(statusPath, statusAndEndpoints);
                 } catch (CloudnameException e) {
-                    log.info("Got cloudname exception: " + e.getMessage()+ " " + statusPath);                }
+                    log.fine("Got cloudname exception: " + e.getMessage()+ " " + statusPath);                }
             }
 
             synchronized (this) {
@@ -485,7 +488,7 @@ public class ZkResolver implements Resolver, ZkUserInterface {
             try {
                 e.load(this);
             } catch (CloudnameException e1) {
-                log.info("Tried to refresh path " + path + ", message " + e1.getMessage());
+                log.fine("Tried to refresh path " + path + ", message " + e1.getMessage());
                 retVal = false;
             }
             notifyClient();
@@ -496,7 +499,7 @@ public class ZkResolver implements Resolver, ZkUserInterface {
         public void process(WatchedEvent watchedEvent) {
             synchronized (this) {
                 if (stopped) {
-                    log.info("Got callback from ZooKeeper on a dead listener. No worries.");
+                    log.fine("Got callback from ZooKeeper on a dead listener. No worries.");
                     return;
             }
             }
@@ -504,7 +507,7 @@ public class ZkResolver implements Resolver, ZkUserInterface {
             Event.KeeperState state = watchedEvent.getState();
             Event.EventType type = watchedEvent.getType();
 
-            log.info("Dynamic watch got event with path " + path + " state " + state.name() + " type " + type.name());
+            log.fine("Dynamic watch got event with path " + path + " state " + state.name() + " type " + type.name());
             
             switch (state) {
                 case Expired:
@@ -518,7 +521,7 @@ public class ZkResolver implements Resolver, ZkUserInterface {
                 case NodeChildrenChanged:
                 case None:
                 case NodeCreated:
-                    log.info("Unexpected event from zookeeper, path: " + path + " event " + 
+                    log.fine("Unexpected event from zookeeper, path: " + path + " event " +
                             type.name() + watchedEvent.toString());
                     scheduleRefresh(path, 2000);
 
