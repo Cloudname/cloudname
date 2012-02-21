@@ -24,8 +24,8 @@ public interface Resolver {
 
     /**
      * Implement this interface to get dynamic information about what endpoints that are available.
-     * If you want to register more than 1000 listeners in the same resolver, you might want to override
-     * equals() and hashCode(), but the default implementation should work in all normal cases.
+     * If you want to register more than 1000 listeners in the same resolver, you might consider overriding
+     * equals() and hashCode(), but the default implementation should work in normal cases.
      */
     public interface ResolverListener {
         public enum Event {
@@ -69,8 +69,8 @@ public interface Resolver {
 
     /**
      * Calling this function unregisters the listener, i.e. stopping future callbacks.
-     * The listener must be registered. A listener is defined by hashCode() and equals() in the listener
-     * which defaults to object instance. This should be fine for most cases.
+     * The listener must be registered. For identification of listener, see comment on ResolverListener.
+     * The default is to use object id.
      */
     public void removeResolverListener(ResolverListener listener);
 }
