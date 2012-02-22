@@ -4,8 +4,10 @@ import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.WatchedEvent;
 import org.apache.zookeeper.Watcher;
 import org.apache.zookeeper.ZooKeeper;
+import org.apache.zookeeper.data.Stat;
 import org.cloudname.*;
 
+import java.io.IOException;
 import java.util.*;
 import java.util.logging.Logger;
 import java.util.regex.Pattern;
@@ -47,12 +49,12 @@ public class ZkResolver implements Resolver, ZkUserInterface {
     }
 
 
-    Map<ResolverListener, DynamicAddress> dynamicAddressesByListener = new HashMap<ResolverListener, DynamicAddress>();
+    Map<ResolverListener, DynamicExpression> dynamicAddressesByListener = new HashMap<ResolverListener, DynamicExpression>();
     
     @Override
     public void timeEvent() {
-        for (DynamicAddress dynamicAddress : dynamicAddressesByListener.values()) {
-            dynamicAddress.wakeUp();
+        for (DynamicExpression dynamicExpression : dynamicAddressesByListener.values()) {
+            dynamicExpression.wakeUp();
         }     
     }
 
@@ -276,10 +278,8 @@ public class ZkResolver implements Resolver, ZkUserInterface {
                 throw new CloudnameException(e);
 
             }
-            ExpressionResolver statusAndEndpoints = new ExpressionResolver(statusPath);
-            statusAndEndpoints.newZooKeeperInstance(zk);
-            statusAndEndpoints.load(null);
-            addEndpoints(statusAndEndpoints, endpoints, parameters.getEndpointName());
+            CoordinateData coordinateData = CoordinateData.loadCoordianteData(statusPath, getZooKeeper(), null);
+            addEndpoints(coordinateData.snapshot(), endpoints, parameters.getEndpointName());
 
         }
         if (parameters.getStrategy().equals("")) {
@@ -294,33 +294,33 @@ public class ZkResolver implements Resolver, ZkUserInterface {
     @Override
     public void removeResolverListener(ResolverListener listener) {
         synchronized (this) {
-            DynamicAddress address = dynamicAddressesByListener.remove(listener);
-            if (address == null) {
+            DynamicExpression expression = dynamicAddressesByListener.remove(listener);
+            if (expression == null) {
                 throw new IllegalArgumentException("Do not have the listener in my list.");
             }
-            address.stop();
+            expression.stop();
         }
         log.fine("Removed listener.");
     }
 
     @Override
     public void addResolverListener(String expression, ResolverListener listener) {
-        DynamicAddress dynamicAddress = new DynamicAddress(expression, listener);
+        DynamicExpression dynamicExpression = new DynamicExpression(expression, listener);
         synchronized (this) {
-            DynamicAddress previousAddress = dynamicAddressesByListener.put(listener, dynamicAddress);
-            if (previousAddress != null) {
+            DynamicExpression previousExpression = dynamicAddressesByListener.put(listener, dynamicExpression);
+            if (previousExpression != null) {
                 throw new IllegalArgumentException("It is not legal to register a listener twice.");
             }
         }
-        dynamicAddress.resolve();
+        dynamicExpression.resolve();
     }
 
-    static private void addEndpoints(ExpressionResolver statusAndEndpoints, List<Endpoint> endpoints, String endpointname) {
+    static private void addEndpoints(CoordinateData.Snapshot  statusAndEndpoints, List<Endpoint> endpoints, String endpointname) {
         if (statusAndEndpoints.getServiceStatus().getState() != ServiceState.RUNNING) {
             return;
         }
         if (endpointname.equals("")) {
-            statusAndEndpoints.returnAllEndpoints(endpoints);
+            statusAndEndpoints.appendAllEndpoints(endpoints);
         } else {
             Endpoint e =  statusAndEndpoints.getEndpoint(endpointname);
             if (e != null) {
@@ -329,29 +329,32 @@ public class ZkResolver implements Resolver, ZkUserInterface {
         }
     }
 
-    class DynamicAddress implements Watcher {
+    public class DynamicExpression implements Watcher, ExpressionResolver.ExpressionResolverNotify {
 
         final private Map<String, Endpoint> clientPicture = new HashMap<String, Endpoint>();
         final private ResolverListener clientCallback;
         final private Map<String, Long> dirtyTimeMap = new HashMap<String, Long>();
         final private Parameters parameters;
 
-        final private Map<String, ExpressionResolver> zkRemoteStatusAndEndpointsMap =
+        final private Map<String, ExpressionResolver> expressionResolverByExpression =
                 new HashMap<String, ExpressionResolver>();
-        
+
         final private Random random = new Random();
         private long lastResolve = 0;
         private boolean stopped = false;
-        
-        public DynamicAddress(String expression, ResolverListener clientCallback) {
+
+        public DynamicExpression(String expression, ResolverListener clientCallback) {
             this.clientCallback = clientCallback;
             this.parameters = new Parameters(expression);
         }
 
         public void stop() {
-            stopped = true;
+            synchronized (this) {
+                stopped = true;
+                expressionResolverByExpression.clear();
+            }
         }
-        
+
         public void resolve() {
             List<Integer> instances = null;
             try {
@@ -367,18 +370,16 @@ public class ZkResolver implements Resolver, ZkUserInterface {
                 String statusPath = ZkCoordinatePath.getStatusPath(parameters.getCell(), parameters.getUser(),
                         parameters.getService(), instance);
 
-                try {
-                    ExpressionResolver statusAndEndpoints = new ExpressionResolver(statusPath);
-                    statusAndEndpoints.newZooKeeperInstance(zk);
-                    statusAndEndpoints.load(this);
-                    tempStatusAndEndpointsMap.put(statusPath, statusAndEndpoints);
-                } catch (CloudnameException e) {
-                    log.fine("Got cloudname exception: " + e.getMessage()+ " " + statusPath);                }
+
+                ExpressionResolver expressionResolver = new ExpressionResolver(this, statusPath);
+                expressionResolver.newZooKeeperInstance(zk);
+                tempStatusAndEndpointsMap.put(statusPath, expressionResolver);
             }
 
+
             synchronized (this) {
-                zkRemoteStatusAndEndpointsMap.clear();
-                zkRemoteStatusAndEndpointsMap.putAll(tempStatusAndEndpointsMap);
+                expressionResolverByExpression.clear();
+                expressionResolverByExpression.putAll(tempStatusAndEndpointsMap);
                 lastResolve = System.currentTimeMillis();
             }
             notifyClient();
@@ -389,11 +390,17 @@ public class ZkResolver implements Resolver, ZkUserInterface {
         }
         
         private void notifyClient() {
+            synchronized (this) {
+                if (stopped) {
+                    log.fine("Someone called me, but I am stopped. No worries.");
+                    return;
+                }
+            }
             // First generate a fresh list of endpoints.
             List<Endpoint> newEndpoints = new ArrayList<Endpoint>();
             synchronized (this) {
-                for (Map.Entry<String, ExpressionResolver> statusAndEndpoints : zkRemoteStatusAndEndpointsMap.entrySet()) {
-                    addEndpoints(statusAndEndpoints.getValue(), newEndpoints, parameters.getEndpointName());
+                for (ExpressionResolver expressionResolver : expressionResolverByExpression.values()) {
+                    addEndpoints(expressionResolver.getCoordinatedata(), newEndpoints, parameters.getEndpointName());
                 }
 
                 Map<String, Endpoint> newEndpointsByName = new HashMap<String, Endpoint>();
@@ -471,28 +478,17 @@ public class ZkResolver implements Resolver, ZkUserInterface {
                 }
             }
             for (String path : paths) {
-                if (! refreshPathWithWatcher(path)) {
-                    // Try again on 20 secs
-                    scheduleRefresh(path, 20000);
-                }
+                refreshPathWithWatcher(path);
             }
         }
         
-        private boolean refreshPathWithWatcher(String path) {
-            ExpressionResolver e = zkRemoteStatusAndEndpointsMap.get(path);
+        private void refreshPathWithWatcher(String path) {
+            ExpressionResolver e = expressionResolverByExpression.get(path);
             if (e == null) {
                 // Endpoint has been removed while waiting for refresh.
-                return true;
+                return;
             }
-            boolean retVal = true;
-            try {
-                e.load(this);
-            } catch (CloudnameException e1) {
-                log.fine("Tried to refresh path " + path + ", message " + e1.getMessage());
-                retVal = false;
-            }
-            notifyClient();
-            return retVal;
+            e.newZooKeeperInstance(zk);
         }
         
         @Override
@@ -528,7 +524,7 @@ public class ZkResolver implements Resolver, ZkUserInterface {
                     break;
                 case NodeDeleted:
                     synchronized (this) {
-                        zkRemoteStatusAndEndpointsMap.remove(path);
+                        expressionResolverByExpression.remove(path);
                         notifyClient();
                         dirtyTimeMap.remove(path);
                         return;
@@ -539,6 +535,11 @@ public class ZkResolver implements Resolver, ZkUserInterface {
                     break;
             }
 
+        }
+
+        @Override
+        public void stateChanged() {
+            notifyClient();
         }
     }
     

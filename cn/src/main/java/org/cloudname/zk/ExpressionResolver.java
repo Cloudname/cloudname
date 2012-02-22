@@ -1,43 +1,35 @@
 package org.cloudname.zk;
 
 import org.apache.zookeeper.*;
-import org.apache.zookeeper.data.Stat;
 import org.cloudname.*;
 
-import java.io.IOException;
-import java.io.UnsupportedEncodingException;
-import java.util.*;
-import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
  * This class keeps track of serviceStatus and endpoints for a coordinate.
- * It has an inner class for building an instance (Dynamic).
- *
  *
  * @author dybdahl
  */
 public class ExpressionResolver implements Watcher, ZkUserInterface {
- 
-    private Storage storage = Storage.NO_CONNECTION;
+    public interface ExpressionResolverNotify {
+        void stateChanged();
+    }
 
-    private int lastStatusVersion = -1000;
     private CoordinateData.Snapshot coordinateData = null;
     
     private static final Logger log = Logger.getLogger(ExpressionResolver.class.getName());
     private ZooKeeper zk;
     private final String path;
-    private List<CoordinateListener> coordinateListenerList =
-            Collections.synchronizedList(new ArrayList<CoordinateListener>());
-
+    private final ExpressionResolverNotify client;
 
     /**
      * Constructor, the ZooKeeper instances is retrieved from implementing the ZkUserInterface so the object
      * is not ready to be used before the ZooKeeper instance is received.
      * @param path is the path of the status of the coordinate.
      */
-    public ExpressionResolver(String path) {
+    public ExpressionResolver(ExpressionResolverNotify client, String path) {
         this.path = path;
+        this.client = client;
     }
 
 
@@ -46,12 +38,9 @@ public class ExpressionResolver implements Watcher, ZkUserInterface {
         log.fine("ClaimedCoordinate: Got event ZooKeeper is down.");
         synchronized (this) {
             zk = null;
-            storage = Storage.NO_CONNECTION;
-        }
-        updateCoordinateListeners(CoordinateListener.Event.NO_CONNECTION_TO_STORAGE,
-                "Got message from parent watcher.");
-    }
 
+        }
+    }
     
     @Override
     public void newZooKeeperInstance(ZooKeeper zk) {
@@ -59,44 +48,26 @@ public class ExpressionResolver implements Watcher, ZkUserInterface {
         synchronized (this) {
             this.zk = zk;
         }
+        try {
+            if (refreshCoordinateData()) {
+                client.stateChanged();
+            }
+        } catch (CloudnameException e) {
+            log.info("Got problems reloading data from zookeeper.");
+        }
     }
 
+    /**
+     * Everything is watch driven, so we don't need to do any periodic checks.
+     */
     @Override
     public void timeEvent() {
     }
 
-   
-    private enum Storage {
-        NO_CONNECTION,
-        SYNCED,
-    }
 
-    /**
-     * Returns the ServiceStatus. If we claimed the coordinate, this is the real-time value, otherwise
-     * it is the last loaded value.
-     * @return ServiceStatus.
-     */
-    public ServiceStatus getServiceStatus() {
-        return coordinateData.getServiceStatus();
+    public CoordinateData.Snapshot getCoordinatedata() {
+        return coordinateData;
     }
-
-    /**
-     * Returns the Endpoint. If we claimed the coordinate, this is the real-time value, otherwise
-     * it is the last loaded value.
-     * @return Endpoint.
-     */
-    public Endpoint getEndpoint(String name) {
-        return coordinateData.getEndpoint(name);
-    }
-
-    /**
-     * Set all endpoints to the endpoints argument.
-     * @param endpoints The endpoints are put in this list.
-     */
-    public void returnAllEndpoints(List<Endpoint> endpoints) {
-        coordinateData.appendAllEndpoints(endpoints);
-    }
-
 
 
     /**
@@ -107,16 +78,6 @@ public class ExpressionResolver implements Watcher, ZkUserInterface {
         return coordinateData.toString();
     }
 
-    /**
-     * Registers a coordinatelistener that will receive events when there are changes to the status node.
-     * Don't do any heavy lifting in the callback and don't call cloudname from the callback as this might create
-     * a deadlock.
-     * @param coordinateListener
-     */
-    public void registerCoordinateListener(CoordinateListener coordinateListener) throws CloudnameException {
-        // List is synchronized.
-        coordinateListenerList.add(coordinateListener);
-    }
 
     /**
      * Handles even from ZooKeeper for this coordinate.
@@ -134,98 +95,68 @@ public class ExpressionResolver implements Watcher, ZkUserInterface {
                     default:
                         // If we lost connection, we don't attempt to register another watcher as this might
                         // be blocking forever. Parent might try to reconnect.
-                        updateCoordinateListeners(CoordinateListener.Event.NO_CONNECTION_TO_STORAGE, event.toString());
-                        return;
+                       return;
                     case SyncConnected:
+                        break;
                 }
                 break;
             case NodeDeleted:
-                // If node is deleted, we have no node to place a new watcher so we stop watching.
-                updateCoordinateListeners(CoordinateListener.Event.NOT_OWNER, event.toString());
-                return;
+                synchronized (this) {
+                    coordinateData = new CoordinateData().snapshot();
+                    return;
+                }
             case NodeDataChanged:
-                updateCoordinateListeners(CoordinateListener.Event.COORDINATE_OUT_OF_SYNC, event.toString());
+                try {
+                    if (refreshCoordinateData()) {
+                        client.stateChanged();
+                    }
+                } catch (CloudnameException e) {
+                    log.info("Problems reloading node after change, path; " + path + " " + e.getMessage());
+                }
                 return;
             case NodeChildrenChanged:
             case NodeCreated:
-                log.info("Unexpected event, ignoring, try to register new listener to get next event, path: " + path);
-                try {
-                    registerWatcher();
-                } catch (CloudnameException e) {
-                    updateCoordinateListeners(CoordinateListener.Event.NO_CONNECTION_TO_STORAGE,
-                            "Failed setting up new watcher, CloudnameException.");
-                    return;
-                } catch (InterruptedException e) {
-                    updateCoordinateListeners(CoordinateListener.Event.NO_CONNECTION_TO_STORAGE,
-                            "Failed setting up new watcher, InterruptedException.");
-                    return;
-                }
+                break;
         }
-    }
-
-    /**
-     * Safe way to get a ZooKeeper instance.
-     * @throws CloudnameException if connection is not up.
-     */
-    private ZooKeeper getZooKeeper()  {
-        synchronized (this) {
-            return zk;
-        }
-    }
-
-    /**
-     * Sends an event too all coordinate listeners. Note that the event is sent from this thread so if the
-     * callback code does the wrong calls, deadlocks might occur.
-     * @param event
-     * @param message
-     */
-    private void updateCoordinateListeners(CoordinateListener.Event event, String message) {
-        log.info("Event " + event.name() + " " + message);
-        for (CoordinateListener listener : coordinateListenerList) {
-            listener.onCoordinateEvent(event, message);
-        }
-
-        synchronized (this) {
-            if (event == CoordinateListener.Event.COORDINATE_OK) {
-                storage = Storage.SYNCED;
-                return;
-            }
-            storage = Storage.NO_CONNECTION;
-        }
-    }
-
-    /**
-     * Loads the coordinate from ZooKeeper.
-     * @return this.
-     */
-
-    public ExpressionResolver load(Watcher watcher) throws CloudnameException {
-        Stat stat = new Stat();
         try {
-            byte[] data;
-            if (watcher == null) {
-                data = getZooKeeper().getData(path, false, stat);
-            } else {
-                data = getZooKeeper().getData(path, watcher, stat);
-            }
-
-            coordinateData = new CoordinateData().deserialize(data).snapshot();
-
-        } catch (KeeperException e) {
-            throw new CloudnameException(e);
-        } catch (UnsupportedEncodingException e) {
-            throw new CloudnameException(e);
+            registerWatcher();
+        } catch (CloudnameException e) {
+            log.info("Got cloudname exception: " + e.getMessage());
+            return;
         } catch (InterruptedException e) {
-            throw new CloudnameException(e);
-        } catch (IOException e) {
-            throw new CloudnameException(e);
+            log.info("Got interrupted exception: " + e.getMessage());
+            return;
         }
-        return this;
+    }
+
+
+  
+
+    /**
+     * Loads the coordinate from ZooKeeper. In case of failure, we keep the old data.
+     *
+     * @return Returns true if data has changed.
+     */
+    private boolean refreshCoordinateData() throws CloudnameException {
+
+        synchronized (this) {
+            if (zk == null) {
+                throw new CloudnameException("No connection to storage.");
+            }
+            String oldDataSerialized = new String("");
+            if (null != coordinateData) {
+                oldDataSerialized = coordinateData.serialize();
+            }
+            coordinateData = CoordinateData.loadCoordianteData(path, zk, this).snapshot();
+            return (! oldDataSerialized.equals(coordinateData.toString()));
+        }
     }
 
     private void registerWatcher() throws CloudnameException, InterruptedException {
         try {
-            getZooKeeper().exists(path, this);
+            synchronized (this) {
+                zk.exists(path, this);
+            }
         } catch (KeeperException e) {
             throw new CloudnameException(e);
         }

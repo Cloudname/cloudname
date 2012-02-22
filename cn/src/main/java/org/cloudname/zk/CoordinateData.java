@@ -1,5 +1,10 @@
 package org.cloudname.zk;
 
+import org.apache.zookeeper.KeeperException;
+import org.apache.zookeeper.Watcher;
+import org.apache.zookeeper.ZooKeeper;
+import org.apache.zookeeper.data.Stat;
+import org.cloudname.CloudnameException;
 import org.cloudname.Endpoint;
 import org.cloudname.ServiceState;
 import org.cloudname.ServiceStatus;
@@ -11,6 +16,7 @@ import org.codehaus.jackson.type.TypeReference;
 
 import java.io.IOException;
 import java.io.StringWriter;
+import java.io.UnsupportedEncodingException;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
@@ -176,6 +182,33 @@ public class CoordinateData {
         private Snapshot(ServiceStatus serviceStatus, Map<String, Endpoint> endpointsByName) {
             this.serviceStatus = serviceStatus;
             this.endpointsByName = endpointsByName;
+        }
+    }
+
+    /**
+     * Utility function to create and load a CoordinateData from ZooKeeper.
+     * @param watcher for callbacks from ZooKeeper. It is ok to pass null.
+     * @throws CloudnameException when problems loading data.
+     */
+    static public CoordinateData loadCoordianteData(String statusPath, ZooKeeper zk, Watcher watcher)
+            throws CloudnameException {
+        Stat stat = new Stat();
+        try {
+            byte[] data;
+            if (watcher == null) {
+                data = zk.getData(statusPath, false, stat);
+            } else {
+                data = zk.getData(statusPath, watcher, stat);
+            }
+            return  new CoordinateData().deserialize(data);
+        } catch (KeeperException e) {
+            throw new CloudnameException(e);
+        } catch (UnsupportedEncodingException e) {
+            throw new CloudnameException(e);
+        } catch (InterruptedException e) {
+            throw new CloudnameException(e);
+        } catch (IOException e) {
+            throw new CloudnameException(e);
         }
     }
 }

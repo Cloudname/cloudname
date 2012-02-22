@@ -114,6 +114,7 @@ public class ZkCloudnameTest {
 
         // Claiming the coordinate creates the status node
         ServiceHandle handle = cn.claim(c);
+        assertTrue(handle.waitForCoordinateOkSeconds(3));
         assertNotNull(handle);
         final CountDownLatch latch = new CountDownLatch(1);
         handle.registerCoordinateListener(new CoordinateListener() {
