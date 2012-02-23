@@ -4,10 +4,8 @@ import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.WatchedEvent;
 import org.apache.zookeeper.Watcher;
 import org.apache.zookeeper.ZooKeeper;
-import org.apache.zookeeper.data.Stat;
 import org.cloudname.*;
 
-import java.io.IOException;
 import java.util.*;
 import java.util.logging.Logger;
 import java.util.regex.Pattern;
@@ -242,14 +240,14 @@ public class ZkResolver implements Resolver, ZkUserInterface {
     }
     
     
-    private List<Integer> resolveInstances(Parameters parameters) throws CloudnameException {
+    static public List<Integer> resolveInstances(Parameters parameters, ZooKeeper zk) throws CloudnameException {
  
         List<Integer> instances = new ArrayList<Integer>();
         if (parameters.getInstance() > -1) {
             instances.add(parameters.getInstance());
         } else {
             try {
-                instances = getInstances(getZooKeeper(),
+                instances = getInstances(zk,
                         ZkCoordinatePath.coordinateWithoutInstanceAsPath(parameters.getCell(),
                         parameters.getUser(), parameters.getService()));
             } catch (InterruptedException e) {
@@ -264,7 +262,7 @@ public class ZkResolver implements Resolver, ZkUserInterface {
     public List<Endpoint> resolve(String addressExpression) throws CloudnameException {
         Parameters parameters = new Parameters(addressExpression);
 
-        List<Integer> instances = resolveInstances(parameters);
+        List<Integer> instances = resolveInstances(parameters, zk);
         List<Endpoint> endpoints = new ArrayList<Endpoint>();
         for (Integer instance : instances) {
             String statusPath = ZkCoordinatePath.getStatusPath(parameters.getCell(), parameters.getUser(),
@@ -329,15 +327,15 @@ public class ZkResolver implements Resolver, ZkUserInterface {
         }
     }
 
-    public class DynamicExpression implements Watcher, ExpressionResolver.ExpressionResolverNotify {
+    public class DynamicExpression implements Watcher, TrackedCoordinate.ExpressionResolverNotify {
 
         final private Map<String, Endpoint> clientPicture = new HashMap<String, Endpoint>();
         final private ResolverListener clientCallback;
         final private Map<String, Long> dirtyTimeMap = new HashMap<String, Long>();
         final private Parameters parameters;
 
-        final private Map<String, ExpressionResolver> expressionResolverByExpression =
-                new HashMap<String, ExpressionResolver>();
+        final private Map<String, TrackedCoordinate> coordinateByPath =
+                new HashMap<String, TrackedCoordinate>();
 
         final private Random random = new Random();
         private long lastResolve = 0;
@@ -351,35 +349,35 @@ public class ZkResolver implements Resolver, ZkUserInterface {
         public void stop() {
             synchronized (this) {
                 stopped = true;
-                expressionResolverByExpression.clear();
+                coordinateByPath.clear();
             }
         }
 
         public void resolve() {
             List<Integer> instances = null;
             try {
-                instances = resolveInstances(parameters);
+                instances = resolveInstances(parameters, getZooKeeper());
             } catch (CloudnameException e) {
                 log.fine("Got cloudname exception " + e.getMessage());
                 return;
             }
-            Map<String, ExpressionResolver> tempStatusAndEndpointsMap =
-                    new HashMap<String, ExpressionResolver>();
+            Map<String, TrackedCoordinate> tempStatusAndEndpointsMap =
+                    new HashMap<String, TrackedCoordinate>();
 
             for (Integer instance : instances) {
                 String statusPath = ZkCoordinatePath.getStatusPath(parameters.getCell(), parameters.getUser(),
                         parameters.getService(), instance);
 
 
-                ExpressionResolver expressionResolver = new ExpressionResolver(this, statusPath);
-                expressionResolver.newZooKeeperInstance(zk);
-                tempStatusAndEndpointsMap.put(statusPath, expressionResolver);
+                TrackedCoordinate trackedCoordinate = new TrackedCoordinate(this, statusPath);
+                trackedCoordinate.newZooKeeperInstance(zk);
+                tempStatusAndEndpointsMap.put(statusPath, trackedCoordinate);
             }
 
 
             synchronized (this) {
-                expressionResolverByExpression.clear();
-                expressionResolverByExpression.putAll(tempStatusAndEndpointsMap);
+                coordinateByPath.clear();
+                coordinateByPath.putAll(tempStatusAndEndpointsMap);
                 lastResolve = System.currentTimeMillis();
             }
             notifyClient();
@@ -399,8 +397,8 @@ public class ZkResolver implements Resolver, ZkUserInterface {
             // First generate a fresh list of endpoints.
             List<Endpoint> newEndpoints = new ArrayList<Endpoint>();
             synchronized (this) {
-                for (ExpressionResolver expressionResolver : expressionResolverByExpression.values()) {
-                    addEndpoints(expressionResolver.getCoordinatedata(), newEndpoints, parameters.getEndpointName());
+                for (TrackedCoordinate trackedCoordinate : coordinateByPath.values()) {
+                    addEndpoints(trackedCoordinate.getCoordinatedata(), newEndpoints, parameters.getEndpointName());
                 }
 
                 Map<String, Endpoint> newEndpointsByName = new HashMap<String, Endpoint>();
@@ -483,7 +481,7 @@ public class ZkResolver implements Resolver, ZkUserInterface {
         }
         
         private void refreshPathWithWatcher(String path) {
-            ExpressionResolver e = expressionResolverByExpression.get(path);
+            TrackedCoordinate e = coordinateByPath.get(path);
             if (e == null) {
                 // Endpoint has been removed while waiting for refresh.
                 return;
@@ -524,7 +522,7 @@ public class ZkResolver implements Resolver, ZkUserInterface {
                     break;
                 case NodeDeleted:
                     synchronized (this) {
-                        expressionResolverByExpression.remove(path);
+                        coordinateByPath.remove(path);
                         notifyClient();
                         dirtyTimeMap.remove(path);
                         return;

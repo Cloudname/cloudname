@@ -10,14 +10,17 @@ import java.util.logging.Logger;
  *
  * @author dybdahl
  */
-public class ExpressionResolver implements Watcher, ZkUserInterface {
+public class TrackedCoordinate implements Watcher, ZkUserInterface {
+    /**
+     * The client can implement this to get notified on changes.
+     */
     public interface ExpressionResolverNotify {
         void stateChanged();
     }
 
     private CoordinateData.Snapshot coordinateData = null;
     
-    private static final Logger log = Logger.getLogger(ExpressionResolver.class.getName());
+    private static final Logger log = Logger.getLogger(TrackedCoordinate.class.getName());
     private ZooKeeper zk;
     private final String path;
     private final ExpressionResolverNotify client;
@@ -27,7 +30,7 @@ public class ExpressionResolver implements Watcher, ZkUserInterface {
      * is not ready to be used before the ZooKeeper instance is received.
      * @param path is the path of the status of the coordinate.
      */
-    public ExpressionResolver(ExpressionResolverNotify client, String path) {
+    public TrackedCoordinate(ExpressionResolverNotify client, String path) {
         this.path = path;
         this.client = client;
     }
@@ -103,8 +106,9 @@ public class ExpressionResolver implements Watcher, ZkUserInterface {
             case NodeDeleted:
                 synchronized (this) {
                     coordinateData = new CoordinateData().snapshot();
-                    return;
                 }
+                client.stateChanged();
+                return;
             case NodeDataChanged:
                 try {
                     if (refreshCoordinateData()) {
