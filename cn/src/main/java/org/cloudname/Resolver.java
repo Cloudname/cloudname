@@ -65,7 +65,7 @@ public interface Resolver {
      * endpoint.instance.service.user.cell (see ZkResolver for details). This should be static data, i.e.
      * the function might be called only once.
      */
-    public void addResolverListener(String expression, ResolverListener listener);
+    public void addResolverListener(String expression, ResolverListener listener) throws CloudnameException;
 
     /**
      * Calling this function unregisters the listener, i.e. stopping future callbacks.
