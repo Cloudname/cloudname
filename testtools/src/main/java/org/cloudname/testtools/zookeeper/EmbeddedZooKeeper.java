@@ -33,17 +33,55 @@ public final class EmbeddedZooKeeper {
 
     /**
      * @param rootDir the root directory of where the ZooKeeper
-     *   instance will keep its files.
+     *   instance will keep its files.  If null, a temporary directory is created
      * @param port the port where ZooKeeper will listen for client
      *   connections.
      */
     public EmbeddedZooKeeper(File rootDir, int port) {
+        if (rootDir == null) {
+            rootDir = createTempDir();
+        }
+        
         this.rootDir = rootDir;
         this.port = port;
 
         if (! rootDir.exists()) {
             throw new IllegalStateException("Root directory does not exist: " + rootDir);
         }
+    }
+    
+    /**
+     * Delete directory with content.
+     * @param path to be deleted.
+     */
+    static private void deleteDirectory(File path) {
+        for(File f : path.listFiles())
+        {
+            if(f.isDirectory()) {
+                deleteDirectory(f);
+                f.delete();
+            } else {
+                f.delete();
+            }
+        }
+        path.delete();
+    }
+
+
+   /**
+     * Deletes and recreates a temp dir. Sets deleteOnExit().
+     * @return
+     */
+    private static File createTempDir() {
+        File baseDir = new File(System.getProperty("java.io.tmpdir"));
+        File tempDir = new File(baseDir, "EmbeddedZooKeeper");
+        if (tempDir.exists()) {
+            System.err.println("Deleting old instance on startup.");
+            deleteDirectory(tempDir);
+        }
+        tempDir.mkdir();
+        tempDir.deleteOnExit();
+        return tempDir;
     }
 
     /**
