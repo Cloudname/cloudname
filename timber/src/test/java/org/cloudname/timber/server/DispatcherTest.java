@@ -90,6 +90,25 @@ public class DispatcherTest {
     }
 
     /**
+     * Trivial test with one slow handler.
+     */
+    @Test
+    public void testDispatcherWithoutChannel() throws Exception {
+        DummyHandler handler = new DummyHandler("DummyHandler");
+        Dispatcher disp = new Dispatcher(10);
+        disp.addHandler(handler);
+        disp.init();
+
+        Timber.LogEvent event = createMessage("This is a log message");
+        disp.dispatch(event);
+
+        disp.shutdown();
+
+        assertEquals(1, handler.getHandleCalled());
+        assertEquals(1, handler.getCloseCalled());
+    }
+
+    /**
      * Verify that acknowledgements get written back on the channel.
      */
     @Test

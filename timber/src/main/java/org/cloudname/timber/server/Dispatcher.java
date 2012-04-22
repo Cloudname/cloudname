@@ -195,6 +195,11 @@ public class Dispatcher {
 
         // Enqueue ack message if the message had an id
         if (event.hasId()) {
+            // If dispatched from within process then channel might be
+            // null and so it wouldn't make sense to send an ack.
+            if (null == entry.getChannel()) {
+                return;
+            }
             ackManager.ack(entry.getChannel(), event.getId());
         }
     }
@@ -242,5 +247,18 @@ public class Dispatcher {
         } catch (InterruptedException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    /**
+     * Dispatch incoming log message.  This operation will block if
+     * the input queue of the dispatcher is full.  This version of the
+     * dispatch method does not take an originating channel and was
+     * added to have a preferred method for injecting log events
+     * internally.
+     *
+     * @param logEvent the log event we wish to enqueue.
+     */
+    public void dispatch(Timber.LogEvent logEvent) {
+        dispatch(logEvent, null);
     }
 }
