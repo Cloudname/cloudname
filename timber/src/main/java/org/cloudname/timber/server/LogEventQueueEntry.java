@@ -21,12 +21,9 @@ public class LogEventQueueEntry {
      * @param channel the channel the logevent came from
      */
     public LogEventQueueEntry(final Timber.LogEvent event, final Channel channel) {
+        // Event cannot be null, but we can allow channel to be null
         if (null == event) {
             throw new NullPointerException("event cannot be null");
-        }
-
-        if (null == channel) {
-            throw new NullPointerException("channel cannot be null");
         }
 
         this.event = event;
