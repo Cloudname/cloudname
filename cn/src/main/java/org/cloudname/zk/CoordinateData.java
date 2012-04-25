@@ -29,7 +29,7 @@ import java.util.Map;
  *
  *  @auther dybdahl
  */
-public class CoordinateData {
+public final class CoordinateData {
     /**
      * The status of the coordinate, is it running etc.
      */
@@ -106,7 +106,7 @@ public class CoordinateData {
         synchronized (this) {
             String stringData = new String(data, Util.CHARSET_NAME);
             JsonFactory jsonFactory = new JsonFactory();
-            JsonParser jp = jsonFactory.createJsonParser(data);
+            JsonParser jp = jsonFactory.createJsonParser(stringData);
             String statusString = objectMapper.readValue(jp, new TypeReference<String>() {});
             serviceStatus = ServiceStatus.fromJson(statusString);
             endpointsByName.clear();

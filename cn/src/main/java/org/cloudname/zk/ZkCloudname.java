@@ -33,7 +33,7 @@ import java.io.IOException;
  *
  * @author borud
  */
-public class ZkCloudname extends Thread implements Cloudname, Watcher {
+public final class ZkCloudname extends Thread implements Cloudname, Watcher {
 
     private static final int SESSION_TIMEOUT = 5000;
 
@@ -177,7 +177,8 @@ public class ZkCloudname extends Thread implements Cloudname, Watcher {
         }
     }
 
-    Map<ZkUserInterface, Integer> users = Collections.synchronizedMap(new WeakHashMap<ZkUserInterface, Integer>());
+    private Map<ZkUserInterface, Integer> users =
+            Collections.synchronizedMap(new WeakHashMap<ZkUserInterface, Integer>());
 
     private void notifyUsersConnectionDown() {
         for (ZkUserInterface user : users.keySet()) {

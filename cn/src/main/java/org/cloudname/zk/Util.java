@@ -10,18 +10,16 @@ import org.cloudname.CoordinateMissingException;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.logging.Logger;
 
 /**
  * Various ZooKeeper utilities.
  *
  * @author borud
  */
-public class Util {
+public final class Util {
     // Constants
     public static final String CHARSET_NAME = "UTF-8";
 
-    private static final Logger log = Logger.getLogger(Util.class.getName());
     /**
      * Create a path in ZooKeeper.  We just start at the top and work
      * our way down.  Nodes that exist will throw an exception but we
@@ -166,4 +164,7 @@ public class Util {
         }
         return deletedNodes;
     }
+
+    // Should not be instantiated.
+    private Util() {}
 }

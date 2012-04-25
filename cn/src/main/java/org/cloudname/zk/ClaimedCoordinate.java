@@ -320,6 +320,8 @@ public class ClaimedCoordinate implements Watcher, ZkUserInterface {
 
             case None:
                 switch (event.getState()) {
+                    case SyncConnected:
+                        break;
                     case Disconnected:
                     case AuthFailed:
                     case Expired:
@@ -332,8 +334,6 @@ public class ClaimedCoordinate implements Watcher, ZkUserInterface {
                         sendEventToCoordinateListener(CoordinateListener.Event.NO_CONNECTION_TO_STORAGE,
                                 event.toString());
                         return;
-                    case SyncConnected:
-                       break;
                 }
                 return;
 

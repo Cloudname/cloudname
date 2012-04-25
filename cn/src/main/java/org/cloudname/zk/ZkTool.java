@@ -21,20 +21,20 @@ import java.util.regex.Pattern;
  *   --coordinateFlag the coordinateFlag to perform operationFlag on
  * @author dybdahl
  */
-public class ZkTool {
+public final class ZkTool {
     @Flag(name="zooKeeper", description="A list of host:port for connecting to ZooKeeper.")
-    public static String zooKeeperFlag = null;
+    private static String zooKeeperFlag = null;
 
     @Flag(name="coordinate", description="The coordinate to work on.")
-    public static String coordinateFlag = null;
+    private static String coordinateFlag = null;
 
     @Flag(name="operation", options = Operation.class,
         description = "The operationFlag to do on coordinate.")
-    public static Operation operationFlag = Operation.STATUS;
+    private static Operation operationFlag = Operation.STATUS;
 
     @Flag(name = "setup-file",
         description = "Path to file containing a list of coordinates to create (1 coordinate per line).")
-    public static String filePath = null;
+    private static String filePath = null;
 
     /**
      *   The possible operations to do on a coordinate.
@@ -135,7 +135,6 @@ public class ZkTool {
                 break;
             case STATUS:
                 Coordinate c = Coordinate.parse(coordinateFlag);
-                String statusPath = ZkCoordinatePath.getStatusPath(c);
                 ServiceStatus status;
 
                 status = cloudname.getStatus(c);
@@ -167,4 +166,7 @@ public class ZkTool {
         }
         cloudname.close();
     }
+
+    // Should not be instantiated.
+    private ZkTool() {}
 }

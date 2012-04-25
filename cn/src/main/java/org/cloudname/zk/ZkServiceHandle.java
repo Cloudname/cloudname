@@ -16,10 +16,8 @@ import java.util.List;
  * @author borud
  */
 public class ZkServiceHandle implements ServiceHandle {
-    private final Coordinate coordinate;
     private ClaimedCoordinate claimedCoordinate;
     private static final Logger log = Logger.getLogger(ZkServiceHandle.class.getName());
-
 
     /**
      * Create a ZkServiceHandle for a given coordinate.
@@ -28,7 +26,6 @@ public class ZkServiceHandle implements ServiceHandle {
      * @param coordinate the coordinate for this service handle.
      */
     public ZkServiceHandle(Coordinate coordinate, ClaimedCoordinate claimedCoordinate) {
-        this.coordinate = coordinate;
         this.claimedCoordinate = claimedCoordinate;
     }
 

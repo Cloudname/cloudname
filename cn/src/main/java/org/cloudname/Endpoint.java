@@ -75,7 +75,7 @@ public class Endpoint {
         return endpointData;
     }
 
-    public boolean equals(Endpoint endpoint) {
+    public boolean equalsEndpoint(Endpoint endpoint) {
        return endpoint.toJson().equals(toJson());
     }
 

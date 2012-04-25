@@ -92,15 +92,15 @@ public class TrackedCoordinate implements Watcher, ZkUserInterface {
         switch (event.getType()) {
             case None:
                 switch (event.getState()) {
+                    case SyncConnected:
+                        break;
                     case Disconnected:
                     case AuthFailed:
                     case Expired:
                     default:
                         // If we lost connection, we don't attempt to register another watcher as this might
                         // be blocking forever. Parent might try to reconnect.
-                       return;
-                    case SyncConnected:
-                        break;
+                        return;
                 }
                 break;
             case NodeDeleted:

@@ -17,7 +17,7 @@ import java.util.regex.Matcher;
  *
  * @author borud
  */
-public class ZkResolver implements Resolver, ZkUserInterface {
+public final class ZkResolver implements Resolver, ZkUserInterface {
 
     private static final Logger log = Logger.getLogger(ZkResolver.class.getName());
 
@@ -50,13 +50,13 @@ public class ZkResolver implements Resolver, ZkUserInterface {
     }
 
 
-    Map<ResolverListener, DynamicExpression> dynamicAddressesByListener = new HashMap<ResolverListener, DynamicExpression>();
+    private Map<ResolverListener, DynamicExpression> dynamicAddressesByListener = new HashMap<ResolverListener, DynamicExpression>();
     
     @Override
     public void timeEvent() {
         for (DynamicExpression dynamicExpression : dynamicAddressesByListener.values()) {
-            dynamicExpression.wakeUp();
-        }     
+            dynamicExpression.timeEvent();
+        }
     }
 
     private ZooKeeper getZooKeeper() throws CloudnameException {
@@ -71,7 +71,7 @@ public class ZkResolver implements Resolver, ZkUserInterface {
     
     public static class Builder {
 
-        Map<String, ResolverStrategy> strategies = new HashMap<String, ResolverStrategy>();
+        private Map<String, ResolverStrategy> strategies = new HashMap<String, ResolverStrategy>();
 
         public Builder addStrategy(ResolverStrategy strategy) {
             strategies.put(strategy.getName(), strategy);
@@ -314,7 +314,6 @@ public class ZkResolver implements Resolver, ZkUserInterface {
                 throw new IllegalArgumentException("It is not legal to register a listener twice.");
             }
         }
-        dynamicExpression.resolve();
     }
 
     public static void addEndpoints(CoordinateData.Snapshot statusAndEndpoints, List<Endpoint> endpoints, String endpointname) {
