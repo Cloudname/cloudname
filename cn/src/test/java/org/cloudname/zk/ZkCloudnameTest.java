@@ -329,8 +329,10 @@ public class ZkCloudnameTest {
         ezk.shutdown();
         forwarder.terminate();
         assertTrue(connectedLatch2.await(20, TimeUnit.SECONDS));
-        assertEquals(2, listener.events.size());
-        assertEquals(CoordinateListener.Event.NO_CONNECTION_TO_STORAGE, listener.events.get(1));
+        int size = listener.events.size();
+        assertTrue(size > 1);
+        log.info("status " + listener.events.toString());
+        assertEquals(CoordinateListener.Event.NO_CONNECTION_TO_STORAGE, listener.events.get(size - 1));
     }
 
     @Test
