@@ -13,8 +13,6 @@ public class StrategyAny implements ResolverStrategy {
 
     /**
      * Returns a list of the first endpoint if any, else returns the empty list.
-     * @param endpoints
-     * @return
      */
     @Override
     public List<Endpoint> filter(List<Endpoint> endpoints) {
@@ -29,8 +27,6 @@ public class StrategyAny implements ResolverStrategy {
 
     /**
      * Does not change the ordering, after all it is 0 or 1 element in the list.
-     * @param endpoints
-     * @return
      */
     @Override
     public List<Endpoint> order(List<Endpoint> endpoints) {
@@ -39,11 +35,9 @@ public class StrategyAny implements ResolverStrategy {
 
     /**
      * The name of the strategy is "any"
-     * @return "any".
      */
     @Override
     public String getName() {
         return "any";
     }
-
 }

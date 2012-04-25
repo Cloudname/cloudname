@@ -21,20 +21,20 @@ import java.util.regex.Pattern;
  *   --coordinateFlag the coordinateFlag to perform operationFlag on
  * @author dybdahl
  */
-public class ZkTool {
+public final class ZkTool {
     @Flag(name="zooKeeper", description="A list of host:port for connecting to ZooKeeper.")
-    public static String zooKeeperFlag = null;
+    private static String zooKeeperFlag = null;
 
     @Flag(name="coordinate", description="The coordinate to work on.")
-    public static String coordinateFlag = null;
+    private static String coordinateFlag = null;
 
     @Flag(name="operation", options = Operation.class,
         description = "The operationFlag to do on coordinate.")
-    public static Operation operationFlag = Operation.STATUS;
+    private static Operation operationFlag = Operation.STATUS;
 
     @Flag(name = "setup-file",
         description = "Path to file containing a list of coordinates to create (1 coordinate per line).")
-    public static String filePath = null;
+    private static String filePath = null;
 
     /**
      *   The possible operations to do on a coordinate.
@@ -68,7 +68,7 @@ public class ZkTool {
             + "(\\d+)\\/config\\z"); // instance
 
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws Exception {
         // Parse the flags.
         Flags flags = new Flags()
                 .loadOpts(ZkTool.class)
@@ -135,15 +135,10 @@ public class ZkTool {
                 break;
             case STATUS:
                 Coordinate c = Coordinate.parse(coordinateFlag);
-                String statusPath = ZkCoordinatePath.getStatusPath(c);
                 ServiceStatus status;
-                try {
-                    status = cloudname.getStatus(c);
-                } catch (CloudnameException e) {
-                    System.err.println("Problems loading status node: " + statusPath);
-                    System.err.println("Is the instance running?");
-                    return;
-                }
+
+                status = cloudname.getStatus(c);
+
                 System.err.println("Status:\n" + status.getState().toString() + " " + status.getMessage());
                 List<Endpoint> endpoints = resolver.resolve("all." + c.getService()
                         + "." + c.getUser() + "." + c.getCell());
@@ -169,5 +164,9 @@ public class ZkTool {
             default:
                 System.out.println("Unknown command " + operationFlag);
         }
+        cloudname.close();
     }
+
+    // Should not be instantiated.
+    private ZkTool() {}
 }

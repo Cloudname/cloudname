@@ -18,33 +18,31 @@ public interface CoordinateListener {
         /**
          * Connection lost to storage, no more events will occur.
          */
-        LOST_CONNECTION_TO_STORAGE,
+        NO_CONNECTION_TO_STORAGE,
 
         /**
-         * Coordinate ownership is list, nobody owns it. No more events will occur.
-         */
-        COORDINATE_VANISHED,
-
-        /**
-         * Problems with parsing the data in ZooKeeper for this coordinate.
+         * Problems with parsing the data in storage for this coordinate.
          */
         COORDINATE_CORRUPTED,
 
         /**
-         * The data in the storage and memory is out of sync, system is corrupted.
+         * The data in the storage and memory is out of sync.
          */
         COORDINATE_OUT_OF_SYNC,
 
         /**
          * No longer the owner of the coordinate.
          */
-        NOT_OWNER
+        NOT_OWNER,
     }
+
+
 
     /**
      * Implement this function to receive the events.
+     * Return false if no more events are wanted, will stop eventually.
      * @param event the event that happened.
      * @param message some message associated with the event.
      */
-    public void onConfigEvent(Event event, String message);
+    public void onCoordinateEvent(Event event, String message);
 }

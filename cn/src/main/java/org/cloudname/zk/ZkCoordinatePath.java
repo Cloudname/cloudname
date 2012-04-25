@@ -12,7 +12,7 @@ import org.cloudname.Coordinate;
  * If clients begin to fiddle with nodes under this prefix directly, all deals are off.
  * @author: dybdahl
  */
-public class ZkCoordinatePath {
+public final class ZkCoordinatePath {
     private static final String CN_PATH_PREFIX = "/cn";
     private static final String CN_STATUS_NAME = "status";
     private static final String CN_CONFIG_NAME = "config";
@@ -79,4 +79,7 @@ public class ZkCoordinatePath {
     private static String coordinateAsPath(String cell, String user, String service, Integer instance) {
         return coordinateWithoutInstanceAsPath(cell, user, service) + "/" + instance.toString();
     }
+
+    // Should not be instantiated.
+    private ZkCoordinatePath() {}
 }
