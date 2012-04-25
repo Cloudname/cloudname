@@ -134,8 +134,6 @@ public class TrackedCoordinate implements Watcher, ZkUserInterface {
     }
 
 
-  
-
     /**
      * Loads the coordinate from ZooKeeper. In case of failure, we keep the old data.
      *
