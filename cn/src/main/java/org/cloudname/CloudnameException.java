@@ -1,107 +1,11 @@
 package org.cloudname;
 
 /**
- * Exceptions for Cloudname.
+ * Exceptions for Cloudname caused by problems talking to storage.
  *
  * @author borud
  */
-public class CloudnameException extends RuntimeException {
-    /**
-     * The coordinate we attempted to claim has already been claimed
-     * by a different instance.
-     */
-    public static class AlreadyClaimed extends CloudnameException {
-        public AlreadyClaimed() {
-        }
-
-        public AlreadyClaimed(Throwable t) {
-            super(t);
-        }
-    }
-
-    /**
-     * The coordinate does not exist.
-     */
-    public static class CoordinateNotFound extends CloudnameException {
-        public CoordinateNotFound() {
-        }
-
-        public CoordinateNotFound(Throwable t) {
-            super(t);
-        }
-    }
-
-    /**
-     * The endpoint the user tried to publish already existed.
-     */
-    public static class EndpointExists extends CloudnameException {
-        public EndpointExists() {
-        }
-
-        public EndpointExists(Throwable t) {
-            super(t);
-        }
-    }
-
-    /**
-     * The endpoint the user tried to access does not exist.
-     */
-    public static class EndpointDoesNotExist extends CloudnameException {
-        public EndpointDoesNotExist() {
-        }
-
-        public EndpointDoesNotExist(Throwable t) {
-            super(t);
-        }
-    }
-
-    /**
-     * The coordinate exists, and it was assumed it did not.
-     */
-    public static class CoordinateExist  extends CloudnameException {
-        public CoordinateExist() {
-            super();
-        }
-    }
-
-    /**
-     * The coordinate the user tried to destroy is claimed.
-     */
-    public static class CoordinateIsClaimed extends CloudnameException {
-        public CoordinateIsClaimed() {
-            super();
-        }
-
-        public CoordinateIsClaimed(Throwable t) {
-            super(t);
-        }
-    }
-
-    /**
-     * The coordinate the user tried to destroy has config nodes.
-     */
-    public static class CoordinateHasConfig extends CloudnameException {
-        public CoordinateHasConfig() {
-            super();
-        }
-
-        public CoordinateHasConfig(Throwable t) {
-            super(t);
-        }
-    }
-
-    public static class CouldNotConnectToStorage extends CloudnameException {
-        public CouldNotConnectToStorage(Throwable t) {
-            super(t);
-        }
-        
-        public CouldNotConnectToStorage(String message) {
-            super(message);
-        }
-    }
-
-    public CloudnameException() {
-    }
+public class CloudnameException extends Exception {
 
     public CloudnameException(Throwable t) {
         super(t);
@@ -110,5 +14,8 @@ public class CloudnameException extends RuntimeException {
     public CloudnameException(String message) {
         super(message);
     }
-
+    
+    public CloudnameException(String message, Throwable t) {
+        super(message, t);
+    }
 }

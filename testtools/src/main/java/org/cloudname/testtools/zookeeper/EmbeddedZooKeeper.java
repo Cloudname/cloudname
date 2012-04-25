@@ -84,6 +84,27 @@ public final class EmbeddedZooKeeper {
         return tempDir;
     }
 
+
+    private void delDir(File path) {
+        for(File f : path.listFiles())
+        {
+            if(f.isDirectory()) {
+                delDir(f);
+                f.delete();
+            } else {
+                f.delete();
+            }
+        }
+        path.delete();
+
+    }
+    
+    public void del() {
+        File  path = new File(rootDir, "data");
+        delDir(path);
+    }
+
+
     /**
      * Set up the ZooKeeper instance.
      */
@@ -107,7 +128,6 @@ public final class EmbeddedZooKeeper {
                                                 config.getMaxClientCnxns());
         cnxnFactory.startup(zk);
     }
-
 
     /**
      * Shut the ZooKeeper instance down.

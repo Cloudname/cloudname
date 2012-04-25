@@ -14,6 +14,7 @@ public class SimpleZooKeeper {
     private static EmbeddedZooKeeper ezk;
     @Flag(name="zkport", description="The port to use for serving zookeeper..")
     public static int zkport = 5454;
+    private File tempDir;
 
     /**
      * Delete directory with content.

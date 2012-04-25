@@ -1,13 +1,12 @@
 package org.cloudname.zk;
 
 import org.apache.zookeeper.KeeperException;
+import org.apache.zookeeper.WatchedEvent;
+import org.apache.zookeeper.Watcher;
 import org.apache.zookeeper.ZooKeeper;
 import org.cloudname.*;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.logging.Logger;
 import java.util.regex.Pattern;
 import java.util.regex.Matcher;
@@ -18,22 +17,61 @@ import java.util.regex.Matcher;
  *
  * @author borud
  */
-public final class ZkResolver implements Resolver {
+public final class ZkResolver implements Resolver, ZkUserInterface {
 
     private static final Logger log = Logger.getLogger(ZkResolver.class.getName());
 
-    private final ZooKeeper zk;
+    private ZooKeeper zk = null;
 
     private Map<String, ResolverStrategy> strategies;
 
+    @Override
+    public void zooKeeperDown() {
+        synchronized (this) {
+            this.zk = null;
+            for (ResolverListener listener : dynamicAddressesByListener.keySet()) {
+                listener.endpointEvent(ResolverListener.Event.LOST_CONNECTION, null);
+            }
+        }
+    }
+
+    @Override
+    public void newZooKeeperInstance(ZooKeeper zk) {
+        log.fine("ZkResolver, new zeekeeper instance.");
+        synchronized (this) {
+            this.zk = zk;
+            for (ResolverListener listener : dynamicAddressesByListener.keySet()) {
+                listener.endpointEvent(ResolverListener.Event.CONNECTION_OK, null);
+            }
+            for (DynamicExpression expression : dynamicAddressesByListener.values()) {
+                expression.newZooKeeperInstance(zk);
+            }
+        }
+    }
+
+
+    private Map<ResolverListener, DynamicExpression> dynamicAddressesByListener = new HashMap<ResolverListener, DynamicExpression>();
+    
+    @Override
+    public void timeEvent() {
+        for (DynamicExpression dynamicExpression : dynamicAddressesByListener.values()) {
+            dynamicExpression.timeEvent();
+        }
+    }
+
+    private ZooKeeper getZooKeeper() throws CloudnameException {
+        synchronized (this) {
+            if (zk == null) {
+                throw new CloudnameException("Connection to ZooKeeper is down.");
+            }
+            return zk;
+        }
+    }
+            
+    
     public static class Builder {
 
         private Map<String, ResolverStrategy> strategies = new HashMap<String, ResolverStrategy>();
-        private ZooKeeper zk;
-
-        public Builder(ZooKeeper zk) {
-            this.zk = zk;
-        }
 
         public Builder addStrategy(ResolverStrategy strategy) {
             strategies.put(strategy.getName(), strategy);
@@ -42,10 +80,6 @@ public final class ZkResolver implements Resolver {
 
         public Map<String, ResolverStrategy> getStrategies() {
             return strategies;
-        }
-
-        public ZooKeeper getZooKeeper() {
-            return zk;
         }
 
         public ZkResolver build() {
@@ -86,6 +120,8 @@ public final class ZkResolver implements Resolver {
     /**
      * Inner class to keep track of parameters parsed from addressExpression.
      */
+
+
     static class Parameters {
         private String endpointName = null;
         private Integer instance = null;
@@ -99,7 +135,6 @@ public final class ZkResolver implements Resolver {
          * @param addressExpression
          */
         public Parameters(String addressExpression) {
-            log.info("Resolving " + addressExpression);
 
             if (! (trySetEndPointPattern(addressExpression) ||
                    trySetStrategyPattern(addressExpression) ||
@@ -203,59 +238,101 @@ public final class ZkResolver implements Resolver {
     }
 
     /**
-     * Constructor, to be called from the inner Builder class.
+     * Constructor, to be called from the inner Dynamic class.
      * @param builder
      */
     private ZkResolver(Builder builder) {
-        this.zk = builder.getZooKeeper();
         this.strategies = builder.getStrategies();
     }
-
-    @Override
-    public List<Endpoint> resolve(String addressExperssion) {
-        Parameters parameters = new Parameters(addressExperssion);
-
-        // TODO(borud): add some comments on the decision logic.  I'm
-        // not sure I am too fond of the check for negative values to
-        // have some particular semantics.  That smells like a problem
-        // waiting to happen.
+    
+    static public List<Integer> resolveInstances(Parameters parameters, ZooKeeper zk) throws CloudnameException {
         List<Integer> instances = new ArrayList<Integer>();
         if (parameters.getInstance() > -1) {
             instances.add(parameters.getInstance());
         } else {
-            instances = getInstances(
-                ZkCoordinatePath.coordinateWithoutInstanceAsPath(parameters.getCell(),
-                                                                 parameters.getUser(),
-                                                                 parameters.getService()));
+            try {
+                instances = getInstances(zk,
+                        ZkCoordinatePath.coordinateWithoutInstanceAsPath(parameters.getCell(),
+                        parameters.getUser(), parameters.getService()));
+            } catch (InterruptedException e) {
+                throw new CloudnameException(e);
+            }
         }
+        return instances;
+    }
+    
+    @Override
+    public List<Endpoint> resolve(String addressExpression) throws CloudnameException {
+        Parameters parameters = new Parameters(addressExpression);
+            // TODO(borud): add some comments on the decision logic.  I'm
+            // not sure I am too fond of the check for negative values to
+            // have some particular semantics.  That smells like a problem
+            // waiting to happen.
+        List<Integer> instances = resolveInstances(parameters, zk);
 
         List<Endpoint> endpoints = new ArrayList<Endpoint>();
         for (Integer instance : instances) {
             String statusPath = ZkCoordinatePath.getStatusPath(parameters.getCell(), parameters.getUser(),
                     parameters.getService(), instance);
 
-            if (! Util.exist(zk, statusPath)) {
-                continue;
+            try {
+                if (! Util.exist(getZooKeeper(), statusPath)) {
+                    continue;
+                }
+            } catch (InterruptedException e) {
+                throw new CloudnameException(e);
+
             }
-            ZkStatusAndEndpoints statusAndEndpoints = new ZkStatusAndEndpoints.Builder(zk, statusPath).build().load();
-            if (statusAndEndpoints.getServiceStatus().getState() != ServiceState.RUNNING) {
-                continue;
-            }
-            if (parameters.getEndpointName() == "") {
-                statusAndEndpoints.returnAllEndpoints(endpoints);
-            } else {
-                endpoints.add(statusAndEndpoints.getEndpoint(parameters.getEndpointName()));
-            }
+            CoordinateData coordinateData = CoordinateData.loadCoordianteData(statusPath, getZooKeeper(), null);
+            addEndpoints(coordinateData.snapshot(), endpoints, parameters.getEndpointName());
+
         }
-        if (parameters.getStrategy() == "") {
-         return endpoints;
+        if (parameters.getStrategy().equals("")) {
+          return endpoints;
         }
         ResolverStrategy strategy = strategies.get(parameters.getStrategy());
         return strategy.order(strategy.filter(endpoints));
     }
 
+    @Override
+    public void removeResolverListener(ResolverListener listener) {
+        synchronized (this) {
+            DynamicExpression expression = dynamicAddressesByListener.remove(listener);
+            if (expression == null) {
+                throw new IllegalArgumentException("Do not have the listener in my list.");
+            }
+            expression.stop();
+        }
+        log.fine("Removed listener.");
+    }
 
-    private List<Integer> getInstances(String path) {
+    @Override
+    public void addResolverListener(String expression, ResolverListener listener) throws CloudnameException {
+        DynamicExpression dynamicExpression = new DynamicExpression(expression, listener);
+        dynamicExpression.newZooKeeperInstance(zk);
+        synchronized (this) {
+            DynamicExpression previousExpression = dynamicAddressesByListener.put(listener, dynamicExpression);
+            if (previousExpression != null) {
+                throw new IllegalArgumentException("It is not legal to register a listener twice.");
+            }
+        }
+    }
+
+    public static void addEndpoints(CoordinateData.Snapshot statusAndEndpoints, List<Endpoint> endpoints, String endpointname) {
+        if (statusAndEndpoints.getServiceStatus().getState() != ServiceState.RUNNING) {
+            return;
+        }
+        if (endpointname.equals("")) {
+            statusAndEndpoints.appendAllEndpoints(endpoints);
+        } else {
+            Endpoint e =  statusAndEndpoints.getEndpoint(endpointname);
+            if (e != null) {
+                endpoints.add(e);
+            }
+        }
+    }
+    
+    static private List<Integer> getInstances(ZooKeeper zk, String path) throws CloudnameException, InterruptedException {
         List<Integer> paths = new ArrayList<Integer>();
         try {
             List<String> children = zk.getChildren(path, false /* watcher */);
@@ -263,8 +340,6 @@ public final class ZkResolver implements Resolver {
                 paths.add(Integer.parseInt(child));
             }
         } catch (KeeperException e) {
-            throw new CloudnameException(e);
-        } catch (InterruptedException e) {
             throw new CloudnameException(e);
         }
         return paths;

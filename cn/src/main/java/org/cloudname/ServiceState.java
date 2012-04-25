@@ -22,7 +22,7 @@ public enum ServiceState {
     // A running process has claimed the coordinate and is running,
     // but it is in the process of shutting down and will not accept
     // new work.
-    DRAIN,
+    DRAINING,
 
     // An error condition has occurred.
     ERROR

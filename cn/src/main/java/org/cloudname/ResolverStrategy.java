@@ -4,6 +4,8 @@ import java.util.List;
 
 /**
  * The ResolverStrategy is an interface for implementing a strategy when resolving endpoints.
+ *
+ * @auther dybdahl
  */
 
 public interface ResolverStrategy {
