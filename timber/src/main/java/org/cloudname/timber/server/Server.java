@@ -1,5 +1,7 @@
 package org.cloudname.timber.server;
 
+import org.cloudname.log.pb.Timber;
+
 import org.cloudname.timber.server.handler.LogEventHandler;
 import org.cloudname.timber.common.Constants;
 
@@ -58,6 +60,17 @@ public class Server {
             throw new IllegalStateException("Cannot add LogEventHandler after server started");
         }
         dispatcher.addHandler(handler);
+        return this;
+    }
+
+    /**
+     * Dispatch log message to log server.
+     *
+     * @param event a Timer.LogEvent to be dispatched to the log
+     *   server.
+     */
+    public Server dispatch(Timber.LogEvent event) {
+        dispatcher.dispatch(event);
         return this;
     }
 

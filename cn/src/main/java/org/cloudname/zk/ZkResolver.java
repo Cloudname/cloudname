@@ -81,14 +81,14 @@ public final class ZkResolver implements Resolver, ZkUserInterface {
         public Map<String, ResolverStrategy> getStrategies() {
             return strategies;
         }
-        
+
         public ZkResolver build() {
             return new ZkResolver(this);
         }
 
     }
-    
-    
+
+
     // Matches coordinate with endpoint of the form:
     // endpoint.instance.service.user.cell
     public static final Pattern endpointPattern
@@ -107,7 +107,7 @@ public final class ZkResolver implements Resolver, ZkUserInterface {
                          + "([a-z][a-z0-9-_]*)\\." // user
                          + "([a-z][a-z0-9-_]*)\\z"); // cell
 
-    // Parses abstract addresses of the form:
+    // Parses abstract coordinate of the form:
     // endpoint.strategy.service.user.cell.
     public static final Pattern endpointStrategyPattern
         = Pattern.compile( "^([a-z][a-z0-9-_]*)\\." // endpoint
@@ -120,7 +120,9 @@ public final class ZkResolver implements Resolver, ZkUserInterface {
     /**
      * Inner class to keep track of parameters parsed from addressExpression.
      */
-    public static class Parameters {
+
+
+    static class Parameters {
         private String endpointName = null;
         private Integer instance = null;
         private String service = null;
@@ -133,12 +135,13 @@ public final class ZkResolver implements Resolver, ZkUserInterface {
          * @param addressExpression
          */
         public Parameters(String addressExpression) {
+
             if (! (trySetEndPointPattern(addressExpression) ||
-                    trySetStrategyPattern(addressExpression) ||
-                    trySetEndpointStrategyPattern(addressExpression))) {
+                   trySetStrategyPattern(addressExpression) ||
+                   trySetEndpointStrategyPattern(addressExpression))) {
                 throw new IllegalStateException("Could not parse addressExpression:" + addressExpression);
             }
- 
+
         }
 
         /**
@@ -242,9 +245,7 @@ public final class ZkResolver implements Resolver, ZkUserInterface {
         this.strategies = builder.getStrategies();
     }
     
-    
     static public List<Integer> resolveInstances(Parameters parameters, ZooKeeper zk) throws CloudnameException {
- 
         List<Integer> instances = new ArrayList<Integer>();
         if (parameters.getInstance() > -1) {
             instances.add(parameters.getInstance());
@@ -259,13 +260,16 @@ public final class ZkResolver implements Resolver, ZkUserInterface {
         }
         return instances;
     }
-
     
     @Override
     public List<Endpoint> resolve(String addressExpression) throws CloudnameException {
         Parameters parameters = new Parameters(addressExpression);
-
+            // TODO(borud): add some comments on the decision logic.  I'm
+            // not sure I am too fond of the check for negative values to
+            // have some particular semantics.  That smells like a problem
+            // waiting to happen.
         List<Integer> instances = resolveInstances(parameters, zk);
+
         List<Endpoint> endpoints = new ArrayList<Endpoint>();
         for (Integer instance : instances) {
             String statusPath = ZkCoordinatePath.getStatusPath(parameters.getCell(), parameters.getUser(),
@@ -289,8 +293,6 @@ public final class ZkResolver implements Resolver, ZkUserInterface {
         ResolverStrategy strategy = strategies.get(parameters.getStrategy());
         return strategy.order(strategy.filter(endpoints));
     }
-
-
 
     @Override
     public void removeResolverListener(ResolverListener listener) {
@@ -329,8 +331,6 @@ public final class ZkResolver implements Resolver, ZkUserInterface {
             }
         }
     }
-
-
     
     static private List<Integer> getInstances(ZooKeeper zk, String path) throws CloudnameException, InterruptedException {
         List<Integer> paths = new ArrayList<Integer>();
