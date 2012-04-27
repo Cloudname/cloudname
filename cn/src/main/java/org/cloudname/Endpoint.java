@@ -94,4 +94,8 @@ public class Endpoint {
             return null;
         }
     }
+    
+    public String toString() {
+        return toJson();
+    }
 }

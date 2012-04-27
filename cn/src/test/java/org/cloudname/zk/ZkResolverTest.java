@@ -3,6 +3,7 @@ package org.cloudname.zk;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
@@ -145,6 +146,60 @@ public class ZkResolverTest {
         assertEquals("data", endpoints.get(0).getEndpointData());
         assertEquals("http", endpoints.get(0).getProtocol());
     }
+
+    /**
+     * Tests that all registered endpoints are returned.
+     */
+    @Test
+    public void testGetCoordinateDataAll() throws Exception {
+        Resolver resolver = cn.getResolver();
+
+        Resolver.CoordinateDataFilter filter = new Resolver.CoordinateDataFilter();
+        Set<Endpoint> endpoints = resolver.getEndpoints(filter);
+        assertEquals(4, endpoints.size());
+    }
+
+    /**
+     * Tests that all methods of the filters are called and some basic filtering are functional.
+     */
+    @Test
+    public void testGetCoordinateDataFilterOptions() throws Exception {
+        Resolver resolver = cn.getResolver();
+        final StringBuffer  filterCalls = new StringBuffer();
+
+        Resolver.CoordinateDataFilter filter = new Resolver.CoordinateDataFilter() {
+            @Override
+            public boolean includeCell(final String datacenter) {;
+                filterCalls.append(datacenter + ":");
+                return true;
+            }
+            @Override
+            public boolean  includeUser(final String user) {
+                filterCalls.append(user + ":");
+                return true;
+            }
+            @Override
+            public boolean  includeService(final String service) {
+                filterCalls.append(service + ":");
+                return true;
+            }
+            @Override
+            public boolean includeEndpointname(final String endpointName) {
+                return endpointName.equals("foo");
+            }
+            @Override
+            public boolean includeServiceState(final ServiceState state) {
+                return state == ServiceState.RUNNING;
+            }
+        };
+        Set<Endpoint> endpoints = resolver.getEndpoints(filter);
+        assertEquals(1, endpoints.size());
+        Endpoint selectedEndpoint = endpoints.iterator().next();
+        
+        assertEquals("foo", selectedEndpoint.getName());
+        assertEquals("cell:user:service:", filterCalls.toString());
+    }
+
 
     @Test
     public void testBasicAsyncResolving() throws Exception {

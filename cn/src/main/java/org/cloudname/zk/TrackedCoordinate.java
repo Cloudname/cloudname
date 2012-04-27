@@ -18,7 +18,7 @@ public class TrackedCoordinate implements Watcher, ZkUserInterface {
         void stateChanged();
     }
 
-    private CoordinateData.Snapshot coordinateData = null;
+    private ZkCoordinateData.Snapshot coordinateData = null;
     
     private static final Logger log = Logger.getLogger(TrackedCoordinate.class.getName());
     private ZooKeeper zk;
@@ -68,7 +68,7 @@ public class TrackedCoordinate implements Watcher, ZkUserInterface {
     }
 
 
-    public CoordinateData.Snapshot getCoordinatedata() {
+    public ZkCoordinateData.Snapshot getCoordinatedata() {
         return coordinateData;
     }
 
@@ -105,7 +105,7 @@ public class TrackedCoordinate implements Watcher, ZkUserInterface {
                 break;
             case NodeDeleted:
                 synchronized (this) {
-                    coordinateData = new CoordinateData().snapshot();
+                    coordinateData = new ZkCoordinateData().snapshot();
                 }
                 client.stateChanged();
                 return;
@@ -149,7 +149,7 @@ public class TrackedCoordinate implements Watcher, ZkUserInterface {
             if (null != coordinateData) {
                 oldDataSerialized = coordinateData.serialize();
             }
-            coordinateData = CoordinateData.loadCoordianteData(path, zk, this).snapshot();
+            coordinateData = ZkCoordinateData.loadCoordianteData(path, zk, this).snapshot();
             return (! oldDataSerialized.equals(coordinateData.toString()));
         }
     }

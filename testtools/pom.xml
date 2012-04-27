@@ -13,7 +13,7 @@
   
   <name>Cloudname Test Tools</name>
   <url>https://github.com/Cloudname/cloudname</url>
-  
+
   <dependencies>
     <dependency>
       <groupId>org.apache.zookeeper</groupId>
@@ -26,5 +26,12 @@
       <artifactId>junit</artifactId>
       <scope>test</scope>
     </dependency>
+
+    <dependency>
+      <groupId>org.cloudname</groupId>
+      <artifactId>cn</artifactId>
+      <version>2.8-SNAPSHOT</version>
+    </dependency>
+
   </dependencies>
 </project>
