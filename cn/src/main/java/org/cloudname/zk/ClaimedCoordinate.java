@@ -8,7 +8,6 @@ import java.io.IOException;
 
 import java.io.UnsupportedEncodingException;
 import java.util.*;
-import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
@@ -48,7 +47,7 @@ public class ClaimedCoordinate implements Watcher, ZkUserInterface {
     private static final Logger log = Logger.getLogger(ClaimedCoordinate.class.getName());
 
     /**
-     * The ZooKeeper instance we use. This is a dynamic varoabøe and can be changed by functions in the ZkUserInterface.
+     * The ZooKeeper instance we use. This is a dynamic variable and can be changed by functions in the ZkUserInterface.
      */
     private ZooKeeper zk;
 
@@ -60,7 +59,7 @@ public class ClaimedCoordinate implements Watcher, ZkUserInterface {
     /**
      * The endpoints and the status of the coordinate is stored here.
      */
-    private CoordinateData coordinateData = new CoordinateData();
+    private ZkCoordinateData zkCoordinateData = new ZkCoordinateData();
 
     /**
      * A list of the coordinate listeners that are registered for this coordinate.
@@ -240,7 +239,7 @@ public class ClaimedCoordinate implements Watcher, ZkUserInterface {
      * @param status The new value for serviceStatus.
      */
     public void updateStatus(ServiceStatus status) throws CloudnameException, CoordinateMissingException {
-        coordinateData.setStatus(status);
+        zkCoordinateData.setStatus(status);
         updateCoordinateData();
     }
 
@@ -249,7 +248,7 @@ public class ClaimedCoordinate implements Watcher, ZkUserInterface {
      * @param newEndpoints endpoints to be added.
      */
     public void putEndpoints(List<Endpoint> newEndpoints) throws CloudnameException, CoordinateMissingException {
-        coordinateData.putEndpoints(newEndpoints);
+        zkCoordinateData.putEndpoints(newEndpoints);
         updateCoordinateData();
     }
 
@@ -258,7 +257,7 @@ public class ClaimedCoordinate implements Watcher, ZkUserInterface {
      * @param names names of endpoints to be removed.
      */
     public void removeEndpoints(List<String> names) throws CloudnameException, CoordinateMissingException {
-        coordinateData.removeEndpoints(names);
+        zkCoordinateData.removeEndpoints(names);
         updateCoordinateData();
     }
 
@@ -276,7 +275,7 @@ public class ClaimedCoordinate implements Watcher, ZkUserInterface {
             } catch (KeeperException e) {
                 throw new CloudnameException(e);
             }
-            coordinateData = null;
+            zkCoordinateData = null;
             lastStatusVersion = -1;
         }
     }
@@ -286,7 +285,7 @@ public class ClaimedCoordinate implements Watcher, ZkUserInterface {
      * @return serialized version of the instance data.
      */
     public synchronized String toString() {
-       return coordinateData.snapshot().toString();
+       return zkCoordinateData.snapshot().toString();
     }
 
     /**
@@ -388,7 +387,7 @@ public class ClaimedCoordinate implements Watcher, ZkUserInterface {
     private void claim(ZooKeeper zkArg) {
         try {
             zkArg.create(
-                    path, coordinateData.snapshot().serialize().getBytes(Util.CHARSET_NAME),
+                    path, zkCoordinateData.snapshot().serialize().getBytes(Util.CHARSET_NAME),
                     ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.EPHEMERAL, new ClaimCallback(), this);
         } catch (IOException e) {
             // We don't care about this, the system will try to reclaim later.
@@ -432,7 +431,6 @@ public class ClaimedCoordinate implements Watcher, ZkUserInterface {
         }
     }
 
-
     /**
      * Creates the serialized value of the object and stores this in ZooKeeper under the path.
      * It updates the lastStatusVersion. It does not set a watcher for the path.
@@ -450,7 +448,7 @@ public class ClaimedCoordinate implements Watcher, ZkUserInterface {
 
             try {
                 Stat stat = getZooKeeper().setData(path,
-                        coordinateData.snapshot().serialize().getBytes(Util.CHARSET_NAME),
+                        zkCoordinateData.snapshot().serialize().getBytes(Util.CHARSET_NAME),
                         lastStatusVersion);
                 lastStatusVersion = stat.getVersion();
             } catch (KeeperException.NoNodeException e) {
