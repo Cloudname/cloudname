@@ -75,7 +75,8 @@ public interface Resolver {
     public void removeResolverListener(ResolverListener listener);
 
     /**
-     * This class is used as a parameter to getEndpoints. Override methods to filter the endpoints to be
+     * This class is used as a parameter to {@link #getEndpoints(CoordinateDataFilter)}. Override methods to filter
+     * the endpoints to be
      * returned.
      */
     public class CoordinateDataFilter {

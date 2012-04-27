@@ -338,7 +338,7 @@ public final class ZkCloudname extends Thread implements Cloudname, Watcher {
     @Override
     public ServiceStatus getStatus(Coordinate coordinate) throws CloudnameException {
         String statusPath = ZkCoordinatePath.getStatusPath(coordinate);
-        ZkCoordinateData zkCoordinateData = ZkCoordinateData.loadCoordianteData(statusPath, getZk(), null);
+        ZkCoordinateData zkCoordinateData = ZkCoordinateData.loadCoordinateData(statusPath, getZk(), null);
         return zkCoordinateData.snapshot().getServiceStatus();
     }
 

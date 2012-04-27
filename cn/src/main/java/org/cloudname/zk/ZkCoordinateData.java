@@ -133,7 +133,7 @@ public final class ZkCoordinateData {
         private final Map<String, Endpoint> endpointsByName;
 
         /**
-         * Getter for status of coordiante.
+         * Getter for status of coordinate.
          * @return the service status of the coordinate.
          */
         public ServiceStatus getServiceStatus() {
@@ -149,6 +149,10 @@ public final class ZkCoordinateData {
             return endpointsByName.get(name);
         }
 
+        /**
+         * Returns all the endpoints.
+         * @return set of endpoints.
+         */
         public Set<Endpoint> getEndpoints() {
             Set<Endpoint> endpoints = new HashSet<Endpoint>();
             endpoints.addAll(endpointsByName.values());
@@ -198,7 +202,7 @@ public final class ZkCoordinateData {
      * @param watcher for callbacks from ZooKeeper. It is ok to pass null.
      * @throws CloudnameException when problems loading data.
      */
-    static public ZkCoordinateData loadCoordianteData(String statusPath, ZooKeeper zk, Watcher watcher)
+    static public ZkCoordinateData loadCoordinateData(String statusPath, ZooKeeper zk, Watcher watcher)
             throws CloudnameException {
         Stat stat = new Stat();
         try {
@@ -208,7 +212,7 @@ public final class ZkCoordinateData {
             } else {
                 data = zk.getData(statusPath, watcher, stat);
             }
-            return  new ZkCoordinateData().deserialize(data);
+            return new ZkCoordinateData().deserialize(data);
         } catch (KeeperException e) {
             throw new CloudnameException(e);
         } catch (UnsupportedEncodingException e) {

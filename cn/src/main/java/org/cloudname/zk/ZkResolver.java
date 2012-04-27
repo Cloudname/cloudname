@@ -4,8 +4,6 @@ import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.ZooKeeper;
 import org.cloudname.*;
 
-import java.net.MalformedURLException;
-import java.net.URL;
 import java.util.*;
 import java.util.logging.Logger;
 import java.util.regex.Pattern;
@@ -283,7 +281,7 @@ public final class ZkResolver implements Resolver, ZkUserInterface {
                 throw new CloudnameException(e);
 
             }
-            ZkCoordinateData zkCoordinateData = ZkCoordinateData.loadCoordianteData(statusPath, getZooKeeper(), null);
+            ZkCoordinateData zkCoordinateData = ZkCoordinateData.loadCoordinateData(statusPath, getZooKeeper(), null);
             addEndpoints(zkCoordinateData.snapshot(), endpoints, parameters.getEndpointName());
 
         }
@@ -316,7 +314,7 @@ public final class ZkResolver implements Resolver, ZkUserInterface {
     public Set<Endpoint> getEndpoints(Resolver.CoordinateDataFilter filter)
             throws CloudnameException, InterruptedException {
 
-        Set<Endpoint> endpointsIncluded = new HashSet<Endpoint>();
+        final Set<Endpoint> endpointsIncluded = new HashSet<Endpoint>();
         String cellPath = ZkCoordinatePath.getCloudnameRoot();
         try {
             List<String> cells = zk.getChildren(cellPath, false);
@@ -345,7 +343,7 @@ public final class ZkResolver implements Resolver, ZkUserInterface {
                             String statusPath = ZkCoordinatePath.getStatusPath(
                                     cell, user, service, Integer.parseInt(instance));
                             
-                            ZkCoordinateData zkCoordinateData = ZkCoordinateData.loadCoordianteData(
+                            ZkCoordinateData zkCoordinateData = ZkCoordinateData.loadCoordinateData(
                                     statusPath, getZooKeeper(), null);
                             Set<Endpoint> endpoints = zkCoordinateData.snapshot().getEndpoints();
                             for (Endpoint endpoint : endpoints) {

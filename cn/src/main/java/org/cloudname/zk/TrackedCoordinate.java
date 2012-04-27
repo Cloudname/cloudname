@@ -149,7 +149,7 @@ public class TrackedCoordinate implements Watcher, ZkUserInterface {
             if (null != coordinateData) {
                 oldDataSerialized = coordinateData.serialize();
             }
-            coordinateData = ZkCoordinateData.loadCoordianteData(path, zk, this).snapshot();
+            coordinateData = ZkCoordinateData.loadCoordinateData(path, zk, this).snapshot();
             return (! oldDataSerialized.equals(coordinateData.toString()));
         }
     }

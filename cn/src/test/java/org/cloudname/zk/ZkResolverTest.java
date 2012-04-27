@@ -165,21 +165,21 @@ public class ZkResolverTest {
     @Test
     public void testGetCoordinateDataFilterOptions() throws Exception {
         Resolver resolver = cn.getResolver();
-        final StringBuffer  filterCalls = new StringBuffer();
+        final StringBuilder filterCalls = new StringBuilder();
 
         Resolver.CoordinateDataFilter filter = new Resolver.CoordinateDataFilter() {
             @Override
-            public boolean includeCell(final String datacenter) {;
+            public boolean includeCell(final String datacenter) {
                 filterCalls.append(datacenter + ":");
                 return true;
             }
             @Override
-            public boolean  includeUser(final String user) {
+            public boolean includeUser(final String user) {
                 filterCalls.append(user + ":");
                 return true;
             }
             @Override
-            public boolean  includeService(final String service) {
+            public boolean includeService(final String service) {
                 filterCalls.append(service + ":");
                 return true;
             }
