@@ -1,6 +1,5 @@
 package org.cloudname.zk;
 
-import org.apache.zookeeper.data.Stat;
 import org.cloudname.*;
 
 import org.apache.zookeeper.WatchedEvent;
@@ -10,8 +9,10 @@ import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.ZooDefs.Ids;
 import org.apache.zookeeper.KeeperException;
 
-import java.io.UnsupportedEncodingException;
-import java.util.*;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.WeakHashMap;
 import java.util.concurrent.TimeUnit;
 
 import java.util.logging.Level;
@@ -337,8 +338,8 @@ public final class ZkCloudname extends Thread implements Cloudname, Watcher {
     @Override
     public ServiceStatus getStatus(Coordinate coordinate) throws CloudnameException {
         String statusPath = ZkCoordinatePath.getStatusPath(coordinate);
-        CoordinateData coordinateData = CoordinateData.loadCoordianteData(statusPath, getZk(), null);
-        return coordinateData.snapshot().getServiceStatus();
+        ZkCoordinateData zkCoordinateData = ZkCoordinateData.loadCoordinateData(statusPath, getZk(), null);
+        return zkCoordinateData.snapshot().getServiceStatus();
     }
 
     /**

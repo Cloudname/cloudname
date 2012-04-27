@@ -19,17 +19,19 @@ import java.io.StringWriter;
 import java.io.UnsupportedEncodingException;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
- *  CoordinateData represent the data regarding a coordinate. It can return an immutable snapshot.
+ *  ZkCoordinateData represent the data regarding a coordinate. It can return an immutable snapshot.
  *  The class has support for deserializing and serializing the data and methods for accessing endpoints.
  *  The class is fully thread-safe.
  *
  *  @auther dybdahl
  */
-public final class CoordinateData {
+public final class ZkCoordinateData {
     /**
      * The status of the coordinate, is it running etc.
      */
@@ -56,7 +58,7 @@ public final class CoordinateData {
     /**
      * Sets status, overwrite any existing status information.
      */
-    public CoordinateData setStatus(ServiceStatus status)  {
+    public ZkCoordinateData setStatus(ServiceStatus status)  {
         synchronized (this) {
             this.serviceStatus = status;
             return this;
@@ -67,7 +69,7 @@ public final class CoordinateData {
      * Adds new endpoints to the builder. It is not legal to add a new endpoint with an endpoint that already
      * exists.
      */
-    public CoordinateData putEndpoints(List<Endpoint> newEndpoints) {
+    public ZkCoordinateData putEndpoints(List<Endpoint> newEndpoints) {
         synchronized (this) {
             for (Endpoint endpoint : newEndpoints) {
                 Endpoint previousEndpoint = endpointsByName.put(endpoint.getName(), endpoint);
@@ -83,7 +85,7 @@ public final class CoordinateData {
     /**
      * Remove endpoints from the Dynamic object.
      */
-    public CoordinateData removeEndpoints(List<String> names)  {
+    public ZkCoordinateData removeEndpoints(List<String> names)  {
         synchronized (this) {
             for (String name : names) {
                 if (! endpointsByName.containsKey(name)) {
@@ -102,7 +104,7 @@ public final class CoordinateData {
      * Any old data is overwritten.
      * @throws IOException if something went wrong, should not happen on valid data.
      */
-    public CoordinateData deserialize(byte[] data) throws IOException {
+    public ZkCoordinateData deserialize(byte[] data) throws IOException {
         synchronized (this) {
             String stringData = new String(data, Util.CHARSET_NAME);
             JsonFactory jsonFactory = new JsonFactory();
@@ -131,7 +133,7 @@ public final class CoordinateData {
         private final Map<String, Endpoint> endpointsByName;
 
         /**
-         * Getter for status of coordiante.
+         * Getter for status of coordinate.
          * @return the service status of the coordinate.
          */
         public ServiceStatus getServiceStatus() {
@@ -145,6 +147,16 @@ public final class CoordinateData {
          */
         public Endpoint getEndpoint(String name) {
             return endpointsByName.get(name);
+        }
+
+        /**
+         * Returns all the endpoints.
+         * @return set of endpoints.
+         */
+        public Set<Endpoint> getEndpoints() {
+            Set<Endpoint> endpoints = new HashSet<Endpoint>();
+            endpoints.addAll(endpointsByName.values());
+            return endpoints;
         }
 
         /**
@@ -177,7 +189,7 @@ public final class CoordinateData {
         }
 
         /**
-         * Private constructor, only CoordinateData can build this.
+         * Private constructor, only ZkCoordinateData can build this.
          */
         private Snapshot(ServiceStatus serviceStatus, Map<String, Endpoint> endpointsByName) {
             this.serviceStatus = serviceStatus;
@@ -186,11 +198,11 @@ public final class CoordinateData {
     }
 
     /**
-     * Utility function to create and load a CoordinateData from ZooKeeper.
+     * Utility function to create and load a ZkCoordinateData from ZooKeeper.
      * @param watcher for callbacks from ZooKeeper. It is ok to pass null.
      * @throws CloudnameException when problems loading data.
      */
-    static public CoordinateData loadCoordianteData(String statusPath, ZooKeeper zk, Watcher watcher)
+    static public ZkCoordinateData loadCoordinateData(String statusPath, ZooKeeper zk, Watcher watcher)
             throws CloudnameException {
         Stat stat = new Stat();
         try {
@@ -200,7 +212,7 @@ public final class CoordinateData {
             } else {
                 data = zk.getData(statusPath, watcher, stat);
             }
-            return  new CoordinateData().deserialize(data);
+            return new ZkCoordinateData().deserialize(data);
         } catch (KeeperException e) {
             throw new CloudnameException(e);
         } catch (UnsupportedEncodingException e) {

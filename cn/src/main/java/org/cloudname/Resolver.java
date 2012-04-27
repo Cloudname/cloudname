@@ -1,7 +1,7 @@
 package org.cloudname;
 
-
 import java.util.List;
+import java.util.Set;
 
 /**
  * This interface defines how we resolve endpoints in Cloudname. The client has to keep a reference to this Resolver
@@ -73,4 +73,39 @@ public interface Resolver {
      * The default is to use object id.
      */
     public void removeResolverListener(ResolverListener listener);
+
+    /**
+     * This class is used as a parameter to {@link #getEndpoints(CoordinateDataFilter)}. Override methods to filter
+     * the endpoints to be
+     * returned.
+     */
+    public class CoordinateDataFilter {
+        /**
+         * Override these methods to filter on cell, user, service, endpointName, and/or service state.
+         */
+
+        public boolean includeCell(final String cell) {
+            return true;
+        }
+        public boolean includeUser(final String user) {
+            return true;
+        }
+        public boolean includeService(final String service) {
+            return true;
+        }
+        public boolean includeEndpointname(final String endpointName) {
+            return true;
+        }
+        public boolean includeServiceState(final ServiceState state) {
+            return true;
+        }
+    }
+
+    /**
+     * This method reads out all the nodes from the storage. IT CAN BE VERY EXPENSIVE AND SHOULD BE USED ONLY
+     * WHEN NO OTHER METHODS ARE FEASIBLE. Do not call it frequently!
+     * @param filter class for filtering out endpoints
+     * @return list of endpoints.
+     */
+    public Set<Endpoint> getEndpoints(CoordinateDataFilter filter) throws CloudnameException, InterruptedException;
 }

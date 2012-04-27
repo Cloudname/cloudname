@@ -1,8 +1,6 @@
 package org.cloudname.zk;
 
 import org.apache.zookeeper.KeeperException;
-import org.apache.zookeeper.WatchedEvent;
-import org.apache.zookeeper.Watcher;
 import org.apache.zookeeper.ZooKeeper;
 import org.cloudname.*;
 
@@ -283,8 +281,8 @@ public final class ZkResolver implements Resolver, ZkUserInterface {
                 throw new CloudnameException(e);
 
             }
-            CoordinateData coordinateData = CoordinateData.loadCoordianteData(statusPath, getZooKeeper(), null);
-            addEndpoints(coordinateData.snapshot(), endpoints, parameters.getEndpointName());
+            ZkCoordinateData zkCoordinateData = ZkCoordinateData.loadCoordinateData(statusPath, getZooKeeper(), null);
+            addEndpoints(zkCoordinateData.snapshot(), endpoints, parameters.getEndpointName());
 
         }
         if (parameters.getStrategy().equals("")) {
@@ -306,6 +304,66 @@ public final class ZkResolver implements Resolver, ZkUserInterface {
         log.fine("Removed listener.");
     }
 
+    /**
+     * The implementation does filter while listing out nodes. In this way paths that are not of
+     * interest are not traversed.
+     * @param filter class for filtering out endpoints
+     * @return the endpoints that passes the filter
+     */
+    @Override
+    public Set<Endpoint> getEndpoints(Resolver.CoordinateDataFilter filter)
+            throws CloudnameException, InterruptedException {
+
+        final Set<Endpoint> endpointsIncluded = new HashSet<Endpoint>();
+        String cellPath = ZkCoordinatePath.getCloudnameRoot();
+        try {
+            List<String> cells = zk.getChildren(cellPath, false);
+            for (String cell : cells) {
+                if (! filter.includeCell(cell)) {
+                    continue;
+                }
+                String userPath = cellPath + "/" + cell;
+                List<String> users = zk.getChildren(userPath, false);
+                
+                for (String user : users) {
+                    if (! filter.includeUser(user)) {
+                        continue;
+                    }
+                    String servicePath = userPath + "/" + user;
+                    List<String> services = zk.getChildren(servicePath, false);
+
+                    for (String service : services) {
+                        if (! filter.includeService(service)) {
+                            continue;
+                        }
+                        String instancePath = servicePath + "/" + service;
+                        List<String> instances = zk.getChildren(instancePath, false);
+
+                        for (String instance : instances) {
+                            String statusPath = ZkCoordinatePath.getStatusPath(
+                                    cell, user, service, Integer.parseInt(instance));
+                            
+                            ZkCoordinateData zkCoordinateData = ZkCoordinateData.loadCoordinateData(
+                                    statusPath, getZooKeeper(), null);
+                            Set<Endpoint> endpoints = zkCoordinateData.snapshot().getEndpoints();
+                            for (Endpoint endpoint : endpoints) {
+                                if (filter.includeEndpointname(endpoint.getName())) {
+                                    if (filter.includeServiceState(
+                                            zkCoordinateData.snapshot().getServiceStatus().getState())) {
+                                        endpointsIncluded.add(endpoint);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        } catch (KeeperException e) {
+            throw new CloudnameException(e);
+        }
+        return endpointsIncluded;
+    }
+
     @Override
     public void addResolverListener(String expression, ResolverListener listener) throws CloudnameException {
         DynamicExpression dynamicExpression = new DynamicExpression(expression, listener);
@@ -318,7 +376,7 @@ public final class ZkResolver implements Resolver, ZkUserInterface {
         }
     }
 
-    public static void addEndpoints(CoordinateData.Snapshot statusAndEndpoints, List<Endpoint> endpoints, String endpointname) {
+    public static void addEndpoints(ZkCoordinateData.Snapshot statusAndEndpoints, List<Endpoint> endpoints, String endpointname) {
         if (statusAndEndpoints.getServiceStatus().getState() != ServiceState.RUNNING) {
             return;
         }
