@@ -4,7 +4,10 @@ import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.Watcher;
 import org.apache.zookeeper.ZooKeeper;
 import org.apache.zookeeper.data.Stat;
-import org.cloudname.*;
+import org.cloudname.CloudnameException;
+import org.cloudname.Endpoint;
+import org.cloudname.ServiceState;
+import org.cloudname.ServiceStatus;
 import org.codehaus.jackson.JsonFactory;
 import org.codehaus.jackson.JsonGenerator;
 import org.codehaus.jackson.JsonParser;
@@ -14,7 +17,12 @@ import org.codehaus.jackson.type.TypeReference;
 import java.io.IOException;
 import java.io.StringWriter;
 import java.io.UnsupportedEncodingException;
-import java.util.*;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 /**
  *  ZkCoordinateData represent the data regarding a coordinate. It can return an immutable snapshot.
