@@ -1,4 +1,4 @@
-package org.cloudname.testtools;
+package org.cloudname;
 
 import org.apache.zookeeper.WatchedEvent;
 import org.apache.zookeeper.Watcher;
@@ -8,8 +8,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.logging.Logger;
 
 import org.apache.zookeeper.ZooKeeper;
-import org.cloudname.Cloudname;
-import org.cloudname.CloudnameException;
+import org.cloudname.testtools.Net;
 import org.cloudname.testtools.zookeeper.EmbeddedZooKeeper;
 import org.cloudname.zk.ZkCloudname;
 
