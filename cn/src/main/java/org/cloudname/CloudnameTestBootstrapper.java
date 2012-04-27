@@ -19,7 +19,6 @@ import org.cloudname.zk.ZkCloudname;
  */
 public class CloudnameTestBootstrapper {
 
-
     private static final Logger LOGGER = Logger.getLogger(CloudnameTestBootstrapper.class.getName());
     private EmbeddedZooKeeper embeddedZooKeeper;
     private ZooKeeper zooKeeper;
