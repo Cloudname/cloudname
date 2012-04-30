@@ -22,7 +22,7 @@ import java.util.regex.Pattern;
  * @author dybdahl
  */
 public final class ZkTool {
-    @Flag(name="zooKeeper", description="A list of host:port for connecting to ZooKeeper.")
+    @Flag(name="zookeeper", description="A list of host:port for connecting to ZooKeeper.")
     private static String zooKeeperFlag = null;
 
     @Flag(name="coordinate", description="The coordinate to work on.")
@@ -138,14 +138,16 @@ public final class ZkTool {
                 ServiceStatus status;
 
                 status = cloudname.getStatus(c);
-
+                
                 System.err.println("Status:\n" + status.getState().toString() + " " + status.getMessage());
                 List<Endpoint> endpoints = resolver.resolve("all." + c.getService()
                         + "." + c.getUser() + "." + c.getCell());
                 System.err.println("Endpoints:");
                 for (Endpoint endpoint : endpoints) {
-                    System.err.println(endpoint.getName() + "-->" + endpoint.getHost() + ":" + endpoint.getPort()
-                    + " protocol:" + endpoint.getProtocol());
+                    if (endpoint.getCoordinate().getInstance() == c.getInstance()) {
+                        System.err.println(endpoint.getName() + "-->" + endpoint.getHost() + ":" + endpoint.getPort()
+                                + " protocol:" + endpoint.getProtocol());
+                    }
                 }
                 break;
             case LIST:
