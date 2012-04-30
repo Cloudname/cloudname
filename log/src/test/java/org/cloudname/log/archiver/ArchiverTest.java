@@ -86,7 +86,7 @@ public class ArchiverTest {
      * something slows down by more than 5 times what you will see on
      * a modern iMac.
      */
-    @Test (timeout = 1500)
+    @Test (timeout = 2500)
     public void testFlushSlowdownMeasurement() {
         String logPath = temp.newFolder("test-speed").getAbsolutePath();
         Archiver archiver = new Archiver(logPath, MEGABYTE);
