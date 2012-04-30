@@ -30,33 +30,32 @@ public final class ZkTool {
 
     @Flag(name="operation", options = Operation.class,
         description = "The operationFlag to do on coordinate.")
-    private static Operation operationFlag = Operation.status;
+    private static Operation operationFlag = Operation.STATUS;
 
     @Flag(name = "setup-file",
         description = "Path to file containing a list of coordinates to create (1 coordinate per line).")
     private static String filePath = null;
 
     /**
-     *   The possible operations to do on a coordinate. They are lower-case so the flag Operation
-     *   value can be lower case.
+     *   The possible operations to do on a coordinate.
      */
     public enum Operation {
         /**
          * Create a new coordinate.
          */
-        create,
+        CREATE,
         /**
          * Delete a coordinate.
          */
-        delete,
+        DELETE,
         /**
          * Print out some status about a coordinate.
          */
-        status,
+        STATUS,
         /**
          * Print the coordinates in zookeeper
          */
-        list;
+        LIST;
     }
 
     /**
@@ -126,15 +125,15 @@ public final class ZkTool {
         }
 
         switch (operationFlag) {
-            case create:
+            case CREATE:
                 cloudname.createCoordinate(Coordinate.parse(coordinateFlag));
                 System.err.println("Created coordinate.");
                 break;
-            case delete:
+            case DELETE:
                 cloudname.destroyCoordinate(Coordinate.parse(coordinateFlag));
                 System.err.println("Deleted coordinate.");
                 break;
-            case status:
+            case STATUS:
                 Coordinate c = Coordinate.parse(coordinateFlag);
                 ServiceStatus status;
 
@@ -151,7 +150,7 @@ public final class ZkTool {
                     }
                 }
                 break;
-            case list:
+            case LIST:
                 List<String> nodeList = new ArrayList<String>();
                 cloudname.listRecursively(nodeList);
                 for (String node : nodeList) {
