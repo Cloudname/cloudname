@@ -270,7 +270,7 @@ public class ZkCloudnameTest {
      */
     class UnitTestCoordinateListener implements CoordinateListener {
 
-        final public List<Event> events = new ArrayList<Event>();
+        final public List<Event> events = new CopyOnWriteArrayList<Event>();
 
         final private CountDownLatch latch1, latch2;
         
