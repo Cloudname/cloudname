@@ -22,7 +22,7 @@ import java.util.regex.Pattern;
  * @author dybdahl
  */
 public final class ZkTool {
-    @Flag(name="zooKeeper", description="A list of host:port for connecting to ZooKeeper.")
+    @Flag(name="zookeeper", description="A list of host:port for connecting to ZooKeeper.")
     private static String zooKeeperFlag = null;
 
     @Flag(name="coordinate", description="The coordinate to work on.")
@@ -30,32 +30,33 @@ public final class ZkTool {
 
     @Flag(name="operation", options = Operation.class,
         description = "The operationFlag to do on coordinate.")
-    private static Operation operationFlag = Operation.STATUS;
+    private static Operation operationFlag = Operation.status;
 
     @Flag(name = "setup-file",
         description = "Path to file containing a list of coordinates to create (1 coordinate per line).")
     private static String filePath = null;
 
     /**
-     *   The possible operations to do on a coordinate.
+     *   The possible operations to do on a coordinate. They are lower-case so the flag Operation
+     *   value can be lower case.
      */
     public enum Operation {
         /**
          * Create a new coordinate.
          */
-        CREATE,
+        create,
         /**
          * Delete a coordinate.
          */
-        DELETE,
+        delete,
         /**
          * Print out some status about a coordinate.
          */
-        STATUS,
+        status,
         /**
          * Print the coordinates in zookeeper
          */
-        LIST;
+        list;
     }
 
     /**
@@ -125,30 +126,32 @@ public final class ZkTool {
         }
 
         switch (operationFlag) {
-            case CREATE:
+            case create:
                 cloudname.createCoordinate(Coordinate.parse(coordinateFlag));
                 System.err.println("Created coordinate.");
                 break;
-            case DELETE:
+            case delete:
                 cloudname.destroyCoordinate(Coordinate.parse(coordinateFlag));
                 System.err.println("Deleted coordinate.");
                 break;
-            case STATUS:
+            case status:
                 Coordinate c = Coordinate.parse(coordinateFlag);
                 ServiceStatus status;
 
                 status = cloudname.getStatus(c);
-
+                
                 System.err.println("Status:\n" + status.getState().toString() + " " + status.getMessage());
                 List<Endpoint> endpoints = resolver.resolve("all." + c.getService()
                         + "." + c.getUser() + "." + c.getCell());
                 System.err.println("Endpoints:");
                 for (Endpoint endpoint : endpoints) {
-                    System.err.println(endpoint.getName() + "-->" + endpoint.getHost() + ":" + endpoint.getPort()
-                    + " protocol:" + endpoint.getProtocol());
+                    if (endpoint.getCoordinate().getInstance() == c.getInstance()) {
+                        System.err.println(endpoint.getName() + "-->" + endpoint.getHost() + ":" + endpoint.getPort()
+                                + " protocol:" + endpoint.getProtocol());
+                    }
                 }
                 break;
-            case LIST:
+            case list:
                 List<String> nodeList = new ArrayList<String>();
                 cloudname.listRecursively(nodeList);
                 for (String node : nodeList) {
