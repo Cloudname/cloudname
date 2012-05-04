@@ -1,5 +1,9 @@
 package org.cloudname.zk;
 
+
+import org.apache.log4j.BasicConfigurator;
+import org.apache.log4j.ConsoleAppender;
+import org.apache.log4j.PatternLayout;
 import org.cloudname.*;
 import org.cloudname.flags.Flag;
 import org.cloudname.flags.Flags;
@@ -8,6 +12,7 @@ import java.io.BufferedReader;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
+import java.io.Writer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Matcher;
@@ -68,7 +73,24 @@ public final class ZkTool {
             + "(\\d+)\\/config\\z"); // instance
 
 
-    public static void main(String[] args) throws Exception {
+    public static void main(final String[] args)  {
+
+        // Disable log system, we want full control over what is sent to console.
+        final ConsoleAppender consoleAppender = new ConsoleAppender();
+        consoleAppender.activateOptions();
+        consoleAppender.setLayout(new PatternLayout("%p %t %C:%M %m%n"));
+        consoleAppender.setWriter(new Writer() {
+            @Override
+            public void write(char[] chars, int i, int i1) throws IOException { }
+
+            @Override
+            public void flush() throws IOException { }
+
+            @Override
+            public void close() throws IOException { }
+        });
+        BasicConfigurator.configure(consoleAppender);
+        
         // Parse the flags.
         Flags flags = new Flags()
                 .loadOpts(ZkTool.class)
@@ -82,14 +104,17 @@ public final class ZkTool {
 
         ZkCloudname.Builder builder = new ZkCloudname.Builder();
         if (zooKeeperFlag == null) {
-            System.out.println("Connecting to cloudname with auto connect.");
             builder.setDefaultConnectString();
         } else {
-            System.out.println("Connecting to cloudname with ZooKeeper connect string " + zooKeeperFlag);
             builder.setConnectString(zooKeeperFlag);
         }
-        ZkCloudname cloudname = builder.build().connect();
-        System.err.println("Connected to ZooKeeper.");
+        ZkCloudname cloudname = null;
+        try {
+            cloudname = builder.build().connect();
+        } catch (CloudnameException e) {
+            System.err.println("Could not connect to zookeeper " + e.getMessage());
+            return;
+        }
 
         Resolver resolver = cloudname.getResolver();
 
@@ -109,39 +134,81 @@ public final class ZkTool {
                         System.out.println("Created " + line);
                     } catch (Exception e) {
                         System.err.println("Could not create: " + line);
-                        e.printStackTrace();
+                        System.err.println("Got error: " + e.getMessage());
+                        try {
+                            cloudname.close();
+                        } catch (InterruptedException e1) {
+                            return;
+                        }
+                        return;
                     }
 
                 }
             } catch (IOException e) {
                 System.err.println("Failed to read coordinate from file. " + e.getMessage());
+                try {
+                    cloudname.close();
+                } catch (InterruptedException e1) {
+                    return;
+                }
+                return;
             }
             try {
                 br.close();
             } catch (IOException e) {
-                e.printStackTrace();
+                return;
             }
             return;
         }
 
         switch (operationFlag) {
             case CREATE:
-                cloudname.createCoordinate(Coordinate.parse(coordinateFlag));
+                try {
+                    cloudname.createCoordinate(Coordinate.parse(coordinateFlag));
+                } catch (CloudnameException e) {
+                    System.err.println("Got error: " + e.getMessage());
+                    break;
+                } catch (CoordinateExistsException e) {
+                    e.printStackTrace();
+                    break;
+                }
                 System.err.println("Created coordinate.");
                 break;
             case DELETE:
-                cloudname.destroyCoordinate(Coordinate.parse(coordinateFlag));
+                try {
+                    cloudname.destroyCoordinate(Coordinate.parse(coordinateFlag));
+                } catch (CoordinateDeletionException e) {
+                    System.err.println("Got error: " + e.getMessage());
+                    return;
+                } catch (CoordinateMissingException e) {
+                    System.err.println("Got error: " + e.getMessage());
+                    break;
+                } catch (CloudnameException e) {
+                    System.err.println("Got error: " + e.getMessage());
+                    break;
+                }
                 System.err.println("Deleted coordinate.");
                 break;
             case STATUS:
                 Coordinate c = Coordinate.parse(coordinateFlag);
                 ServiceStatus status;
 
-                status = cloudname.getStatus(c);
-                
+                try {
+                    status = cloudname.getStatus(c);
+                } catch (CloudnameException e) {
+                    System.err.println("Problems loading status, is service running? Error:\n" + e.getMessage());
+                    break;
+                }
+
                 System.err.println("Status:\n" + status.getState().toString() + " " + status.getMessage());
-                List<Endpoint> endpoints = resolver.resolve("all." + c.getService()
-                        + "." + c.getUser() + "." + c.getCell());
+                List<Endpoint> endpoints = null;
+                try {
+                    endpoints = resolver.resolve("all." + c.getService()
+                            + "." + c.getUser() + "." + c.getCell());
+                } catch (CloudnameException e) {
+                    System.err.println("Got error: " + e.getMessage());
+                    break;
+                }
                 System.err.println("Endpoints:");
                 for (Endpoint endpoint : endpoints) {
                     if (endpoint.getCoordinate().getInstance() == c.getInstance()) {
@@ -152,7 +219,15 @@ public final class ZkTool {
                 break;
             case LIST:
                 List<String> nodeList = new ArrayList<String>();
-                cloudname.listRecursively(nodeList);
+                try {
+                    cloudname.listRecursively(nodeList);
+                } catch (CloudnameException e) {
+                    System.err.println("Got error: " + e.getMessage());
+                    break;
+                } catch (InterruptedException e) {
+                    System.err.println("Got error: " + e.getMessage());
+                    break;
+                }
                 for (String node : nodeList) {
                     Matcher m = instanceConfigPattern.matcher(node);
 
@@ -166,7 +241,11 @@ public final class ZkTool {
             default:
                 System.out.println("Unknown command " + operationFlag);
         }
-        cloudname.close();
+        try {
+            cloudname.close();
+        } catch (InterruptedException e) {
+            return;
+        }
     }
 
     // Should not be instantiated.
