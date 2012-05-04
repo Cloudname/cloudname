@@ -342,9 +342,18 @@ public final class ZkResolver implements Resolver, ZkUserInterface {
                         for (String instance : instances) {
                             String statusPath = ZkCoordinatePath.getStatusPath(
                                     cell, user, service, Integer.parseInt(instance));
-                            
-                            ZkCoordinateData zkCoordinateData = ZkCoordinateData.loadCoordinateData(
-                                    statusPath, getZooKeeper(), null);
+
+                            ZkCoordinateData zkCoordinateData = null;
+                            try {
+                                zkCoordinateData = ZkCoordinateData.loadCoordinateData(
+                                        statusPath, getZooKeeper(), null);
+                            } catch (CloudnameException e) {
+                                // This is ok, an unclaimed node will not have status data, we ignore it even
+                                // though there might also be other exception (this should be rare).
+                                // The advantage is that we don't need to check if the node exists and hence
+                                // reduce the load on zookeeper.
+                                continue;
+                            }
                             Set<Endpoint> endpoints = zkCoordinateData.snapshot().getEndpoints();
                             for (Endpoint endpoint : endpoints) {
                                 if (filter.includeEndpointname(endpoint.getName())) {
