@@ -7,8 +7,10 @@ import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
+import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.WatchedEvent;
 import org.apache.zookeeper.Watcher;
+import org.apache.zookeeper.ZooDefs;
 import org.apache.zookeeper.ZooKeeper;
 import org.cloudname.*;
 import org.cloudname.testtools.Net;
@@ -152,6 +154,26 @@ public class ZkResolverTest {
      */
     @Test
     public void testGetCoordinateDataAll() throws Exception {
+        Resolver resolver = cn.getResolver();
+
+        Resolver.CoordinateDataFilter filter = new Resolver.CoordinateDataFilter();
+        Set<Endpoint> endpoints = resolver.getEndpoints(filter);
+        assertEquals(4, endpoints.size());
+    }
+
+    /**
+     * Test an unclaimed coordinate and a path that is not complete.
+     * @throws Exception
+     */
+    @Test
+    public void testGetCoordinateDataAllNoClaimedCoordinate() throws Exception {
+        // Create unclaimned coordinate.
+        Coordinate coordinateNoStatus = Coordinate.parse("4.service.user.cell");
+        cn.createCoordinate(coordinateNoStatus);
+
+        // Throw in a incomplete path.
+        zk.create("/cn/foo",  new byte[0], ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
+        
         Resolver resolver = cn.getResolver();
 
         Resolver.CoordinateDataFilter filter = new Resolver.CoordinateDataFilter();
