@@ -60,6 +60,10 @@ public final class ZkTool {
         /**
          * Print the coordinates in zookeeper
          */
+        HOST,
+        /**
+         * Print the coordinates in zookeeper
+         */
         LIST;
     }
 
@@ -190,6 +194,7 @@ public final class ZkTool {
                 System.err.println("Deleted coordinate.");
                 break;
             case STATUS:
+            {
                 Coordinate c = Coordinate.parse(coordinateFlag);
                 ServiceStatus status;
 
@@ -216,6 +221,23 @@ public final class ZkTool {
                                 + " protocol:" + endpoint.getProtocol());
                     }
                 }
+            }
+                break;
+            case HOST:
+            {
+                Coordinate c = Coordinate.parse(coordinateFlag);
+                List<Endpoint> endpoints = null;
+                try {
+                    endpoints = resolver.resolve(c.asString());
+                } catch (CloudnameException e) {
+                    System.err.println("Could not resolve "+c.asString()+" Error:\n" + e.getMessage());
+                    break;
+                }
+                for (Endpoint endpoint : endpoints) {
+                    System.out.println("Host: "+endpoint.getHost());
+                }
+
+            }
                 break;
             case LIST:
                 List<String> nodeList = new ArrayList<String>();
