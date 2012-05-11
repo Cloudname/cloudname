@@ -100,10 +100,19 @@ public final class ZkResolver implements Resolver, ZkUserInterface {
     // strategy.service.user.cell.  This pattern is useful for
     // resolving hosts, but not endpoints.
     public static final Pattern strategyPattern
-        = Pattern.compile( "^([a-z][a-z0-9-_]*)\\." // strategy
-                         + "([a-z][a-z0-9-_]*)\\." // service
-                         + "([a-z][a-z0-9-_]*)\\." // user
-                         + "([a-z][a-z0-9-_]*)\\z"); // cell
+            = Pattern.compile( "^([a-z][a-z0-9-_]*)\\." // strategy
+                        + "([a-z][a-z0-9-_]*)\\." // service
+                        + "([a-z][a-z0-9-_]*)\\." // user
+                        + "([a-z][a-z0-9-_]*)\\z"); // cell
+
+    // Parses abstract coordinate of the form:
+    // strategy.service.user.cell.  This pattern is useful for
+    // resolving hosts, but not endpoints.
+    public static final Pattern instancePattern
+            = Pattern.compile( "^([a-z0-9-_]*)\\." // strategy
+                        + "([a-z][a-z0-9-_]*)\\." // service
+                        + "([a-z][a-z0-9-_]*)\\." // user
+                        + "([a-z][a-z0-9-_]*)\\z"); // cell
 
     // Parses abstract coordinate of the form:
     // endpoint.strategy.service.user.cell.
@@ -136,6 +145,7 @@ public final class ZkResolver implements Resolver, ZkUserInterface {
 
             if (! (trySetEndPointPattern(addressExpression) ||
                    trySetStrategyPattern(addressExpression) ||
+                   trySetInstancePattern(addressExpression) ||
                    trySetEndpointStrategyPattern(addressExpression))) {
                 throw new IllegalStateException("Could not parse addressExpression:" + addressExpression);
             }
@@ -216,6 +226,20 @@ public final class ZkResolver implements Resolver, ZkUserInterface {
             user = m.group(3);
             cell = m.group(4);
             instance = -1;
+            return true;
+        }
+
+        private boolean trySetInstancePattern(String addressExpression) {
+            Matcher m = instancePattern.matcher(addressExpression);
+            if (! m.matches()) {
+                return false;
+            }
+            endpointName = "";
+            instance = Integer.parseInt(m.group(1));
+            service = m.group(2);
+            user = m.group(3);
+            cell = m.group(4);
+            strategy = "";
             return true;
         }
 
