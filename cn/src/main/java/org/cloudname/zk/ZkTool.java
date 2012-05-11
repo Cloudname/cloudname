@@ -55,6 +55,10 @@ public final class ZkTool {
         /**
          * Print the coordinates in zookeeper
          */
+        HOST,
+        /**
+         * Print the coordinates in zookeeper
+         */
         LIST;
     }
 
@@ -134,11 +138,12 @@ public final class ZkTool {
                 System.err.println("Deleted coordinate.");
                 break;
             case STATUS:
+            {
                 Coordinate c = Coordinate.parse(coordinateFlag);
                 ServiceStatus status;
 
                 status = cloudname.getStatus(c);
-                
+
                 System.err.println("Status:\n" + status.getState().toString() + " " + status.getMessage());
                 List<Endpoint> endpoints = resolver.resolve("all." + c.getService()
                         + "." + c.getUser() + "." + c.getCell());
@@ -149,6 +154,17 @@ public final class ZkTool {
                                 + " protocol:" + endpoint.getProtocol());
                     }
                 }
+            }
+                break;
+            case HOST:
+            {
+                Coordinate c = Coordinate.parse(coordinateFlag);
+                List<Endpoint> endpoints = resolver.resolve(c.asString());
+                for (Endpoint endpoint : endpoints) {
+                    System.out.println("Host: "+endpoint.getHost());
+                }
+
+            }
                 break;
             case LIST:
                 List<String> nodeList = new ArrayList<String>();
