@@ -47,12 +47,13 @@ public class ServerExampleCloudname {
      * Method to set-up and start the web server.
      * @throws IOException
      */
-    public  void runServer() throws IOException, CloudnameException, CoordinateException {
+    public  void runServer() throws IOException, CloudnameException, CoordinateException, InterruptedException {
         port = Net.getFreePort();
         System.err.println("I think that port " + Integer.toString(port) + " is free and will use it.");
         Cloudname cloudName = new ZkCloudname.Builder().setConnectString("127.0.0.1:5454").build().connect();
         Coordinate coordinate = Coordinate.parse(String.format("%s.hello.somebody.aa", instance));
         ServiceHandle handle = cloudName.claim(coordinate);
+        handle.waitForCoordinateOkSeconds(1000);
         Endpoint endpoint = new Endpoint(coordinate, "info", "127.0.0.1", port, "http", null);
         handle.putEndpoint(endpoint);
         handle.setStatus(new ServiceStatus(ServiceState.RUNNING, "I am alive and kicking."));
@@ -66,7 +67,8 @@ public class ServerExampleCloudname {
      * @param args The first and only argument is the instance number
      * @throws IOException
      */
-    public static void main(String[] args) throws IOException, CloudnameException, CoordinateException {
+    public static void main(String[] args)
+            throws IOException, CloudnameException, CoordinateException, InterruptedException {
         //ServerExampleCloudname server = new ServerExampleCloudname(Integer.parseInt(args[0]));
         ServerExampleCloudname server = new ServerExampleCloudname(0);
         server.runServer();
