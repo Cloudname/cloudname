@@ -34,13 +34,24 @@
     <profile>
       <id>profile-protoc-linux-x86</id>
       <activation>
-	<os>
-	  <family>unix</family>
-	  <name>linux</name>
-	</os>
+        <os>
+          <family>unix</family>
+          <name>linux</name>
+        </os>
       </activation>
       <properties>
-	<protoc.executable>bin/protoc-linux-i386</protoc.executable>
+        <protoc.executable>bin/protoc-linux-i386</protoc.executable>
+      </properties>
+    </profile>
+    <profile>
+      <id>profile-protoc-win32</id>
+      <activation>
+        <os>
+          <family>Windows</family>
+        </os>
+      </activation>
+      <properties>
+        <protoc.executable>bin/protoc-2.3.0-win32.exe</protoc.executable>
       </properties>
     </profile>
   </profiles>
@@ -56,10 +67,11 @@
 	    <configuration>
 	      <tasks>
 		<mkdir dir="target/generated-sources"/>
-		<exec executable="${protoc.executable}">
-		  <arg value="--java_out=target/generated-sources"/>
-		  <arg value="src/main/protobuf/timber.proto"/>
-		</exec>
+		<exec executable="${basedir}/${protoc.executable}">
+		  <arg value="--java_out=${project.build.directory}/generated-sources"/>
+		  <arg value="--proto_path=${basedir}/src/main/protobuf"/>
+          <arg value="${basedir}/src/main/protobuf/timber.proto"/>
+        </exec>
 	      </tasks>
 	      <sourceRoot>target/generated-sources</sourceRoot>
 	    </configuration>
