@@ -41,6 +41,10 @@ public final class ZkTool {
         description = "Path to file containing a list of coordinates to create (1 coordinate per line).")
     private static String filePath = null;
 
+    @Flag(name = "config",
+        description = "New config if setting new config.")
+    private static String configFlag = "";
+    
     /**
      *   The possible operations to do on a coordinate.
      */
@@ -64,7 +68,15 @@ public final class ZkTool {
         /**
          * Print the coordinates in zookeeper
          */
-        LIST;
+        LIST,
+        /**
+         * Set config
+         */
+        SET_CONFIG,
+        /**
+         * Read config
+         */
+        READ_CONFIG;
     }
 
     /**
@@ -193,8 +205,7 @@ public final class ZkTool {
                 }
                 System.err.println("Deleted coordinate.");
                 break;
-            case STATUS:
-            {
+            case STATUS: {
                 Coordinate c = Coordinate.parse(coordinateFlag);
                 ServiceStatus status;
 
@@ -222,23 +233,22 @@ public final class ZkTool {
                     }
                 }
             }
-                break;
-            case HOST:
-            {
+            break;
+            case HOST: {
                 Coordinate c = Coordinate.parse(coordinateFlag);
                 List<Endpoint> endpoints = null;
                 try {
                     endpoints = resolver.resolve(c.asString());
                 } catch (CloudnameException e) {
-                    System.err.println("Could not resolve "+c.asString()+" Error:\n" + e.getMessage());
+                    System.err.println("Could not resolve " + c.asString() + " Error:\n" + e.getMessage());
                     break;
                 }
                 for (Endpoint endpoint : endpoints) {
-                    System.out.println("Host: "+endpoint.getHost());
+                    System.out.println("Host: " + endpoint.getHost());
                 }
 
             }
-                break;
+            break;
             case LIST:
                 List<String> nodeList = new ArrayList<String>();
                 try {
@@ -256,12 +266,28 @@ public final class ZkTool {
                     // We only parse config paths, and we convert these to Cloudname coordinates to not confuse
                     // the user.
                     if (m.matches()) {
-                        System.out.println(String.format("%s.%s.%s.%s", m.group(4), m.group(3),m.group(2),m.group(1)));
+                        System.out.println(String.format("%s.%s.%s.%s", m.group(4), m.group(3), m.group(2), m.group(1)));
                     }
                 }
                 break;
             default:
                 System.out.println("Unknown command " + operationFlag);
+            case SET_CONFIG:
+                Coordinate c = Coordinate.parse(coordinateFlag);
+                try {
+                    cloudname.setConfig(c, configFlag, null);
+                } catch (CloudnameException e) {
+                    System.err.println("Got error: " + e.getMessage());
+                    break;
+
+                } catch (CoordinateMissingException e) {
+                    e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
+                }
+                System.err.println("Created coordinate.");
+                break;
+
+            case READ_CONFIG:
+                break;
         }
         try {
             cloudname.close();

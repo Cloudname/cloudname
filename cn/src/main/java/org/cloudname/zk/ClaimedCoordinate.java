@@ -67,7 +67,12 @@ public class ClaimedCoordinate implements Watcher, ZkUserInterface {
     private List<CoordinateListener> coordinateListenerList =
             Collections.synchronizedList(new ArrayList<CoordinateListener>());
 
-
+    /**
+     * A list of tracked configs for this coordinate.
+     */
+    private List<TrackedConfig> trackedConfigList =
+            Collections.synchronizedList(new ArrayList<TrackedConfig>());
+    
     /**
      * Constructor, the ZooKeeper instances is retrieved from implementing the ZkUserInterface so the object
      * is not ready to be used before the ZooKeeper instance is received.
@@ -111,6 +116,11 @@ public class ClaimedCoordinate implements Watcher, ZkUserInterface {
         log.fine("ClaimedCoordinate: Got new ZeeKeeper, starting potential cleanup, path: " + path);
         synchronized (this) {
             this.zk = zk;
+            
+            for (TrackedConfig trackedConfig : trackedConfigList) {
+                trackedConfig.newZooKeeperInstance(zk);
+            }
+            
             // We always start by assuming it is unclaimed.
             consistencyState = ConsistencyState.OUT_OF_SYNC;
 
@@ -225,6 +235,9 @@ public class ClaimedCoordinate implements Watcher, ZkUserInterface {
     @Override
     public void timeEvent() {
         synchronized (this) {
+            for (TrackedConfig config : trackedConfigList) {
+                config.timeEvent();
+            }
             if (consistencyState == ConsistencyState.SYNCED || zk == null || ! started) {
                 return;
             }
@@ -304,6 +317,24 @@ public class ClaimedCoordinate implements Watcher, ZkUserInterface {
             } else {
                 sendEventToCoordinateListener(CoordinateListener.Event.NO_CONNECTION_TO_STORAGE, "Not ok " +
                         consistencyState.toString());
+            }
+        }
+    }
+
+
+    /**
+     * Registers a configlistener that will receive events when there are changes to the config node.
+     * Don't do any heavy lifting in the callback and don't call cloudname from the callback as this might create
+     * a deadlock.
+     * @param configListener
+     */
+    public void registerTrackedConfig(TrackedConfig trackedConfig)  {
+
+        synchronized (this) {
+
+            trackedConfigList.add(trackedConfig);
+            if (zk != null) {
+                trackedConfig.newZooKeeperInstance(zk);
             }
         }
     }
