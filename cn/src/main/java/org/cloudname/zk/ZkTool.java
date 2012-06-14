@@ -137,16 +137,8 @@ public final class ZkTool {
                         cloudname.createCoordinate(Coordinate.parse(line));
                         System.out.println("Created " + line);
                     } catch (Exception e) {
-                        System.err.println("Could not create: " + line);
-                        System.err.println("Got error: " + e.getMessage());
-                        try {
-                            cloudname.close();
-                        } catch (InterruptedException e1) {
-                            return;
-                        }
-                        return;
+                        System.err.println("Could not create: " + line + "Got error: " + e.getMessage());
                     }
-
                 }
             } catch (IOException e) {
                 System.err.println("Failed to read coordinate from file. " + e.getMessage());
@@ -156,11 +148,17 @@ public final class ZkTool {
                     return;
                 }
                 return;
-            }
-            try {
-                br.close();
-            } catch (IOException e) {
-                return;
+            } finally {
+                try {
+                    cloudname.close();
+                } catch (InterruptedException e) {
+                    System.err.println("Failed while trying to close cloudname connection. " + e.getMessage());
+                }
+                try {
+                    br.close();
+                } catch (IOException e) {
+                    System.err.println("Failed while trying to close file reader. " + e.getMessage());
+                }
             }
             return;
         }
