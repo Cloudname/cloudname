@@ -58,7 +58,7 @@ public final class ZkTool {
          */
         STATUS,
         /**
-         * Print the coordinates in zookeeper
+         * Print the host of a coordinate.
          */
         HOST,
         /**
