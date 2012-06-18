@@ -40,6 +40,14 @@ public class ClaimedCoordinate implements Watcher, ZkUserInterface {
     private boolean started = false;
 
     /**
+     * The connection from client to ZooKeeper might go down. If it comes up again within some time window
+     * the server might think an ephemeral node should be alive. The client lib might think otherwise.
+     * If this flag is set, the time event should check version, content and session ID, if correct, delete
+     * the node so it can be claimed in the normal way.
+     */
+    private boolean checkVersion = false;
+
+    /**
      * We keep track of the last version so we know if we are in sync.
      */
     private int lastStatusVersion = -1;
@@ -201,6 +209,7 @@ public class ClaimedCoordinate implements Watcher, ZkUserInterface {
                     log.info("Claimed fail, node already exists and probably not by us, path: " + path);
                     claimedCoordinate.sendEventToCoordinateListener(
                             CoordinateListener.Event.NOT_OWNER, "Node already exists.");
+                    checkVersion = true;
                     return;
                 case NONODE:
                     log.info("Could not claim due to missing coordinate, path: " + path);
@@ -228,6 +237,25 @@ public class ClaimedCoordinate implements Watcher, ZkUserInterface {
             if (consistencyState == ConsistencyState.SYNCED || zk == null || ! started) {
                 return;
             }
+            if (checkVersion) {
+                try {
+                    Stat stat = new Stat();
+                    final byte[] serverData = getZooKeeper().getData(path, false, stat);
+                    final String serverDataString = new String(serverData, Util.CHARSET_NAME);
+                    final String ourDataString = zkCoordinateData.snapshot().serialize();
+                    if (getZooKeeper().getSessionId() == stat.getEphemeralOwner() &&
+                            serverDataString.equals(ourDataString)) {
+                        getZooKeeper().delete(path, lastStatusVersion);
+                    }
+                } catch (InterruptedException e) {
+                    // Ignore this
+                } catch (KeeperException e) {
+                    // Ignore this
+                } catch (UnsupportedEncodingException e) {
+                    // Ignore this
+                }
+            }
+            checkVersion = false;
             log.fine("We are out-of-sync, have a zookeeper connection, and are started, trying reclaim: " + path);
             claim(zk);
         }

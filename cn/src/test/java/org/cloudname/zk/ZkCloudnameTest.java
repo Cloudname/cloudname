@@ -27,7 +27,7 @@ import java.util.logging.Logger;
 /**
  * Unit test for the ZkCloudname class.
  *
- * @author borud
+ * @author borud, dybdahl
  */
 public class ZkCloudnameTest {
     private static Logger log = Logger.getLogger(ZkCloudnameTest.class.getName());
@@ -485,6 +485,44 @@ public class ZkCloudnameTest {
         forwarder = new PortForwarder(forwarderPort, "127.0.0.1", zkport);
         assertTrue(connectedLatch1.await(20, TimeUnit.SECONDS));
         assertEquals(CoordinateListener.Event.COORDINATE_OK, listener.events.get(listener.events.size() -1 ));
+    }
+
+    /**
+     * In This test the ZK server thinks the client is connected, but the client wants to reconnect due to a disconnect.
+     * This test might be flaky since it has timing with sleeps. If it becomes a problem we disable the test.
+     * It works on my computer and is useful for debugging the reconnect functionality.
+     */
+    @Test
+    public void testCoordinateListenerConnectionDiesReconnectAfterTimeoutClient() throws  Exception {
+        final CountDownLatch connectedLatch1 = new CountDownLatch(2);
+        final CountDownLatch connectedLatch2 = new CountDownLatch(6);
+        UnitTestCoordinateListener listener = setUpListenerEnvironment(connectedLatch1, connectedLatch2);
+        assertTrue(connectedLatch1.await(20, TimeUnit.SECONDS));
+        assertEquals(CoordinateListener.Event.COORDINATE_OK,
+                listener.events.get(listener.events.size() -1 ));
+        log.info("Killing connection");
+        forwarder.terminate();
+
+        log.info("Connection down.");
+
+        Thread.sleep(3400);
+        log.info("Recreating connection soon" + forwarderPort + "->" + zkport);
+
+        assertEquals(CoordinateListener.Event.NO_CONNECTION_TO_STORAGE,
+                listener.events.get(listener.events.size() -1 ));
+        forwarder = new PortForwarder(forwarderPort, "127.0.0.1", zkport);
+        assertTrue(connectedLatch2.await(20, TimeUnit.SECONDS));
+
+
+        for (int c = 0; c < 100; c++) {
+            if (CoordinateListener.Event.COORDINATE_OK == listener.events.get(listener.events.size() -1 ))  {
+                break;
+            }
+            Thread.sleep(100);
+        }
+        assertEquals(CoordinateListener.Event.COORDINATE_OK, listener.events.get(listener.events.size() -1 ));
+
+        forwarder.terminate();
     }
 
     @Test
