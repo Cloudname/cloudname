@@ -47,6 +47,9 @@ public class ZkResolverTest {
      */
     @Before
     public void setup() throws Exception {
+        // Speed up tests waiting for this event to happen.
+        DynamicExpression.TIME_BETWEEN_NODE_SCANNING_MS = 200;
+
         File rootDir = temp.newFolder("zk-test");
         zkport = Net.getFreePort();
 
@@ -246,12 +249,10 @@ public class ZkResolverTest {
                 switch (event) {
 
                     case NEW_ENDPOINT:
-                        System.err.println("Got new endpoint.");
                         endpointListNew.add(endpoint);
                         latchWrapper.latch.countDown();
                         break;
                     case REMOVED_ENDPOINT:
-                        System.err.println("Removed endpoint.");
                         endpointListRemoved.add(endpoint);
                         latchWrapper.latch.countDown();
                         break;
@@ -303,6 +304,51 @@ public class ZkResolverTest {
         assertEquals("foo", endpointListRemoved.get(0).getName());
     }
 
+    @Test
+    public void testBasicAsyncResolvingAnyStrategy() throws Exception {
+        Resolver resolver = cn.getResolver();
+
+        final List<Endpoint> endpointListNew = new ArrayList<Endpoint>();
+        final List<Endpoint> endpointListRemoved = new ArrayList<Endpoint>();
+        final List<CountDownLatch> countDownLatches  = new ArrayList<CountDownLatch>();
+
+        // This class is needed since the abstract resolver listener class can only access final variables.
+        class LatchWrapper {
+            public CountDownLatch latch;
+        }
+        final LatchWrapper latchWrapper = new LatchWrapper();
+
+        latchWrapper.latch = new CountDownLatch(1);
+
+        resolver.addResolverListener("foo.any.service.user.cell", new Resolver.ResolverListener() {
+
+            @Override
+            public void endpointEvent(Event event, Endpoint endpoint) {
+                switch (event) {
+
+                    case NEW_ENDPOINT:
+                        endpointListNew.add(endpoint);
+                        latchWrapper.latch.countDown();
+                        break;
+                    case REMOVED_ENDPOINT:
+                        endpointListRemoved.add(endpoint);
+                        latchWrapper.latch.countDown();
+                        break;
+                }
+            }
+        });
+        assertTrue(latchWrapper.latch.await(5000, TimeUnit.MILLISECONDS));
+        assertEquals(1, endpointListNew.size());
+        assertEquals("foo", endpointListNew.get(0).getName());
+        assertEquals("1.service.user.cell", endpointListNew.get(0).getCoordinate().toString());
+        endpointListNew.clear();
+
+        latchWrapper.latch = new CountDownLatch(1);
+
+        undrain();
+
+        assertFalse(latchWrapper.latch.await(2000, TimeUnit.MILLISECONDS));
+    }
 
     @Test(expected=IllegalArgumentException.class)
     public void testRegisterSameListenerTwice() throws Exception {
@@ -341,12 +387,10 @@ public class ZkResolverTest {
                 switch (event) {
 
                     case NEW_ENDPOINT:
-                        System.err.println("Got new endpoint.");
                         endpointListNew.add(endpoint);
                         latchWrapper.latch.countDown();
                         break;
                     case REMOVED_ENDPOINT:
-                        System.err.println("Removed endpoint.");
                         endpointListRemoved.add(endpoint);
                         latchWrapper.latch.countDown();
                         break;

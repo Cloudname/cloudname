@@ -136,13 +136,14 @@ public final class ZkResolver implements Resolver, ZkUserInterface {
         private String user = null;
         private String cell = null;
         private String strategy = null;
-
+        private String expression = null;
+        
         /**
          * Constructor that takes an addressExperssion and sets the inner variables.
          * @param addressExpression
          */
         public Parameters(String addressExpression) {
-
+            this.expression = addressExpression;
             if (! (trySetEndPointPattern(addressExpression) ||
                    trySetStrategyPattern(addressExpression) ||
                    trySetInstancePattern(addressExpression) ||
@@ -152,6 +153,14 @@ public final class ZkResolver implements Resolver, ZkUserInterface {
 
         }
 
+        /**
+         * Returns the original expression set in the constructor of Parameters.
+         * @return expression to be resolved.
+         */
+        public String getExpression() {
+            return expression;
+        }
+        
         /**
          * Returns strategy.
          * @return the string (e.g. "all" or "any", or "" if there is no strategy (but instance is specified).
@@ -266,22 +275,7 @@ public final class ZkResolver implements Resolver, ZkUserInterface {
     private ZkResolver(Builder builder) {
         this.strategies = builder.getStrategies();
     }
-    
-    static public List<Integer> resolveInstances(Parameters parameters, ZooKeeper zk) throws CloudnameException {
-        List<Integer> instances = new ArrayList<Integer>();
-        if (parameters.getInstance() > -1) {
-            instances.add(parameters.getInstance());
-        } else {
-            try {
-                instances = getInstances(zk,
-                        ZkCoordinatePath.coordinateWithoutInstanceAsPath(parameters.getCell(),
-                        parameters.getUser(), parameters.getService()));
-            } catch (InterruptedException e) {
-                throw new CloudnameException(e);
-            }
-        }
-        return instances;
-    }
+
     
     @Override
     public List<Endpoint> resolve(String addressExpression) throws CloudnameException {
@@ -399,7 +393,7 @@ public final class ZkResolver implements Resolver, ZkUserInterface {
 
     @Override
     public void addResolverListener(String expression, ResolverListener listener) throws CloudnameException {
-        DynamicExpression dynamicExpression = new DynamicExpression(expression, listener);
+        DynamicExpression dynamicExpression = new DynamicExpression(expression, listener, this);
         dynamicExpression.newZooKeeperInstance(zk);
         synchronized (this) {
             DynamicExpression previousExpression = dynamicAddressesByListener.put(listener, dynamicExpression);
@@ -422,8 +416,24 @@ public final class ZkResolver implements Resolver, ZkUserInterface {
             }
         }
     }
-    
-    static private List<Integer> getInstances(ZooKeeper zk, String path) throws CloudnameException, InterruptedException {
+
+    private List<Integer> resolveInstances(Parameters parameters, ZooKeeper zk) throws CloudnameException {
+        List<Integer> instances = new ArrayList<Integer>();
+        if (parameters.getInstance() > -1) {
+            instances.add(parameters.getInstance());
+        } else {
+            try {
+                instances = getInstances(zk,
+                        ZkCoordinatePath.coordinateWithoutInstanceAsPath(parameters.getCell(),
+                                parameters.getUser(), parameters.getService()));
+            } catch (InterruptedException e) {
+                throw new CloudnameException(e);
+            }
+        }
+        return instances;
+    }
+
+    private List<Integer> getInstances(ZooKeeper zk, String path) throws CloudnameException, InterruptedException {
         List<Integer> paths = new ArrayList<Integer>();
         try {
             List<String> children = zk.getChildren(path, false /* watcher */);
