@@ -78,7 +78,7 @@ public class TrackedCoordinate implements Watcher, ZkUserInterface {
      * @return serialized version of the instance data.
      */
     public String toString() {
-        return coordinateData.toString();
+        return coordinateData == null ? "(null)" : coordinateData.toString();
     }
 
 

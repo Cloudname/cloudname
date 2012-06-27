@@ -250,8 +250,11 @@ class DynamicExpression implements Watcher, TrackedCoordinate.ExpressionResolver
         List<Endpoint> newEndpoints = new ArrayList<Endpoint>();
         synchronized (this) {
             for (TrackedCoordinate trackedCoordinate : coordinateByPath.values()) {
-                ZkResolver.addEndpoints(
-                        trackedCoordinate.getCoordinatedata(), newEndpoints, parameters.getEndpointName());
+                ZkCoordinateData.Snapshot coordinateData = trackedCoordinate.getCoordinatedata();
+                if (coordinateData != null) {
+                    ZkResolver.addEndpoints(
+                        coordinateData, newEndpoints, parameters.getEndpointName());
+                }
             }
 
             Map<String, Endpoint> newEndpointsByName = new HashMap<String, Endpoint>();
