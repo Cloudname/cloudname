@@ -24,6 +24,7 @@ public class TrackedCoordinate implements Watcher, ZkUserInterface {
     private ZooKeeper zk;
     private final String path;
     private final ExpressionResolverNotify client;
+    private boolean needToReloadData = false;
 
     /**
      * Constructor, the ZooKeeper instances is retrieved from implementing the ZkUserInterface so the object
@@ -41,6 +42,7 @@ public class TrackedCoordinate implements Watcher, ZkUserInterface {
         log.fine("ClaimedCoordinate: Got event ZooKeeper is down.");
         synchronized (this) {
             zk = null;
+            needToReloadData = true;
 
         }
     }
@@ -56,7 +58,7 @@ public class TrackedCoordinate implements Watcher, ZkUserInterface {
                 client.stateChanged();
             }
         } catch (CloudnameException e) {
-            log.info("Got problems reloading data from zookeeper.");
+            log.info("Got problems reloading data from zookeeper: " + e.getMessage());
         }
     }
 
@@ -65,6 +67,12 @@ public class TrackedCoordinate implements Watcher, ZkUserInterface {
      */
     @Override
     public void timeEvent() {
+        synchronized (this) {
+            if (needToReloadData == false) {
+                return;
+            }
+        }
+        newZooKeeperInstance(zk);
     }
 
 
@@ -143,6 +151,7 @@ public class TrackedCoordinate implements Watcher, ZkUserInterface {
 
         synchronized (this) {
             if (zk == null) {
+                needToReloadData = true;
                 throw new CloudnameException("No connection to storage.");
             }
             String oldDataSerialized = new String("");
@@ -150,6 +159,7 @@ public class TrackedCoordinate implements Watcher, ZkUserInterface {
                 oldDataSerialized = coordinateData.serialize();
             }
             coordinateData = ZkCoordinateData.loadCoordinateData(path, zk, this).snapshot();
+            needToReloadData = false;
             return (! oldDataSerialized.equals(coordinateData.toString()));
         }
     }
