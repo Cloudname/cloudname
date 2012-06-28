@@ -54,7 +54,7 @@ class DynamicExpression implements Watcher, TrackedCoordinate.ExpressionResolver
     /**
      * Does a full scan with this interval.
      */
-    final private int TIME_BETWEEN_NODE_SCANNING_MS = 1 * 60 * 1000;  // one minute
+    protected static int TIME_BETWEEN_NODE_SCANNING_MS = 1 * 60 * 1000;  // one minute
 
     /**
      * A Map with all the coordinate we care about for now.
@@ -77,15 +77,17 @@ class DynamicExpression implements Watcher, TrackedCoordinate.ExpressionResolver
 
     private boolean stopped = false;
     private ZooKeeper zk = null;
+    private final ZkResolver zkResolver;
 
     /**
      * Start getting notified about changes to expression.
      * @param expression Coordinate expression.
      * @param clientCallback called on changes and initially.
      */
-    public DynamicExpression(String expression, Resolver.ResolverListener clientCallback) {
+    public DynamicExpression(String expression, Resolver.ResolverListener clientCallback, ZkResolver zkResolver) {
         this.clientCallback = clientCallback;
         this.parameters = new ZkResolver.Parameters(expression);
+        this.zkResolver = zkResolver;
     }
 
     /**
@@ -204,11 +206,10 @@ class DynamicExpression implements Watcher, TrackedCoordinate.ExpressionResolver
     }
 
     private void resolve() {
-        List<Integer> instances = null;
-
+        List<Endpoint> endpoints = null;
         synchronized (this) {
             try {
-                instances = ZkResolver.resolveInstances(parameters, zk);
+              endpoints = zkResolver.resolve(parameters.getExpression());
             } catch (CloudnameException e) {
                 log.warning("Exception from cloudname: " + e.toString());
                 return;
@@ -218,10 +219,8 @@ class DynamicExpression implements Watcher, TrackedCoordinate.ExpressionResolver
         Map<String, TrackedCoordinate> tempStatusAndEndpointsMap =
                 new HashMap<String, TrackedCoordinate>();
 
-        for (Integer instance : instances) {
-            String statusPath = ZkCoordinatePath.getStatusPath(parameters.getCell(), parameters.getUser(),
-                    parameters.getService(), instance);
-
+        for (Endpoint endpoint : endpoints) {
+            String statusPath = ZkCoordinatePath.getStatusPath(endpoint.getCoordinate());
 
             TrackedCoordinate trackedCoordinate = new TrackedCoordinate(this, statusPath);
             trackedCoordinate.newZooKeeperInstance(zk);
