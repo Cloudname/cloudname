@@ -126,7 +126,24 @@ public class ZkCloudnameTest {
                 }
             }
         });
-        latch.await(2, TimeUnit.SECONDS);
+        assertTrue(latch.await(2, TimeUnit.SECONDS));
+
+        final CountDownLatch configLatch1 = new CountDownLatch(1);
+        final CountDownLatch configLatch2 = new CountDownLatch(2);
+        final StringBuilder buffer = new StringBuilder();
+        handle.registerConfigListener(new ConfigListener() {
+            @Override
+            public void onConfigEvent(Event event, String data) {
+                buffer.append(data);
+                configLatch1.countDown();
+                configLatch2.countDown();
+            }
+        });
+        assertTrue(configLatch1.await(2, TimeUnit.SECONDS));
+        assertEquals(buffer.toString(), "");
+        zk.setData("/cn/cell/user/service/1/config", "hello".getBytes(), -1);
+        assertTrue(configLatch2.await(2, TimeUnit.SECONDS));
+        assertEquals(buffer.toString(), "hello");
 
         assertTrue(pathExists("/cn/cell/user/service/1/status"));
 
