@@ -10,8 +10,8 @@ import java.util.logging.Logger;
 import java.util.List;
 
 /**
- * A service handle implementation. It does not have a lot of logic, it wraps ClaimedCoordinate, and will
- * in the future handle some config logic.
+ * A service handle implementation. It does not have a lot of logic, it wraps ClaimedCoordinate, and
+ * handles some config logic.
  *
  * @author borud
  */
@@ -19,14 +19,16 @@ public class ZkServiceHandle implements ServiceHandle {
     private ClaimedCoordinate claimedCoordinate;
     private static final Logger log = Logger.getLogger(ZkServiceHandle.class.getName());
 
+    private final Coordinate coordinate;
+    
     /**
      * Create a ZkServiceHandle for a given coordinate.
-     * TODO(borud, dybdahl): Implement config listener.
      *
      * @param claimedCoordinate the claimed coordinate for this service handle.
      */
     public ZkServiceHandle(ClaimedCoordinate claimedCoordinate) {
         this.claimedCoordinate = claimedCoordinate;
+        this.coordinate = coordinate;
     }
 
 
@@ -77,7 +79,8 @@ public class ZkServiceHandle implements ServiceHandle {
 
     @Override
     public void registerConfigListener(ConfigListener listener) {
-        log.info("Config listener not implemented.");
+        TrackedConfig trackedConfig = new TrackedConfig(ZkCoordinatePath.getConfigPath(coordinate, null), listener);
+        claimedCoordinate.registerTrackedConfig(trackedConfig);
     }
 
     @Override

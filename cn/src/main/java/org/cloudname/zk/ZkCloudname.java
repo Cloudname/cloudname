@@ -1,5 +1,6 @@
 package org.cloudname.zk;
 
+import org.apache.zookeeper.data.Stat;
 import org.cloudname.*;
 
 import org.apache.zookeeper.WatchedEvent;
@@ -9,6 +10,7 @@ import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.ZooDefs.Ids;
 import org.apache.zookeeper.KeeperException;
 
+import java.io.UnsupportedEncodingException;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -342,6 +344,61 @@ public final class ZkCloudname extends Thread implements Cloudname, Watcher {
         return zkCoordinateData.snapshot().getServiceStatus();
     }
 
+    @Override
+    public void setConfig(Coordinate coordinate, final String newConfig, final String oldConfig) throws CoordinateMissingException, CloudnameException {
+        String configPath = ZkCoordinatePath.getConfigPath(coordinate, null);
+        int version = -1;
+        if (oldConfig != null) {
+            Stat stat = new Stat();
+            byte [] data = null;
+            try {
+                data = getZk().getData(configPath, false, stat);
+            } catch (KeeperException e) {
+                throw new CloudnameException(e);
+            } catch (InterruptedException e) {
+                throw new CloudnameException(e);
+            }
+            try {
+                String stringData = new String(data, Util.CHARSET_NAME);
+                if (! stringData.equals(oldConfig)) {
+                    throw new CloudnameException("Data did not match old config. Actual old " + stringData + " specified old " + oldConfig);
+                }
+            } catch (UnsupportedEncodingException e) {
+                throw new CloudnameException(e);
+            }
+            version = stat.getVersion();
+        }
+        try {
+            getZk().setData(configPath, newConfig.getBytes(Util.CHARSET_NAME), version);
+        } catch (KeeperException e) {
+            throw new CloudnameException(e);
+        } catch (InterruptedException e) {
+            throw new CloudnameException(e);
+        } catch (UnsupportedEncodingException e) {
+            throw new CloudnameException(e);
+        }
+    }
+
+
+    @Override
+    public String getConfig(final Coordinate coordinate) throws CoordinateMissingException, CloudnameException {
+        String configPath = ZkCoordinatePath.getConfigPath(coordinate, null);
+        Stat stat = new Stat();
+        try {
+            byte[] data = getZk().getData(configPath, false, stat);
+            if (data == null) {
+                return null;
+            }
+            return new String(data, Util.CHARSET_NAME);
+        } catch (KeeperException e) {
+            throw new CloudnameException(e);
+        } catch (InterruptedException e) {
+            throw new CloudnameException(e);
+        } catch (UnsupportedEncodingException e) {
+            throw new CloudnameException(e);
+        }
+    }
+    
     /**
      * Close the connection to ZooKeeper.
      */

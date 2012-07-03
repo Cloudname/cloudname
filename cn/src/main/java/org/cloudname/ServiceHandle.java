@@ -81,6 +81,7 @@ public interface ServiceHandle {
      * case the ConfigListener will see these configuration items as
      * being created.
      */
+    // TODO(dybdahl): This logic lacks tests. Before used in any production code, tests have to be added.
     public void registerConfigListener(ConfigListener listener);
 
     /**
