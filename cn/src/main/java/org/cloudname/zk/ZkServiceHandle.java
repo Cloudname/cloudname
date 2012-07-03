@@ -26,7 +26,7 @@ public class ZkServiceHandle implements ServiceHandle {
      *
      * @param claimedCoordinate the claimed coordinate for this service handle.
      */
-    public ZkServiceHandle(ClaimedCoordinate claimedCoordinate) {
+    public ZkServiceHandle(ClaimedCoordinate claimedCoordinate, Coordinate coordinate) {
         this.claimedCoordinate = claimedCoordinate;
         this.coordinate = coordinate;
     }

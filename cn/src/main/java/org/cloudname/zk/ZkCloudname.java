@@ -325,7 +325,7 @@ public final class ZkCloudname extends Thread implements Cloudname, Watcher {
         // If we have come thus far we have succeeded in creating the
         // CN_STATUS_NAME node within the service coordinate directory
         // in ZooKeeper and we can give the client a ServiceHandle.
-        ZkServiceHandle handle = new ZkServiceHandle(statusAndEndpoints);
+        ZkServiceHandle handle = new ZkServiceHandle(statusAndEndpoints, coordinate);
         statusAndEndpoints.newZooKeeperInstance(getZk());
         statusAndEndpoints.start();
         return handle;
