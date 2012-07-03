@@ -1,5 +1,7 @@
 package org.cloudname;
 
+import org.cloudname.zk.ZkCloudnameLock;
+
 import java.util.List;
 
 /**
@@ -101,5 +103,7 @@ public interface ServiceHandle {
      */
     public void close()
             throws CloudnameException;
+
+    public CloudnameLock getCloudnameLock(CloudnameLock.Level level, String lockName);
 }
 

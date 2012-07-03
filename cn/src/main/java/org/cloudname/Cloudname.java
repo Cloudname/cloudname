@@ -1,5 +1,7 @@
 package org.cloudname;
 
+import org.cloudname.zk.ZkCloudnameLock;
+
 /**
  * The main interface for interacting with Cloudname.
  *

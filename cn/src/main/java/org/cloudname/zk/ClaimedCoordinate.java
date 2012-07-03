@@ -20,6 +20,10 @@ import java.util.logging.Logger;
  */
 public class ClaimedCoordinate implements Watcher, ZkUserInterface {
 
+    public CloudnameLock getCloudnameLock(CloudnameLock.Level level, String lockName) {
+        return new ZkCloudnameLock(getZooKeeper(), coordinate, level, lockName);
+    }
+
     /**
      * The consistencyState is either OUT OF SYNC or SYNCED. It is SYNCED if the current data model in memory
      * is the same as the model in ZooKeeper.
@@ -60,6 +64,11 @@ public class ClaimedCoordinate implements Watcher, ZkUserInterface {
     private ZooKeeper zk;
 
     /**
+     * The claimed coordinate.
+     */
+    private final Coordinate coordinate;
+
+    /**
      * Status path of the coordinate.
      */
     private final String path;
@@ -79,10 +88,11 @@ public class ClaimedCoordinate implements Watcher, ZkUserInterface {
     /**
      * Constructor, the ZooKeeper instances is retrieved from implementing the ZkUserInterface so the object
      * is not ready to be used before the ZooKeeper instance is received.
-     * @param path is the path of the status of the coordinate.
+     * @param coordinate
      */
-    public ClaimedCoordinate(String path) {
-        this.path = path;
+    public ClaimedCoordinate(Coordinate coordinate) {
+        this.coordinate = coordinate;
+        path = ZkCoordinatePath.getStatusPath(coordinate);
     }
 
     /**
@@ -208,7 +218,7 @@ public class ClaimedCoordinate implements Watcher, ZkUserInterface {
                     }
                     log.info("Claimed fail, node already exists and probably not by us, path: " + path);
                     claimedCoordinate.sendEventToCoordinateListener(
-                            CoordinateListener.Event.NOT_OWNER, "Node already exists.");
+                        CoordinateListener.Event.NOT_OWNER, "Node already exists.");
                     checkVersion = true;
                     return;
                 case NONODE:

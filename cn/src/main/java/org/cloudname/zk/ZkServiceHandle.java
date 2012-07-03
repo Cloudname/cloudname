@@ -23,9 +23,9 @@ public class ZkServiceHandle implements ServiceHandle {
      * Create a ZkServiceHandle for a given coordinate.
      * TODO(borud, dybdahl): Implement config listener.
      *
-     * @param coordinate the coordinate for this service handle.
+     * @param claimedCoordinate the claimed coordinate for this service handle.
      */
-    public ZkServiceHandle(Coordinate coordinate, ClaimedCoordinate claimedCoordinate) {
+    public ZkServiceHandle(ClaimedCoordinate claimedCoordinate) {
         this.claimedCoordinate = claimedCoordinate;
     }
 
@@ -89,6 +89,11 @@ public class ZkServiceHandle implements ServiceHandle {
     public void close() throws CloudnameException {
         claimedCoordinate.releaseClaim();
         claimedCoordinate = null;
+    }
+
+    @Override
+    public CloudnameLock getCloudnameLock(CloudnameLock.Level level, String lockName) {
+        return claimedCoordinate.getCloudnameLock(level, lockName);
     }
 
     @Override
