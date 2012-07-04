@@ -15,6 +15,7 @@ import org.cloudname.Coordinate;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -31,7 +32,8 @@ public class ZkCloudnameLock implements CloudnameLock {
     private final String lockName;
 
     // This will be false if a lock is obtained, so that you can not lock twice with the same object.
-    private boolean isInUse = false;
+    private final AtomicBoolean isInUse = new AtomicBoolean(false);
+    private String absoluteLockPath;
     private String lockPath;
 
     private static final Logger log = Logger.getLogger(ZkCloudnameLock.class.getName());
@@ -53,6 +55,18 @@ public class ZkCloudnameLock implements CloudnameLock {
         this.coordinate = coordinate;
         this.level = level;
         this.lockName = lockName;
+
+        final StringBuffer path = new StringBuffer("/cn/" + coordinate.getCell());
+        if (level == Level.USER || level == Level.SERVICE) {
+            path.append("/")
+                .append(coordinate.getUser());
+        }
+        if (level == Level.SERVICE) {
+            path.append("/")
+                .append(coordinate.getService());
+        }
+        path.append("/locks");
+        lockPath = path.toString();
     }
 
     @Override
@@ -61,125 +75,125 @@ public class ZkCloudnameLock implements CloudnameLock {
     }
 
     @Override
-    public boolean lock() {
+    public boolean tryLock() {
         // This lock object is already in use
-        if (isInUse) {
+        if (!isInUse.compareAndSet(false, true)) {
             return false;
         }
-        isInUse = true;
 
         final String path;
         try {
-            path = getLockPath();
+            path = createAndGetLockPath();
         } catch (InterruptedException e) {
             log.log(
-                java.util.logging.Level.INFO,
-                "InterruptedException while trying to get lock path " + lockPath,
+                java.util.logging.Level.WARNING,
+                "InterruptedException while trying to get lock path " + absoluteLockPath,
                 e);
             return false;
         } catch (KeeperException e) {
             log.log(
-                java.util.logging.Level.INFO,
-                "KeeperException while trying to get lock path " + lockPath,
+                java.util.logging.Level.WARNING,
+                "KeeperException while trying to get lock path " + absoluteLockPath,
                 e);
             return false;
         }
 
         try {
             // Create lock.
-            lockPath = zk.create(
+            absoluteLockPath = zk.create(
                 path.toString(),
                 null,
                 ZooDefs.Ids.OPEN_ACL_UNSAFE,
                 CreateMode.EPHEMERAL_SEQUENTIAL);
             log.log(
                 java.util.logging.Level.INFO,
-                "Created lock node with path: " + lockPath);
+                "Created lock node with path: " + absoluteLockPath);
 
-            long noTimeout = 0;
-            boolean noWait = false;
+            final long noTimeout = 0;
+            final boolean noWait = false;
             return attemptToLock(noTimeout, noWait);
 
         } catch (InterruptedException e) {
             log.log(
                 java.util.logging.Level.INFO,
-                "InterruptedException while trying to create lock " + lockPath,
+                "InterruptedException while trying to create lock " + absoluteLockPath,
                 e);
             return false;
         } catch (KeeperException e) {
             log.log(
                 java.util.logging.Level.INFO,
-                "KeeperException while trying to create lock " + lockPath,
+                "KeeperException while trying to create lock " + absoluteLockPath,
                 e);
             return false;
         }
     }
 
     @Override
-    public boolean waitForLockMs(int timeout) {
+    public boolean tryLock(int timeoutMs) {
         // This lock object is allready in use
-        if (isInUse) {
+        if (!isInUse.compareAndSet(false, true)) {
             return false;
         }
-        isInUse = true;
 
         final String path;
         try {
-            path = getLockPath();
+            path = createAndGetLockPath();
         } catch (InterruptedException e) {
             log.log(
-                java.util.logging.Level.INFO,
-                "InterruptedException while trying to get lock path " + lockPath,
+                java.util.logging.Level.WARNING,
+                "InterruptedException while trying to get lock path " + absoluteLockPath,
                 e);
             return false;
         } catch (KeeperException e) {
             log.log(
-                java.util.logging.Level.INFO,
-                "KeeperException while trying to get lock path " + lockPath,
+                java.util.logging.Level.WARNING,
+                "KeeperException while trying to get lock path " + absoluteLockPath,
                 e);
             return false;
         }
 
         try {
             // Create lock.
-            lockPath = zk.create(
+            absoluteLockPath = zk.create(
                 path.toString(),
                 null,
                 ZooDefs.Ids.OPEN_ACL_UNSAFE,
                 CreateMode.EPHEMERAL_SEQUENTIAL);
             log.log(
                 java.util.logging.Level.INFO,
-                "Created lock node with path: " + lockPath);
+                "Created lock node with path: " + absoluteLockPath);
 
-            boolean wait = true;
-            return attemptToLock(timeout, wait);
+            final boolean wait = true;
+            return attemptToLock(timeoutMs, wait);
 
         } catch (InterruptedException e) {
             log.log(
                 java.util.logging.Level.INFO,
-                "InterruptedException while trying to create lock " + lockPath,
+                "InterruptedException while trying to create lock " + absoluteLockPath,
                 e);
             return false;
         } catch (KeeperException e) {
             log.log(
                 java.util.logging.Level.INFO,
-                "KeeperException while trying to create lock " + lockPath,
+                "KeeperException while trying to create lock " + absoluteLockPath,
                 e);
             return false;
         }
     }
 
-    private boolean attemptToLock(long timeout, boolean wait) throws InterruptedException, KeeperException {
+    private boolean attemptToLock(long timeoutMs, boolean wait) throws InterruptedException, KeeperException {
         log.log(
             java.util.logging.Level.INFO,
-            "Attempting to lock " + lockPath + ".");
+            "Attempting to lock " + absoluteLockPath + ".");
         final long time = System.currentTimeMillis();
         final CountDownLatch timeoutLatch = new CountDownLatch(1);
-        List<String> children = zk.getChildren(lockPath.substring(0, lockPath.indexOf(lockName) - 1), false);
+        List<String> children = zk.getChildren(
+            absoluteLockPath.substring(0, absoluteLockPath.indexOf(lockName) - 1), // "-1" to remove the "/"
+            false);
 
         // Check to see if you hold the lock (find the lock node with the next lower number)
         boolean lockAquired = true;
-        final int createdNumber = getNodeNumber(lockPath);
+        final int createdNumber = getNodeNumber(absoluteLockPath);
         String nodeToWatch = "";
         int nodeNumberToWatch = -1;
         for (final String child : children) {
@@ -194,7 +208,7 @@ public class ZkCloudnameLock implements CloudnameLock {
             // You hold the lock.
             log.log(
                 java.util.logging.Level.INFO,
-                "Lock " + lockPath + " aquired.");
+                "Lock " + absoluteLockPath + " aquired.");
             return true;
         } else if (!wait) {
             // You do not hold the lock and you do not want to wait. Clean up and return false.
@@ -202,10 +216,10 @@ public class ZkCloudnameLock implements CloudnameLock {
             return false;
         }
 
-        String lockPathToWatch = lockPath.substring(0, lockPath.indexOf(lockName)) + nodeToWatch;
+        String lockPathToWatch = absoluteLockPath.substring(0, absoluteLockPath.indexOf(lockName)) + nodeToWatch;
         log.log(
             java.util.logging.Level.INFO,
-            lockPath + " is waiting for " + lockPathToWatch + ".");
+            absoluteLockPath + " is waiting for " + lockPathToWatch + ".");
         Stat stat = zk.exists(lockPathToWatch, new Watcher() {
 
             @Override
@@ -213,10 +227,8 @@ public class ZkCloudnameLock implements CloudnameLock {
                 if (watchedEvent.getType().equals(Event.EventType.NodeDeleted)) {
                     log.log(
                         java.util.logging.Level.INFO,
-                        "Lock node " + lockPath + " received event of lock removed event..");
+                        "Lock node " + absoluteLockPath + " received event of lock removed event..");
                     timeoutLatch.countDown();
-                } else {
-                    System.out.println("Got another event!!!");
                 }
             }
         });
@@ -229,38 +241,38 @@ public class ZkCloudnameLock implements CloudnameLock {
 
         log.log(
             java.util.logging.Level.INFO,
-            "Waiting for lock " + lockPath + ". Remaining time: " + timeout + " ms.");
-        if ( ! timeoutLatch.await(timeout, TimeUnit.MILLISECONDS)) {
+            "Waiting for lock " + absoluteLockPath + ". Remaining time: " + timeoutMs + " ms.");
+        if ( ! timeoutLatch.await(timeoutMs, TimeUnit.MILLISECONDS)) {
             // Timed out while waiting for lock
             log.log(java.util.logging.Level.INFO, "Timed out while waiting for lock.");
             int anyVersion = -1;
-            zk.delete(lockPath, anyVersion);
-            isInUse = false;
+            zk.delete(absoluteLockPath, anyVersion);
+            isInUse.set(false);
             return false;
         }
 
         // The watched node has been deleted. Attempt to lock again with the remaining time left.
-        return attemptToLock(timeout - (System.currentTimeMillis() - time), wait);
+        return attemptToLock(timeoutMs - (System.currentTimeMillis() - time), wait);
     }
 
     @Override
     public void release() {
-        isInUse = false;
+        isInUse.set(false);
         int anyVersion = -1;
         try {
-            zk.delete(lockPath, anyVersion);
+            zk.delete(absoluteLockPath, anyVersion);
             log.log(
                 java.util.logging.Level.INFO,
-                "Released lock " + lockPath);
+                "Released lock " + absoluteLockPath);
         } catch (InterruptedException e) {
             log.log(
                 java.util.logging.Level.INFO,
-                "InterruptedException while trying to release lock " + lockPath,
+                "InterruptedException while trying to release lock " + absoluteLockPath,
                 e);
         } catch (KeeperException e) {
             log.log(
                 java.util.logging.Level.INFO,
-                "KeeperException while trying to release lock " + lockPath,
+                "KeeperException while trying to release lock " + absoluteLockPath,
                 e);
         }
     }
@@ -269,30 +281,19 @@ public class ZkCloudnameLock implements CloudnameLock {
         return Integer.parseInt(node.substring(node.indexOf(lockName) + lockName.length(), node.length()));
     }
 
-    private String getLockPath() throws InterruptedException, KeeperException {
-        final StringBuffer path = new StringBuffer("/cn/" + coordinate.getCell());
-        if (level == Level.USER || level == Level.SERVICE) {
-            path.append("/")
-                .append(coordinate.getUser());
-        }
-        if (level == Level.SERVICE) {
-            path.append("/")
-                .append(coordinate.getService());
-        }
-        path.append("/locks");
-
+    private String createAndGetLockPath() throws InterruptedException, KeeperException {
         // Create locks if it does not exist
-        if (zk.exists(path.toString(), false) == null) {
+        if (zk.exists(lockPath.toString(), false) == null) {
             try {
-                Util.mkdir(zk, path.toString(), ZooDefs.Ids.OPEN_ACL_UNSAFE);
+                Util.mkdir(zk, lockPath.toString(), ZooDefs.Ids.OPEN_ACL_UNSAFE);
             } catch (CloudnameException e) {
                 log.log(
                     java.util.logging.Level.INFO,
-                    "CloudnameException while trying to get lock path " + lockPath,
+                    "CloudnameException while trying to get lock path " + absoluteLockPath,
                     e);
             }
         }
 
-        return path.append("/").append(lockName).toString();
+        return lockPath + "/" + lockName;
     }
 }

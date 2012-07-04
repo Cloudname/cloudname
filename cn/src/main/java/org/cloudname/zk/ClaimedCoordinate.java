@@ -93,7 +93,6 @@ public class ClaimedCoordinate implements Watcher, ZkUserInterface {
     /**
      * Constructor, the ZooKeeper instances is retrieved from implementing the ZkUserInterface so the object
      * is not ready to be used before the ZooKeeper instance is received.
-     * @param coordinate
      */
     public ClaimedCoordinate(Coordinate coordinate) {
         this.coordinate = coordinate;

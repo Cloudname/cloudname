@@ -1,5 +1,7 @@
 package org.cloudname;
 
+import java.util.concurrent.TimeUnit;
+
 /**
  * A lock service for use with cloudname.
  *
@@ -17,7 +19,7 @@ package org.cloudname;
  *     }
  *  });
  *
- *  if (lock.waitForLockMs(TIMEOUT_MS)) {
+ *  if (lock.tryLock(TIMEOUT_MS)) {
  *      doWork();
  *      lock.release();
  *  } else {
@@ -47,14 +49,17 @@ public interface CloudnameLock {
      * Attempt to acquire the lock.
      * @return true if success, false if a lock could not be obtained.
      */
-    public boolean lock();
+    public boolean tryLock();
 
     /**
      * Attempt to acquire the lock. Will wait for a lock to open.
-     * @param timeout Time in milliseconds to wait for a lock.
+     * @param timeoutMs Time in milliseconds to wait for a lock.
      * @return true if success, false if a lock could not be obtained before the timeout.
      */
-    public boolean waitForLockMs(int timeout);
+    public boolean tryLock(int timeoutMs);
 
+    /**
+     * Release the lock. After released the CloudnameLock object can be reused to lock again.
+     */
     public void release();
 }

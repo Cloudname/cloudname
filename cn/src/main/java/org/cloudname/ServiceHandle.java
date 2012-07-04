@@ -105,6 +105,12 @@ public interface ServiceHandle {
     public void close()
             throws CloudnameException;
 
+    /**
+     * Get a CloudnameLock object.
+     * @param level The level of the coordinate you want to place the lock on.
+     * @param lockName The String identifying the lock across the level selected.
+     * @return CloudnameLock
+     */
     public CloudnameLock getCloudnameLock(CloudnameLock.Level level, String lockName);
 }
 

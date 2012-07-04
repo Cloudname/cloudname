@@ -104,9 +104,9 @@ public class ZkCloudnameLockTest {
 
         final CloudnameLock lock1 = serviceHandle1.getCloudnameLock(level, lockName);
         // Attempt to lock
-        assertTrue("Unable to lock.", lock1.lock());
+        assertTrue("Unable to lock.", lock1.tryLock());
         // Check that you can not lock twice with the same CloudnameLock object.
-        assertFalse("Got lock while a lock is in place.", lock1.lock());
+        assertFalse("Got lock while a lock is in place.", lock1.tryLock());
         // Release lock.
         lock1.release();
     }
@@ -138,15 +138,15 @@ public class ZkCloudnameLockTest {
         CloudnameLock lock1 = serviceHandle.getCloudnameLock(level, lockName);
         CloudnameLock lock2 = serviceHandle2.getCloudnameLock(level, lockName);
         // Attempt to lock
-        assertTrue("Unable to lock.", lock1.lock());
+        assertTrue("Unable to lock.", lock1.tryLock());
         // Check that you can not obtain another lock on the same level with the same name.
-        assertFalse("Got lock while a lock is not released.", lock2.lock());
+        assertFalse("Got lock while a lock is not released.", lock2.tryLock());
         // Release lock.
         lock1.release();
         // Attempt to aquire lock number two
-        assertTrue("Did not get lock.", lock2.lock());
+        assertTrue("Did not get lock.", lock2.tryLock());
         // And the other way around
-        assertFalse("Got lock while a lock is not released.", lock1.lock());
+        assertFalse("Got lock while a lock is not released.", lock1.tryLock());
         // Clean up
         lock2.release();
 
@@ -154,22 +154,22 @@ public class ZkCloudnameLockTest {
         level = CloudnameLock.Level.USER;
         lock1 = serviceHandle.getCloudnameLock(level, lockName);
         lock2 = serviceHandle2.getCloudnameLock(level, lockName);
-        assertTrue("Unable to lock.", lock1.lock());
-        assertFalse("Got lock while a lock is not released.", lock2.lock());
+        assertTrue("Unable to lock.", lock1.tryLock());
+        assertFalse("Got lock while a lock is not released.", lock2.tryLock());
         lock1.release();
-        assertTrue("Did not get lock.", lock2.lock());
-        assertFalse("Got lock while a lock is not released.", lock1.lock());
+        assertTrue("Did not get lock.", lock2.tryLock());
+        assertFalse("Got lock while a lock is not released.", lock1.tryLock());
         lock2.release();
 
         // Cell level locks
         level = CloudnameLock.Level.CELL;
         lock1 = serviceHandle.getCloudnameLock(level, lockName);
         lock2 = serviceHandle2.getCloudnameLock(level, lockName);
-        assertTrue("Unable to lock.", lock1.lock());
-        assertFalse("Got lock while a lock is not released.", lock2.lock());
+        assertTrue("Unable to lock.", lock1.tryLock());
+        assertFalse("Got lock while a lock is not released.", lock2.tryLock());
         lock1.release();
-        assertTrue("Did not get lock.", lock2.lock());
-        assertFalse("Got lock while a lock is not released.", lock1.lock());
+        assertTrue("Did not get lock.", lock2.tryLock());
+        assertFalse("Got lock while a lock is not released.", lock1.tryLock());
         lock2.release();
     }
 
@@ -202,12 +202,12 @@ public class ZkCloudnameLockTest {
         final CountDownLatch latch = new CountDownLatch(1);
 
         // Attempt to lock
-        assertTrue("Unable to lock.", lock1.lock());
+        assertTrue("Unable to lock.", lock1.tryLock());
 
         Thread thread = new Thread() {
             @Override
             public void run() {
-                if (lock2.waitForLockMs(5000))
+                if (lock2.tryLock(5000))
                     latch.countDown();
             }
         };
@@ -255,7 +255,7 @@ public class ZkCloudnameLockTest {
         final CountDownLatch threadReadyLatch = new CountDownLatch(NUM_JOBS - 1);
 
         // Lock the first service lock
-        lockList.get(0).lock();
+        lockList.get(0).tryLock();
 
         final Work work = new Work(WORKLOAD_MS);
 
@@ -265,7 +265,7 @@ public class ZkCloudnameLockTest {
                 @Override
                 public void run() {
                     threadReadyLatch.countDown();
-                    lockList.get(num).waitForLockMs(LOCK_TIMEOUT_MS);
+                    lockList.get(num).tryLock(LOCK_TIMEOUT_MS);
                     work.doWork();
                     lockList.get(num).release();
                     released.countDown();
