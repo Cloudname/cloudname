@@ -1,5 +1,7 @@
 package org.cloudname;
 
+import org.cloudname.zk.ZkCloudnameLock;
+
 import java.util.List;
 
 /**
@@ -102,5 +104,15 @@ public interface ServiceHandle {
      */
     public void close()
             throws CloudnameException;
+
+    /**
+     * Get a CloudnameLock object.
+     * @param scope The scope of the coordinate you want to place the lock on.
+     * @param lockName The String identifying the lock across the level selected.
+     * @return CloudnameLock
+     */
+    // TODO (acidmoose): Revisit api for creating CloudnameLock object.
+    // Should perhaps be a default Scope set to Scope.SERVICE.
+    public CloudnameLock getCloudnameLock(CloudnameLock.Scope scope, String lockName);
 }
 
