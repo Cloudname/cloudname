@@ -319,13 +319,13 @@ public final class ZkCloudname extends Thread implements Cloudname, Watcher {
         String statusPath = ZkCoordinatePath.getStatusPath(coordinate);
         log.fine("Claiming " + coordinate.asString() + " (" + statusPath + ")");
 
-        ClaimedCoordinate statusAndEndpoints = new ClaimedCoordinate(statusPath);
+        ClaimedCoordinate statusAndEndpoints = new ClaimedCoordinate(coordinate);
         users.put(statusAndEndpoints, 1 /* random number due to there is no weak hash set, only map */);
 
         // If we have come thus far we have succeeded in creating the
         // CN_STATUS_NAME node within the service coordinate directory
         // in ZooKeeper and we can give the client a ServiceHandle.
-        ZkServiceHandle handle = new ZkServiceHandle(coordinate, statusAndEndpoints);
+        ZkServiceHandle handle = new ZkServiceHandle(statusAndEndpoints, coordinate);
         statusAndEndpoints.newZooKeeperInstance(getZk());
         statusAndEndpoints.start();
         return handle;

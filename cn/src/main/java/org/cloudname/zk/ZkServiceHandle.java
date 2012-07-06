@@ -24,9 +24,9 @@ public class ZkServiceHandle implements ServiceHandle {
     /**
      * Create a ZkServiceHandle for a given coordinate.
      *
-     * @param coordinate the coordinate for this service handle.
+     * @param claimedCoordinate the claimed coordinate for this service handle.
      */
-    public ZkServiceHandle(Coordinate coordinate, ClaimedCoordinate claimedCoordinate) {
+    public ZkServiceHandle(ClaimedCoordinate claimedCoordinate, Coordinate coordinate) {
         this.claimedCoordinate = claimedCoordinate;
         this.coordinate = coordinate;
     }
@@ -92,6 +92,11 @@ public class ZkServiceHandle implements ServiceHandle {
     public void close() throws CloudnameException {
         claimedCoordinate.releaseClaim();
         claimedCoordinate = null;
+    }
+
+    @Override
+    public CloudnameLock getCloudnameLock(CloudnameLock.Scope scope, String lockName) {
+        return claimedCoordinate.getCloudnameLock(scope, lockName);
     }
 
     @Override
