@@ -16,11 +16,20 @@ import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
  * Implementation of CloudnameLock. Uses Zookeeper to hold the locks.
+ *
+ * Algorithm used can be viewed in full in the document called "ZooKeeper Recipes and Solutions" on the
+ * official ZooKeeper site.
+ *
+ * In our words: We create an Ephemeral Sequential node on the scope provided for a coordinate. E.g Scope.SERVICE
+ * on the coordinate 1.service.user.cell, with the lockName "MyLock", will result in a created node with
+ * the path /cn/cell/user/service/locks/MyLock00000001. This node will exist until the lock is released
+ * or ZooKeeper itself deletes it (connectionloss etc resulting in ephemeral node deletion). If the lock
+ * node created has the lowest number, the lock is "acquired". The next lowest number in the list will be
+ * notified when the lock is removed, if tryLock with a timeout is used and the timeout has not been reached.
  *
  * @author acidmoose
  */
@@ -28,7 +37,7 @@ public class ZkCloudnameLock implements CloudnameLock {
 
     private final ZooKeeper zk;
     private final Coordinate coordinate;
-    private final Level level;
+    private final Scope scope;
     private final String lockName;
 
     // This will be false if a lock is obtained, so that you can not lock twice with the same object.
@@ -42,26 +51,26 @@ public class ZkCloudnameLock implements CloudnameLock {
      * Prepare a CloudnameLock object.
      * @param zk ZooKeeper instance to use.
      * @param coordinate The coordinate responsible for the lock.
-     * @param level The CloudnameLock.Level where the lock will be in place.
+     * @param scope The CloudnameLock.Level where the lock will be in place.
      * @param lockName The name of the lock.
      */
     public ZkCloudnameLock (
         final ZooKeeper zk,
         final Coordinate coordinate,
-        final Level level,
-        final String lockName
-    ) {
+        final Scope scope,
+        final String lockName)
+    {
         this.zk = zk;
         this.coordinate = coordinate;
-        this.level = level;
+        this.scope = scope;
         this.lockName = lockName;
 
-        final StringBuffer path = new StringBuffer("/cn/" + coordinate.getCell());
-        if (level == Level.USER || level == Level.SERVICE) {
+        final StringBuilder path = new StringBuilder("/cn/" + coordinate.getCell());
+        if (scope == Scope.USER || scope == Scope.SERVICE) {
             path.append("/")
                 .append(coordinate.getUser());
         }
-        if (level == Level.SERVICE) {
+        if (scope == Scope.SERVICE) {
             path.append("/")
                 .append(coordinate.getService());
         }
@@ -101,7 +110,7 @@ public class ZkCloudnameLock implements CloudnameLock {
         try {
             // Create lock.
             absoluteLockPath = zk.create(
-                path.toString(),
+                path,
                 null,
                 ZooDefs.Ids.OPEN_ACL_UNSAFE,
                 CreateMode.EPHEMERAL_SEQUENTIAL);
@@ -130,7 +139,7 @@ public class ZkCloudnameLock implements CloudnameLock {
 
     @Override
     public boolean tryLock(int timeoutMs) {
-        // This lock object is allready in use
+        // This lock object is already in use
         if (!isInUse.compareAndSet(false, true)) {
             return false;
         }
@@ -155,7 +164,7 @@ public class ZkCloudnameLock implements CloudnameLock {
         try {
             // Create lock.
             absoluteLockPath = zk.create(
-                path.toString(),
+                path,
                 null,
                 ZooDefs.Ids.OPEN_ACL_UNSAFE,
                 CreateMode.EPHEMERAL_SEQUENTIAL);
@@ -188,11 +197,11 @@ public class ZkCloudnameLock implements CloudnameLock {
         final long time = System.currentTimeMillis();
         final CountDownLatch timeoutLatch = new CountDownLatch(1);
         List<String> children = zk.getChildren(
-            absoluteLockPath.substring(0, absoluteLockPath.indexOf(lockName) - 1), // "-1" to remove the "/"
+            getPathToLockNode(), // "-1" to remove the "/"
             false);
 
         // Check to see if you hold the lock (find the lock node with the next lower number)
-        boolean lockAquired = true;
+        boolean lockAcquired = true;
         final int createdNumber = getNodeNumber(absoluteLockPath);
         String nodeToWatch = "";
         int nodeNumberToWatch = -1;
@@ -201,22 +210,22 @@ public class ZkCloudnameLock implements CloudnameLock {
             if (childNumber < createdNumber && childNumber > nodeNumberToWatch) {
                 nodeNumberToWatch = childNumber;
                 nodeToWatch = child;
-                lockAquired = false;
+                lockAcquired = false;
             }
         }
-        if (lockAquired) {
+        if (lockAcquired) {
             // You hold the lock.
             log.log(
                 java.util.logging.Level.INFO,
                 "Lock " + absoluteLockPath + " aquired.");
             return true;
-        } else if (!wait) {
+        } if (!wait) {
             // You do not hold the lock and you do not want to wait. Clean up and return false.
             release();
             return false;
         }
 
-        String lockPathToWatch = absoluteLockPath.substring(0, absoluteLockPath.indexOf(lockName)) + nodeToWatch;
+        String lockPathToWatch = getPathToLockNode() + "/" + nodeToWatch;
         log.log(
             java.util.logging.Level.INFO,
             absoluteLockPath + " is waiting for " + lockPathToWatch + ".");
@@ -255,11 +264,15 @@ public class ZkCloudnameLock implements CloudnameLock {
         return attemptToLock(timeoutMs - (System.currentTimeMillis() - time), wait);
     }
 
+    private String getPathToLockNode() {
+        return absoluteLockPath.substring(0, absoluteLockPath.indexOf(lockName) - 1);
+    }
+
     @Override
     public void release() {
         isInUse.set(false);
-        int anyVersion = -1;
         try {
+            final int anyVersion = -1;
             zk.delete(absoluteLockPath, anyVersion);
             log.log(
                 java.util.logging.Level.INFO,
@@ -277,15 +290,20 @@ public class ZkCloudnameLock implements CloudnameLock {
         }
     }
 
+    /**
+     * Get the trailing number of a sequential ephemeral node. Node path looks like
+     * this "/cn/pathToLock/lockname000000001", and this method returns "000000001" in this case.
+     */
     private int getNodeNumber(String node) {
+        //TODO (acidmoose): Consider replacing with regex
         return Integer.parseInt(node.substring(node.indexOf(lockName) + lockName.length(), node.length()));
     }
 
     private String createAndGetLockPath() throws InterruptedException, KeeperException {
         // Create locks if it does not exist
-        if (zk.exists(lockPath.toString(), false) == null) {
+        if (zk.exists(lockPath, false) == null) {
             try {
-                Util.mkdir(zk, lockPath.toString(), ZooDefs.Ids.OPEN_ACL_UNSAFE);
+                Util.mkdir(zk, lockPath, ZooDefs.Ids.OPEN_ACL_UNSAFE);
             } catch (CloudnameException e) {
                 log.log(
                     java.util.logging.Level.INFO,

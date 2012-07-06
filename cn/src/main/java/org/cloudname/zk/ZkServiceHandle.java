@@ -95,8 +95,8 @@ public class ZkServiceHandle implements ServiceHandle {
     }
 
     @Override
-    public CloudnameLock getCloudnameLock(CloudnameLock.Level level, String lockName) {
-        return claimedCoordinate.getCloudnameLock(level, lockName);
+    public CloudnameLock getCloudnameLock(CloudnameLock.Scope scope, String lockName) {
+        return claimedCoordinate.getCloudnameLock(scope, lockName);
     }
 
     @Override

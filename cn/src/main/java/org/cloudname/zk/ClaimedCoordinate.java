@@ -20,8 +20,8 @@ import java.util.logging.Logger;
  */
 public class ClaimedCoordinate implements Watcher, ZkUserInterface {
 
-    public CloudnameLock getCloudnameLock(CloudnameLock.Level level, String lockName) {
-        return new ZkCloudnameLock(getZooKeeper(), coordinate, level, lockName);
+    public CloudnameLock getCloudnameLock(CloudnameLock.Scope scope, String lockName) {
+        return new ZkCloudnameLock(getZooKeeper(), coordinate, scope, lockName);
     }
 
     /**
@@ -363,7 +363,7 @@ public class ClaimedCoordinate implements Watcher, ZkUserInterface {
      * Registers a configlistener that will receive events when there are changes to the config node.
      * Don't do any heavy lifting in the callback and don't call cloudname from the callback as this might create
      * a deadlock.
-     * @param configListener
+     * @param trackedConfig
      */
     public void registerTrackedConfig(TrackedConfig trackedConfig)  {
 

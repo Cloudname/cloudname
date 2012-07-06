@@ -107,10 +107,12 @@ public interface ServiceHandle {
 
     /**
      * Get a CloudnameLock object.
-     * @param level The level of the coordinate you want to place the lock on.
+     * @param scope The scope of the coordinate you want to place the lock on.
      * @param lockName The String identifying the lock across the level selected.
      * @return CloudnameLock
      */
-    public CloudnameLock getCloudnameLock(CloudnameLock.Level level, String lockName);
+    // TODO (acidmoose): Revisit api for creating CloudnameLock object.
+    // Should perhaps be a default Scope set to Scope.SERVICE.
+    public CloudnameLock getCloudnameLock(CloudnameLock.Scope scope, String lockName);
 }
 

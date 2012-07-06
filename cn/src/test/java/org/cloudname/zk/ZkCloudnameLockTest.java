@@ -91,7 +91,7 @@ public class ZkCloudnameLockTest {
         cn = new ZkCloudname.Builder().setConnectString("localhost:" + zkport).build().connect();
 
         final Coordinate coordinate1 = Coordinate.parse("1.service.user.cell");
-        final CloudnameLock.Level level = CloudnameLock.Level.SERVICE;
+        final CloudnameLock.Scope scope = CloudnameLock.Scope.SERVICE;
         final String lockName = "ServiceLockTest1";
 
         try {
@@ -102,7 +102,7 @@ public class ZkCloudnameLockTest {
 
         final ServiceHandle serviceHandle1 = cn.claim(coordinate1);
 
-        final CloudnameLock lock1 = serviceHandle1.getCloudnameLock(level, lockName);
+        final CloudnameLock lock1 = serviceHandle1.getCloudnameLock(scope, lockName);
         // Attempt to lock
         assertTrue("Unable to lock.", lock1.tryLock());
         // Check that you can not lock twice with the same CloudnameLock object.
@@ -112,7 +112,7 @@ public class ZkCloudnameLockTest {
     }
 
     /**
-     * Test a lock without wait on two services on multiple levels.
+     * Test a lock without wait on two services on multiple scopes.
      * @throws Exception
      */
     @Test
@@ -133,13 +133,13 @@ public class ZkCloudnameLockTest {
         final ServiceHandle serviceHandle = cn.claim(coordinate1);
         final ServiceHandle serviceHandle2 = cn.claim(coordinate2);
 
-        // Service level locks
-        CloudnameLock.Level level = CloudnameLock.Level.SERVICE;
-        CloudnameLock lock1 = serviceHandle.getCloudnameLock(level, lockName);
-        CloudnameLock lock2 = serviceHandle2.getCloudnameLock(level, lockName);
+        // Service scope locks
+        CloudnameLock.Scope scope = CloudnameLock.Scope.SERVICE;
+        CloudnameLock lock1 = serviceHandle.getCloudnameLock(scope, lockName);
+        CloudnameLock lock2 = serviceHandle2.getCloudnameLock(scope, lockName);
         // Attempt to lock
         assertTrue("Unable to lock.", lock1.tryLock());
-        // Check that you can not obtain another lock on the same level with the same name.
+        // Check that you can not obtain another lock on the same scope with the same name.
         assertFalse("Got lock while a lock is not released.", lock2.tryLock());
         // Release lock.
         lock1.release();
@@ -150,10 +150,10 @@ public class ZkCloudnameLockTest {
         // Clean up
         lock2.release();
 
-        // User level locks
-        level = CloudnameLock.Level.USER;
-        lock1 = serviceHandle.getCloudnameLock(level, lockName);
-        lock2 = serviceHandle2.getCloudnameLock(level, lockName);
+        // User scope locks
+        scope = CloudnameLock.Scope.USER;
+        lock1 = serviceHandle.getCloudnameLock(scope, lockName);
+        lock2 = serviceHandle2.getCloudnameLock(scope, lockName);
         assertTrue("Unable to lock.", lock1.tryLock());
         assertFalse("Got lock while a lock is not released.", lock2.tryLock());
         lock1.release();
@@ -161,10 +161,10 @@ public class ZkCloudnameLockTest {
         assertFalse("Got lock while a lock is not released.", lock1.tryLock());
         lock2.release();
 
-        // Cell level locks
-        level = CloudnameLock.Level.CELL;
-        lock1 = serviceHandle.getCloudnameLock(level, lockName);
-        lock2 = serviceHandle2.getCloudnameLock(level, lockName);
+        // Cell scope locks
+        scope = CloudnameLock.Scope.CELL;
+        lock1 = serviceHandle.getCloudnameLock(scope, lockName);
+        lock2 = serviceHandle2.getCloudnameLock(scope, lockName);
         assertTrue("Unable to lock.", lock1.tryLock());
         assertFalse("Got lock while a lock is not released.", lock2.tryLock());
         lock1.release();
@@ -174,7 +174,7 @@ public class ZkCloudnameLockTest {
     }
 
     /**
-     * Test a service level lock with wait on two services where a proper release is performed.
+     * Test a service scope lock with wait on two services where a proper release is performed.
      * @throws Exception
      */
     @Test
@@ -183,7 +183,7 @@ public class ZkCloudnameLockTest {
 
         final Coordinate coordinate1 = Coordinate.parse("1.service.user.cell");
         final Coordinate coordinate2 = Coordinate.parse("2.service.user.cell");
-        final CloudnameLock.Level level = CloudnameLock.Level.SERVICE;
+        final CloudnameLock.Scope scope = CloudnameLock.Scope.SERVICE;
         final String lockName = "testWaitForLockWithProperRelease";
 
         try {
@@ -196,8 +196,8 @@ public class ZkCloudnameLockTest {
         final ServiceHandle serviceHandle1 = cn.claim(coordinate1);
         final ServiceHandle serviceHandle2 = cn.claim(coordinate2);
 
-        final CloudnameLock lock1 = serviceHandle1.getCloudnameLock(level, lockName);
-        final CloudnameLock lock2 = serviceHandle2.getCloudnameLock(level, lockName);
+        final CloudnameLock lock1 = serviceHandle1.getCloudnameLock(scope, lockName);
+        final CloudnameLock lock2 = serviceHandle2.getCloudnameLock(scope, lockName);
 
         final CountDownLatch latch = new CountDownLatch(1);
 
@@ -220,14 +220,14 @@ public class ZkCloudnameLockTest {
     }
 
     /**
-     * Test a service level lock with wait on several services where a proper release is performed.
+     * Test a service scope lock with wait on several services where a proper release is performed.
      * @throws Exception
      */
     @Test
     public void testComplexWaitForLock() throws Exception {
         cn = new ZkCloudname.Builder().setConnectString("localhost:" + zkport).build().connect();
 
-        final CloudnameLock.Level level = CloudnameLock.Level.SERVICE;
+        final CloudnameLock.Scope scope = CloudnameLock.Scope.SERVICE;
         final String lockName = "testComplexWaitForLock";
         final int NUM_JOBS = 100;
 
@@ -248,7 +248,7 @@ public class ZkCloudnameLockTest {
                 fail(e.toString());
             }
             final ServiceHandle serviceHandle = cn.claim(coordinate);
-            lockList.add(serviceHandle.getCloudnameLock(level, lockName));
+            lockList.add(serviceHandle.getCloudnameLock(scope, lockName));
         }
 
         final CountDownLatch released = new CountDownLatch(NUM_JOBS - 1);

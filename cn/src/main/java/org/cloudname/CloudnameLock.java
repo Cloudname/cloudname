@@ -1,16 +1,14 @@
 package org.cloudname;
 
-import java.util.concurrent.TimeUnit;
-
 /**
  * A lock service for use with cloudname.
  *
- * A lock can be placed on any given level of a Coordinate. E.g a lock on any instance of a service (in the
- * example below) uses CloudnameLock.Level.SERVICE.
+ * A lock can be placed on any given scope of a Coordinate. E.g a lock on any instance of a service (in the
+ * example below) uses CloudnameLock.Scope.SERVICE.
  *
  * Usage example:
  *
- * CloudnameLock lock = base.getServiceHandle().getCloudnameLock(CloudnameLock.Level.SERVICE, "serviceLock");
+ * CloudnameLock lock = base.getServiceHandle().getCloudnameLock(CloudnameLock.Scope.SERVICE, "serviceLock");
  *
  * lock.addListener(new CloudnameLockListener() {
  *     @Override
@@ -31,9 +29,9 @@ import java.util.concurrent.TimeUnit;
 public interface CloudnameLock {
 
     /**
-     * The levels where a lock can be placed based on the coordinate of the lock owner.
+     * The scopes where a lock can be placed based on the coordinate of the lock owner.
      */
-    public enum Level {
+    public enum Scope {
         CELL,
         USER,
         SERVICE
