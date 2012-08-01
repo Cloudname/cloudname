@@ -284,7 +284,12 @@ public final class ZkResolver implements Resolver, ZkUserInterface {
             // not sure I am too fond of the check for negative values to
             // have some particular semantics.  That smells like a problem
             // waiting to happen.
-        List<Integer> instances = resolveInstances(parameters, zk);
+
+        ZooKeeper localZkPointer = getZooKeeper();
+        if (localZkPointer == null) {
+            throw new CloudnameException("No connection to ZooKeeper.");
+        }
+        List<Integer> instances = resolveInstances(parameters, localZkPointer);
 
         List<Endpoint> endpoints = new ArrayList<Endpoint>();
         for (Integer instance : instances) {
@@ -299,7 +304,7 @@ public final class ZkResolver implements Resolver, ZkUserInterface {
                 throw new CloudnameException(e);
 
             }
-            ZkCoordinateData zkCoordinateData = ZkCoordinateData.loadCoordinateData(statusPath, getZooKeeper(), null);
+            ZkCoordinateData zkCoordinateData = ZkCoordinateData.loadCoordinateData(statusPath, localZkPointer, null);
             addEndpoints(zkCoordinateData.snapshot(), endpoints, parameters.getEndpointName());
 
         }
