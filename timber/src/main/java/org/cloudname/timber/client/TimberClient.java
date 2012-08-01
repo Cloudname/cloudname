@@ -1,20 +1,17 @@
 package org.cloudname.timber.client;
 
 import org.cloudname.log.pb.Timber;
-
-import java.net.InetSocketAddress;
-import java.util.concurrent.Executors;
-
 import org.jboss.netty.bootstrap.ClientBootstrap;
 import org.jboss.netty.channel.Channel;
 import org.jboss.netty.channel.ChannelFuture;
 import org.jboss.netty.channel.socket.nio.NioClientSocketChannelFactory;
 
-import java.util.Set;
+import java.net.InetSocketAddress;
 import java.util.HashSet;
-
-import java.util.logging.Logger;
+import java.util.Set;
+import java.util.concurrent.Executors;
 import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * Timber client.
@@ -106,6 +103,12 @@ public class TimberClient {
 
             // TODO(borud): Not sure if this should be inside or
             //   outside the synchronization barrier.
+            try {
+                ((TimberClientHandler)bootstrap.getPipelineFactory().getPipeline().getLast()).stopTimer();
+            } catch (Exception e) {
+                // Shouldn't happen with this factory
+                e.printStackTrace();
+            }
             bootstrap.releaseExternalResources();
         }
     }
