@@ -260,7 +260,9 @@ class DynamicExpression implements Watcher, TrackedCoordinate.ExpressionResolver
                 newEndpointsByName.put(getEndpointKey(endpoint), endpoint);
             }
 
-            for (Map.Entry<String, Endpoint> endpointEntry : clientPicture.entrySet()) {
+            Iterator<Map.Entry<String, Endpoint>> it = clientPicture.entrySet().iterator();
+            while (it.hasNext()) {
+                Map.Entry<String, Endpoint> endpointEntry = it.next();
                 String key = endpointEntry.getKey();
 
                 if (! newEndpointsByName.containsKey(key)) {
