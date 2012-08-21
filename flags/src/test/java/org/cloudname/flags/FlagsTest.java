@@ -127,6 +127,19 @@ public class FlagsTest {
     }
 
     /**
+     * Test flags.getFlagsAsSet.
+     */
+    @Test
+    public void testFlagsAsList() {
+        Flags flags = new Flags()
+            .loadOpts(FlagsOptionTest.class);
+
+        assertEquals(flags.getFlagsAsList().size(), 2);
+        assertEquals(flags.getFlagsAsList().get(0).name(), "int");
+        assertEquals(flags.getFlagsAsList().get(1).name(), "Integer");
+    }
+
+    /**
      * Two flags with the same name should not work.
      */
     @Test (expected = IllegalArgumentException.class)
