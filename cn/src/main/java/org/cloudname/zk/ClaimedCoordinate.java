@@ -265,8 +265,7 @@ public class ClaimedCoordinate implements Watcher, ZkUserInterface {
                     final byte[] serverData = getZooKeeper().getData(path, false, stat);
                     final String serverDataString = new String(serverData, Util.CHARSET_NAME);
                     final String ourDataString = zkCoordinateData.snapshot().serialize();
-                    if (getZooKeeper().getSessionId() == stat.getEphemeralOwner() &&
-                            serverDataString.equals(ourDataString)) {
+                    if (getZooKeeper().getSessionId() == stat.getEphemeralOwner()) {
                         getZooKeeper().delete(path, lastStatusVersion);
                     }
                 } catch (InterruptedException e) {
