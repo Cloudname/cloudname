@@ -4,14 +4,7 @@ import java.io.OutputStream;
 import java.io.PrintWriter;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.TreeMap;
+import java.util.*;
 
 import joptsimple.OptionParser;
 import joptsimple.OptionSet;
@@ -438,6 +431,14 @@ public class Flags {
         return FieldType.UNKNOWN;
     }
 
+    public List<Flag> getFlagsAsList() {
+        List<Flag> list = new ArrayList<Flag>();
+        for(OptionHolder holder : options.values()) {
+            list.add(holder.getFlag());
+        }
+        return list;
+    }
+
     /**
      * Internal class that holds an option's corresponding FieldType, Field, Flag and OptionSpec.
      *
@@ -483,4 +484,7 @@ public class Flags {
             return source;
         }
     }
+
+
+
 }
