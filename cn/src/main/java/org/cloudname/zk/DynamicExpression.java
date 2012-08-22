@@ -266,7 +266,7 @@ class DynamicExpression implements Watcher, TrackedCoordinate.ExpressionResolver
                 String key = endpointEntry.getKey();
 
                 if (! newEndpointsByName.containsKey(key)) {
-                    clientPicture.remove(key);
+                    it.remove();
                     clientCallback.endpointEvent(
                             Resolver.ResolverListener.Event.REMOVED_ENDPOINT, endpointEntry.getValue());
                 }
