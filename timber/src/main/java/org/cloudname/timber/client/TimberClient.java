@@ -55,7 +55,7 @@ public class TimberClient {
      * @param host the host where the log server runs.
      * @param port the port the log server listens to.
      */
-    public TimberClient(String host, int port) {
+        public TimberClient(String host, int port) {
         this.host = host;
         this.port = port;
     }

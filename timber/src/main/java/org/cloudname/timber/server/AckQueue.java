@@ -51,13 +51,13 @@ public class AckQueue {
      * to the channel right away.  If the channel is not yet empty the
      * id is enqueued so that it can be written later.
      *
-     * @param id the acknowledgement id we wish to send to the
+     * @param event the acknowledgement event we wish to send to the
      * channel.
      */
-    public void enqueueAckId(String id) {
-        ids.add(id);
+    public void enqueueAck(Timber.LogEvent event) {
+        ids.add(event.getId());
 
-        if (ids.size() >= queueSize) {
+        if (ids.size() >= queueSize || event.getConsistencyLevel() != Timber.ConsistencyLevel.BESTEFFORT) {
             writeAckEvents();
         }
     }
