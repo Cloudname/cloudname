@@ -200,7 +200,8 @@ public class Dispatcher {
             if (null == entry.getChannel()) {
                 return;
             }
-            ackManager.ack(entry.getChannel(), event.getId());
+
+            ackManager.ack(entry.getChannel(), event);
         }
     }
 

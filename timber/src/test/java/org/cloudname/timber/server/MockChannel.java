@@ -51,7 +51,7 @@ public class MockChannel extends AbstractChannel {
      *
      * @return the object that was last written to this channel.
      */
-    public synchronized Object getWriteObject() {
+    public synchronized Object getWrittenObject() {
         if (writtenObjects.size() == 0) {
             return null;
         }
