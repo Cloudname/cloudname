@@ -1,5 +1,6 @@
 package org.cloudname.timber.server;
 
+import org.cloudname.log.pb.Timber;
 import org.jboss.netty.channel.Channel;
 
 import java.util.logging.Logger;
@@ -14,6 +15,16 @@ import org.junit.Assert.*;
  */
 public class AckManagerTest {
     private static final Logger log = Logger.getLogger(AckManagerTest.class.getName());
+
+    private Timber.LogEvent.Builder getDummyLogEventBuilder() {
+        return Timber.LogEvent.newBuilder().setTimestamp(System.currentTimeMillis())
+            .setConsistencyLevel(Timber.ConsistencyLevel.SYNC)
+            .setLevel(0)
+            .setHost("host")
+            .setServiceName("service")
+            .setSource("source")
+            .setType("type");
+    }
 
     /**
      * Trivial instantiation and start/stop test.
@@ -34,8 +45,10 @@ public class AckManagerTest {
         manager.init();
 
         long start = System.currentTimeMillis();
+        Timber.LogEvent event;
         for (int i = 0; i < numIterations; i++) {
-            manager.ack(channel, "id" + i);
+            event = getDummyLogEventBuilder().setId("id" + i).build();
+            manager.ack(channel, event);
         }
         long duration = System.currentTimeMillis() - start;
         log.info("Processed " + numIterations + " acknowledgements in "+ duration + "ms (" + (numIterations / ( (double)duration / 1000)) + " per sec)");

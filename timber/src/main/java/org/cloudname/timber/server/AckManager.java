@@ -43,7 +43,7 @@ public class AckManager {
     // Indicate whether we wish to shut down.
     private final AtomicBoolean isShutdown = new AtomicBoolean(false);
 
-    // The incoming queue for acknowledgements
+    // The incoming queue for acknowledgements.
     private final BlockingQueue<AckEntry> incomingQueue = new ArrayBlockingQueue<AckEntry>(INCOMING_QUEUE_LENGTH);
 
     // Map from channel to AckQueue
@@ -54,19 +54,19 @@ public class AckManager {
     // Acknowledgement queue entry.
     private static class AckEntry {
         private final Channel channel;
-        private final String id;
+        private final Timber.LogEvent event;
 
-        public AckEntry(final Channel channel, final String id) {
+        public AckEntry(final Channel channel, final Timber.LogEvent event) {
             this.channel = channel;
-            this.id = id;
+            this.event = event;
         }
 
         public Channel getChannel() {
             return channel;
         }
 
-        public String getId() {
-            return id;
+        public Timber.LogEvent getEvent() {
+            return event;
         }
     }
 
@@ -104,9 +104,9 @@ public class AckManager {
      * method will block if the acknowledgement queue is full.
      *
      * @param channel the channel we want to send the acknowledgement on.
-     * @param id the LogEvent id we want to acknowledge.
+     * @param event the LogEvent we want to acknowledge.
      */
-    public void ack(Channel channel, String id) {
+    public void ack(Channel channel, Timber.LogEvent event) {
         if (isShutdown.get()) {
             throw new IllegalStateException("Cannot enqueue ack after AckManager has shut down");
         }
@@ -114,7 +114,7 @@ public class AckManager {
         while (true) {
             try {
                 // put() waits if the queue is full.
-                incomingQueue.put(new AckEntry(channel, id));
+                incomingQueue.put(new AckEntry(channel, event));
                 return;
             } catch (InterruptedException e) {
                 // NOP
@@ -213,12 +213,12 @@ public class AckManager {
             channelQueueMap.put(channel, queue);
         }
 
-        queue.enqueueAckId(entry.getId());
+        queue.enqueueAck(entry.getEvent());
     }
 
     /**
      * Iterate over all channelQueueMap to remove channels that have
-     * been closed, and to perform writes on channels.
+     * been closed, and to perform writes on channels
      *
      * <b>Should only be called from consumerLoop().</b>
      */
