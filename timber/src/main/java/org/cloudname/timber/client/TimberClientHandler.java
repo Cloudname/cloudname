@@ -1,25 +1,17 @@
 package org.cloudname.timber.client;
 
 import org.cloudname.log.pb.Timber;
-
 import org.jboss.netty.bootstrap.ClientBootstrap;
-import org.jboss.netty.channel.Channel;
-import org.jboss.netty.channel.ChannelEvent;
-import org.jboss.netty.channel.ChannelFuture;
-import org.jboss.netty.channel.ChannelHandlerContext;
-import org.jboss.netty.channel.ChannelStateEvent;
-import org.jboss.netty.channel.ExceptionEvent;
-import org.jboss.netty.channel.MessageEvent;
-import org.jboss.netty.channel.SimpleChannelUpstreamHandler;
+import org.jboss.netty.channel.*;
 import org.jboss.netty.util.HashedWheelTimer;
 import org.jboss.netty.util.Timeout;
 import org.jboss.netty.util.Timer;
 import org.jboss.netty.util.TimerTask;
 
-import java.util.concurrent.TimeUnit;
 import java.net.InetSocketAddress;
-import java.util.logging.Logger;
+import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  *
@@ -45,6 +37,10 @@ public class TimberClientHandler extends SimpleChannelUpstreamHandler {
         this.client = client;
         this.bootstrap = bootstrap;
         timer = new HashedWheelTimer();
+    }
+
+    public void stopTimer() {
+        timer.stop();
     }
 
     @Override
@@ -90,17 +86,20 @@ public class TimberClientHandler extends SimpleChannelUpstreamHandler {
         InetSocketAddress address = (InetSocketAddress) bootstrap.getOption("remoteAddress");
         int delay = reconnectDelayManager.getReconnectDelayMs(address);
 
-        // Set a timer that tries to reconnect.
-        timer.newTimeout(new TimerTask() {
-                public void run(Timeout timeout) throws Exception {
-                    // There is no use in reconnecting if shutdown()
-                    // has been called on the TimberClient
-                    if (! client.shutdownRequested()) {
-                        bootstrap.connect();
-                    }
-                }
-            }, delay, TimeUnit.MILLISECONDS);
 
+        // Don't even start a reconnect-task if we know we are shutting down
+        if (! client.shutdownRequested()) {
+            // Set a timer that tries to reconnect.
+            timer.newTimeout(new TimerTask() {
+                    public void run(Timeout timeout) throws Exception {
+                        // There is no use in reconnecting if shutdown()
+                        // has been called on the TimberClient
+                        if (! client.shutdownRequested()) {
+                            bootstrap.connect();
+                        }
+                    }
+                }, delay, TimeUnit.MILLISECONDS);
+        }
         // Alert the client that we have disconnected
         client.onDisconnect();
     }

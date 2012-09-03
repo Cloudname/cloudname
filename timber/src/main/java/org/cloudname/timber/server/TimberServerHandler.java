@@ -29,6 +29,11 @@ public class TimberServerHandler
     }
 
     @Override
+    public void channelOpen(ChannelHandlerContext ctx, ChannelStateEvent e) {
+        Server.allChannels.add(e.getChannel());
+    }
+
+    @Override
     public void handleUpstream(ChannelHandlerContext ctx, ChannelEvent event)
         throws Exception
     {

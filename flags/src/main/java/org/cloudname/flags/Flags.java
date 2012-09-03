@@ -1,5 +1,9 @@
 package org.cloudname.flags;
 
+import joptsimple.OptionParser;
+import joptsimple.OptionSet;
+import joptsimple.OptionSpec;
+
 import java.io.OutputStream;
 import java.io.PrintWriter;
 import java.lang.reflect.Field;
@@ -12,10 +16,6 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
-
-import joptsimple.OptionParser;
-import joptsimple.OptionSet;
-import joptsimple.OptionSpec;
 
 
 /**
@@ -439,6 +439,18 @@ public class Flags {
     }
 
     /**
+     * Get all Flag instances parsed from class (via the loadOpts(Class<?> c) method) as a List.
+     * @return List containing Flag instances.
+     */
+    public List<Flag> getFlagsAsList() {
+        final List<Flag> list = new ArrayList<Flag>();
+        for(OptionHolder holder : options.values()) {
+            list.add(holder.getFlag());
+        }
+        return list;
+    }
+
+    /**
      * Internal class that holds an option's corresponding FieldType, Field, Flag and OptionSpec.
      *
      * @author acidmoose
@@ -483,4 +495,5 @@ public class Flags {
             return source;
         }
     }
+
 }
