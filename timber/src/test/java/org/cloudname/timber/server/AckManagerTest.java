@@ -45,10 +45,10 @@ public class AckManagerTest {
         manager.init();
 
         long start = System.currentTimeMillis();
-        Timber.LogEvent e;
+        Timber.LogEvent event;
         for (int i = 0; i < numIterations; i++) {
-            e = getDummyLogEventBuilder().setId("id" + i).build();
-            manager.ack(channel, e);
+            event = getDummyLogEventBuilder().setId("id" + i).build();
+            manager.ack(channel, event);
         }
         long duration = System.currentTimeMillis() - start;
         log.info("Processed " + numIterations + " acknowledgements in "+ duration + "ms (" + (numIterations / ( (double)duration / 1000)) + " per sec)");

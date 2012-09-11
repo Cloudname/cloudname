@@ -54,7 +54,7 @@ public class AckQueue {
      * @param event the acknowledgement event we wish to send to the
      * channel.
      */
-    public void enqueueAck(Timber.LogEvent event) {
+    public void enqueueAck(final Timber.LogEvent event) {
         ids.add(event.getId());
 
         if (ids.size() >= queueSize || event.getConsistencyLevel() != Timber.ConsistencyLevel.BESTEFFORT) {

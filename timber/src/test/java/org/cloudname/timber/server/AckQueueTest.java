@@ -2,18 +2,12 @@ package org.cloudname.timber.server;
 
 import org.cloudname.log.pb.Timber;
 
-import org.jboss.netty.channel.Channel;
-
 import org.junit.*;
-
-import javax.management.timer.TimerNotification;
 
 import static org.junit.Assert.*;
 
 import java.util.BitSet;
-import java.util.logging.Level;
 import java.util.logging.Logger;
-import java.util.concurrent.CountDownLatch;
 
 /**
  * Unit tests for the AckQueue class.
@@ -23,11 +17,11 @@ import java.util.concurrent.CountDownLatch;
 public class AckQueueTest {
     private static final Logger log = Logger.getLogger(AckQueue.class.getName());
 
-    private static int queueSize = 20;
+    private static final int queueSize = 20;
     private MockChannel mockChannel;
     private AckQueue queue;
 
-    private Timber.LogEvent.Builder getDummyLogEventBuilder() {
+    private Timber.LogEvent.Builder newDummyLogEventBuilder() {
         return Timber.LogEvent.newBuilder().setTimestamp(System.currentTimeMillis())
         .setConsistencyLevel(Timber.ConsistencyLevel.BESTEFFORT)
         .setLevel(0)
@@ -47,9 +41,9 @@ public class AckQueueTest {
     @Test
     public void testSimple() throws Exception {
 
-        queue.enqueueAck(getDummyLogEventBuilder().setId("123").build());
+        queue.enqueueAck(newDummyLogEventBuilder().setId("123").build());
         assertEquals(1, queue.size());
-        assertNull(mockChannel.getWriteObject());
+        assertNull(mockChannel.getWrittenObject());
 
         queue.flush();
 
@@ -57,23 +51,23 @@ public class AckQueueTest {
         assertEquals(0, queue.size());
 
         // Make sure that we have gotten the object
-        assertNotNull(mockChannel.getWriteObject());
+        assertNotNull(mockChannel.getWrittenObject());
 
         // And make sure it is the right object
-        assertEquals("123", ((Timber.AckEvent) mockChannel.getWriteObject()).getId(0));
+        assertEquals("123", ((Timber.AckEvent) mockChannel.getWrittenObject()).getId(0));
     }
 
     @Test
     public void testSimpleSync() throws Exception {
 
-        queue.enqueueAck(getDummyLogEventBuilder().setId("123").setConsistencyLevel(Timber.ConsistencyLevel.SYNC).build());
+        queue.enqueueAck(newDummyLogEventBuilder().setId("123").setConsistencyLevel(Timber.ConsistencyLevel.SYNC).build());
 
-        // Queue should be drained immediately
+        // Queue should be drained synchronously
         assertEquals(0, queue.size());
-        assertNotNull(mockChannel.getWriteObject());
+        assertNotNull(mockChannel.getWrittenObject());
 
         // And make sure it is the right object
-        assertEquals("123", ((Timber.AckEvent) mockChannel.getWriteObject()).getId(0));
+        assertEquals("123", ((Timber.AckEvent) mockChannel.getWrittenObject()).getId(0));
     }
 
     @Test
@@ -83,7 +77,7 @@ public class AckQueueTest {
         int numIds = queueSize - 1;
 
         for (int i = 0; i < numIds; i++) {
-            queue.enqueueAck(getDummyLogEventBuilder().setId("" + i).build());
+            queue.enqueueAck(newDummyLogEventBuilder().setId("" + i).build());
         }
 
         // Make sure we still have all the elements in the queue
@@ -93,7 +87,7 @@ public class AckQueueTest {
         assertEquals(0, mockChannel.getWriteCount());
 
         // now push the channel over the edge
-        queue.enqueueAck(getDummyLogEventBuilder().setId("" + numIds).build());
+        queue.enqueueAck(newDummyLogEventBuilder().setId("" + numIds).build());
 
         // since the writing takes place in the current thread the
         // queue should now be empty.
@@ -103,7 +97,7 @@ public class AckQueueTest {
         assertEquals(1, mockChannel.getWriteCount());
 
         // And the last write should be our AckEvent
-        Timber.AckEvent ackEvent = (Timber.AckEvent) mockChannel.getWriteObject();
+        Timber.AckEvent ackEvent = (Timber.AckEvent) mockChannel.getWrittenObject();
 
         // Make sure everything is there
         BitSet bitVector = new BitSet(numIds);
@@ -124,7 +118,7 @@ public class AckQueueTest {
         int numIds = queueSize / 3;
 
         for (int i = 0; i < numIds; i++) {
-            queue.enqueueAck(getDummyLogEventBuilder().setId("" + i).build());
+            queue.enqueueAck(newDummyLogEventBuilder().setId("" + i).build());
         }
 
         // Make sure we still have all the elements in the queue
@@ -134,7 +128,7 @@ public class AckQueueTest {
         assertEquals(0, mockChannel.getWriteCount());
 
         // Now add a sync message
-        queue.enqueueAck(getDummyLogEventBuilder().setId("" + numIds).setConsistencyLevel(Timber.ConsistencyLevel.SYNC).build());
+        queue.enqueueAck(newDummyLogEventBuilder().setId("" + numIds).setConsistencyLevel(Timber.ConsistencyLevel.SYNC).build());
 
         // since the writing takes place in the current thread the
         // queue should now be empty.
@@ -144,7 +138,7 @@ public class AckQueueTest {
         assertEquals(1, mockChannel.getWriteCount());
 
         // And the last write should be our AckEvent
-        Timber.AckEvent ackEvent = (Timber.AckEvent) mockChannel.getWriteObject();
+        Timber.AckEvent ackEvent = (Timber.AckEvent) mockChannel.getWrittenObject();
 
         // Make sure everything is there
         BitSet bitVector = new BitSet(numIds);
