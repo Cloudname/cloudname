@@ -3,7 +3,6 @@ package org.cloudname.timber.server;
 import org.cloudname.log.pb.Timber;
 import static org.cloudname.log.pb.Timber.ConsistencyLevel;
 
-import org.cloudname.timber.server.handler.LogEventHandler;
 import org.cloudname.timber.server.handler.LogEventHandlerException;
 
 import java.util.BitSet;
@@ -114,7 +113,7 @@ public class DispatcherTest {
     @Test
     public void testAcknowledge() throws Exception {
         MockChannel channel = new MockChannel();
-        assertNull(channel.getWriteObject());
+        assertNull(channel.getWrittenObject());
         assertEquals(0, channel.getWriteCount());
 
         DummyHandler handler1 = new DummyHandler("dummy handler 1");
@@ -141,7 +140,7 @@ public class DispatcherTest {
 
         // Should throw a class cast exception if we get the wrong
         // type of object back.
-        Timber.AckEvent ackEvent = (Timber.AckEvent) channel.getWriteObject();
+        Timber.AckEvent ackEvent = (Timber.AckEvent) channel.getWrittenObject();
         assertNotNull(ackEvent);
         assertEquals("abc123", ackEvent.getId(0));
         assertTrue(ackEvent.getTimestamp() > 0);
@@ -153,7 +152,7 @@ public class DispatcherTest {
     @Test
     public void testMultipleAcknowledges() throws Exception {
         MockChannel channel = new MockChannel();
-        assertNull(channel.getWriteObject());
+        assertNull(channel.getWrittenObject());
 
         Dispatcher disp = new Dispatcher(10);
         DummyHandler handler = new DummyHandler("dummy handler");
