@@ -7,6 +7,7 @@ import org.apache.log4j.PatternLayout;
 import org.cloudname.*;
 import org.cloudname.flags.Flag;
 import org.cloudname.flags.Flags;
+import org.omg.CORBA.SystemException;
 
 import java.io.BufferedReader;
 import java.io.FileNotFoundException;
@@ -279,12 +280,19 @@ public final class ZkTool {
                     break;
 
                 } catch (CoordinateMissingException e) {
-                    e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
+                    System.err.println("Non-existing coordinate.");
                 }
-                System.err.println("Created coordinate.");
+                System.err.println("Config updated.");
                 break;
 
             case READ_CONFIG:
+                try {
+                    System.out.println("Config is:" + cloudname.getConfig(Coordinate.parse(coordinateFlag)));
+                } catch (CoordinateMissingException e) {
+                    System.err.println("Non-existing coordinate.");
+                } catch (CloudnameException e) {
+                    System.err.println("Problem with cloudname: " + e.getMessage());
+                }
                 break;
         }
         try {
