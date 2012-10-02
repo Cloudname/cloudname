@@ -48,6 +48,11 @@ public final class Main {
             return;
         }
 
+        if (base.versionFlagged()) {
+            base.printVersion(System.out);
+            return;
+        }
+
         base.init();
 
         WebServer webServer = new WebServer(

@@ -2,19 +2,57 @@
     xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <parent>
-        <groupId>org.cloudname</groupId>
-        <artifactId>cloudname-parent</artifactId>
-        <version>2.10.1</version>
-        <!-- version>2.11-SNAPSHOT</version -->
-    </parent>
-
+    <groupId>org.cloudname</groupId>
     <artifactId>restapp-bootstrap</artifactId>
-    <packaging>jar</packaging>
+    <version>2.10.1</version>
 
     <name>Sample Minimal Cloudname-based REST Application</name>
     <description>Use this as a base for creating your own Cloudname-based REST applications.</description>
     <url>https://github.com/Cloudname/cloudname</url>
+
+    <dependencyManagement>
+        <dependencies>
+
+            <!-- Internal dependencies -->
+            <dependency>
+                <groupId>org.cloudname</groupId>
+                <artifactId>cn</artifactId>
+                <version>${cn.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>org.cloudname</groupId>
+                <artifactId>testtools</artifactId>
+                <version>${cn.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>org.cloudname</groupId>
+                <artifactId>flags</artifactId>
+                <version>${cn.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>junit</groupId>
+                <artifactId>junit</artifactId>
+                <version>${cn.junit.version}</version>
+                <scope>test</scope>
+            </dependency>
+
+            <dependency>
+                <groupId>com.sun.jersey</groupId>
+                <artifactId>jersey-server</artifactId>
+                <version>${cn.jersey.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>javax.annotation</groupId>
+                <artifactId>jsr250-api</artifactId>
+                <version>${cn.jsr250-api.version}</version>
+            </dependency>
+
+        </dependencies>
+    </dependencyManagement>
 
     <dependencies>
 
@@ -32,7 +70,7 @@
         <dependency>
             <groupId>com.comoyo</groupId>
             <artifactId>base</artifactId>
-            <version>3.4.2</version>
+            <version>${base.version}</version>
         </dependency>
 
         <dependency>
@@ -159,7 +197,16 @@
     </build>
 
     <properties>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+
         <jetty.version>8.1.7.v20120910</jetty.version>
+
+        <base.version>3.5.1</base.version>
+        <cn.junit.version>4.8.1</cn.junit.version>
+        <cn.jersey.version>1.8</cn.jersey.version>
+        <cn.jsr250-api.version>1.0</cn.jsr250-api.version>
+        <cn.version>2.10.1</cn.version>
+
     </properties>
 
 </project>

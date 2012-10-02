@@ -1,6 +1,6 @@
 package org.cloudname.example.restapp.rs;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.fail;
 
 import java.io.File;
 import java.io.IOException;
@@ -8,7 +8,6 @@ import java.util.logging.FileHandler;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import javax.annotation.security.RolesAllowed;
 import javax.ws.rs.core.Response.Status;
 
 import org.cloudname.example.restapp.server.AuthenticationFilter;
