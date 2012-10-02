@@ -33,7 +33,7 @@ public class ExampleSecuredResource {
         log.info("getSecuredResource: called by the user " + securityContext.getUserPrincipal().getName());
 
         URI selfUri = fromResource(ExampleCollectionResource.class).build();
-        return Response.ok("There is not much to show, buddy").location(selfUri).build();
+        return Response.ok("Behold my secret beauty!").location(selfUri).build();
     }
 
 }

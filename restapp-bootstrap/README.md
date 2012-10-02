@@ -11,7 +11,8 @@ Structure
 Key sub-packages:
 
 * rs - JAX-RS resources
-* server - the infrastructure code integrating with Jetty and Base and enabling starting from the command line
+* server - the infrastructure code integrating with Jetty and Base,
+  providing security and enabling starting from the command line
 
 
 Using the App: Develop, Deploy, Configure, Run
@@ -31,6 +32,8 @@ Building and running the application for/in production:
 
     mvn package; java -jar target/<project>-<version>-jar-with-dependencies.jar <arguments>
 
+(Where arguments contain at least --coordinate with a valid value.)
+
 ### Configuring the webapp
 
 Most configuration is passed to the webapp as command-line parameters
@@ -43,7 +46,14 @@ TBD (/etc/defaults/xxx, /etc/init.d/xxx, Puppet config ?)
 Authentication and Authorization
 --------------------------------
 
-TBD
+You can use the JSR-250 annotations such as `@RolesAllowed` to limit access to a service
+(see the ExampleSecuredResource). Right now the `AuthenticationFilet` only the Basic HTTP
+authentication and it expects that authentication information is sent with the request and
+doesn't actively ask the user to provide it.
+
+The username and password is verified using Cloudname A3.
+
+TBD: About A3
 
 Customizing the App
 -------------------
@@ -51,6 +61,7 @@ Customizing the App
 * Rename the ExampleResource[IT] and root packages to whatever names are suitable for you
 * Set org.cloudname.example.restapp.server.Main.SERVICE_NAME
 * Set org.cloudname.example.restapp.server.WebServer.REST_RESOURCE_PACKAGES
+* Set the mainClass parameter of the maven-jar-plugin in pom.xml
 
 Further Info
 ------------

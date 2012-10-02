@@ -14,6 +14,7 @@ import org.eclipse.jetty.server.handler.RequestLogHandler;
 import org.eclipse.jetty.servlet.ServletContextHandler;
 import org.eclipse.jetty.servlet.ServletHolder;
 
+import com.sun.jersey.api.container.filter.RolesAllowedResourceFilterFactory;
 import com.sun.jersey.spi.container.servlet.ServletContainer;
 
 /**
@@ -127,7 +128,12 @@ public final class WebServer {
     private ServletContextHandler configureRestHandler() {
         final ServletContextHandler idHandler = new ServletContextHandler(ServletContextHandler.SESSIONS);
         final ServletHolder restServlet = new ServletHolder(ServletContainer.class);
+        configureJerseyParams(restServlet);
+        idHandler.addServlet(restServlet, "/*");
+        return idHandler;
+    }
 
+    private void configureJerseyParams(final ServletHolder restServlet) {
         // Setting package path where Jersey looks for Providers and Resources
         restServlet.setInitParameter("com.sun.jersey.config.property.packages",
                 REST_RESOURCE_PACKAGES + ";org.codehaus.jackson.jaxrs");
@@ -135,9 +141,10 @@ public final class WebServer {
         restServlet.setInitParameter("com.sun.jersey.api.json.POJOMappingFeature", "true");
         // Disabling WADL because it's not very REST-like
         restServlet.setInitParameter("com.sun.jersey.config.feature.DisableWADL", "false");
-
-        idHandler.addServlet(restServlet, "/*");
-        return idHandler;
+        // Active our authentication filter:
+        restServlet.setInitParameter("com.sun.jersey.spi.container.ContainerRequestFilters", AuthenticationFilter.class.getName());
+        // Enable @RolesAllowed:
+        restServlet.setInitParameter("com.sun.jersey.spi.container.ResourceFilters", RolesAllowedResourceFilterFactory.class.getName());
     }
 
     private RequestLogHandler configureRequestLoggerIfDesired() {
