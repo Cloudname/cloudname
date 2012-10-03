@@ -1,26 +1,55 @@
 package org.cloudname.a3.jaxrs;
 
-import com.sun.jersey.api.container.MappableContainerException;
-
-import com.sun.jersey.core.util.Base64;
-
-import com.sun.jersey.spi.container.ContainerRequest;
-import com.sun.jersey.spi.container.ContainerRequestFilter;
-
 import java.security.Principal;
-
-import javax.ws.rs.WebApplicationException;
 
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
+import javax.ws.rs.ext.Provider;
 
 import org.cloudname.a3.A3Client;
 import org.cloudname.a3.A3Principal;
 import org.cloudname.a3.AuthnResult;
-
 import org.cloudname.a3.domain.User;
 
+import com.sun.jersey.api.container.MappableContainerException;
+import com.sun.jersey.core.util.Base64;
+import com.sun.jersey.spi.container.ContainerRequest;
+import com.sun.jersey.spi.container.ContainerRequestFilter;
+
+/**
+ * Check the authentication header and set user principal on the request's security contexts
+ * according to it. It can be then accessed in REST resources via
+ * <code>@Context SecurityContext sc</code> or used to limit access to them based on
+ * the user's roles and <code>@RolesAllowed</code> in cooperation with
+ * {@link JerseyRoleBasedAccessControlResourceFilterFactory}.
+ * <p>
+ * If there are no security credentials then the processing is allowed to continue
+ * (the user might me trying to access a publicly available resource). However if
+ * the user is specified but the username or password is wrong then we let the user know.
+ *
+ * <h4>Dependencies</h4>
+ * The filter expects an {@link A3Client} instance to be provided by Jersey. For that to work
+ * you need to have a {@link Provider} creating it available somewhere where Jersey can
+ * find it.
+ *
+ * <h4>Configuration</h4>
+ * <p>
+ * You need to configure Jersey to use this filter - set its init parameter
+ * <code>com.sun.jersey.spi.container.ContainerRequestFilters</code>
+ * to <code>{@link org.cloudname.a3.jaxrs.JerseyRequestFilter}</code>.
+ * For instructions what init parameter to set to enable @RolesAllowed etc. see the JavaDoc of
+ * the {@link com.sun.jersey.api.container.filter.RolesAllowedResourceFilterFactory}
+ * <p>
+ * You also need to add this package to the packages where Jersey looks for
+ * resources and providers so that it finds {@link AuthenticationExceptionMapper}
+ * (via the init property <code>com.sun.jersey.config.property.packages</code>).
+ * The mapper translates the exceptions thrown here to HTTP Unauthorized etc.
+ * and makes sure that an authentication challenge will be send to the user if
+ * authentication information is required but not provided.
+ *
+ * @see JerseyRoleBasedAccessControlResourceFilterFactory
+ */
 public class JerseyRequestFilter implements ContainerRequestFilter {
 
     private static final String REALM = "Schmealm";
