@@ -1,6 +1,7 @@
 package org.cloudname.example.restapp.server;
 
 import java.security.Principal;
+import java.util.Set;
 import java.util.logging.Logger;
 
 import javax.ws.rs.WebApplicationException;
@@ -8,6 +9,10 @@ import javax.ws.rs.core.Context;
 import javax.ws.rs.core.Response.Status;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
+
+import org.cloudname.a3.A3Client;
+import org.cloudname.a3.AuthnResult;
+import org.cloudname.a3.jaxrs.JerseyRequestFilter;
 
 import com.sun.jersey.core.util.Base64;
 import com.sun.jersey.spi.container.ContainerRequest;
@@ -32,10 +37,14 @@ import com.sun.jersey.spi.container.ContainerRequestFilter;
  * @see com.sun.jersey.api.container.filter.RolesAllowedResourceFilterFactory
  *
  * @author jholy
+ *
+ * TODO Use this filter only to wrap {@link JerseyRequestFilter} (supply params to it, ...)
  */
 public class AuthenticationFilter implements ContainerRequestFilter {
 
     private final static Logger log = Logger.getLogger(AuthenticationFilter.class.getName());
+
+    private static A3Client a3Client = null;
 
     /**
      * User object returned when there are no authentication credentials.
@@ -101,16 +110,33 @@ public class AuthenticationFilter implements ContainerRequestFilter {
         return user;
     }
 
+    /**
+     * Authenticate the user.
+     * @param username
+     * @param password
+     * @return the user or null if authentication failed (unknown user/wrong password)
+     */
     private User authenticate(String username, String password) {
-        // FIXME authenticate using A3
-        if (username.equals("testUser") && password.equals("testUser_psw")) {
-            return new User(username, "example-admin");
-        } else if (username.equals("anotherTestUser") && password.equals("anotherTestUser_psw")) {
-            return new User(username, "guest-only");
-        } else {
-            log.info("Unknown user " + username);
+        // No A3 client set => authentication not needed/supported
+        if (a3Client == null) {
             return null;
         }
+
+        AuthnResult result = a3Client.authenticate(username, password);
+        if (result.isOk()) {
+            return new User(username, result.getUser().getRoles());
+        } else {
+            log.info("Failed authentication for " + username + ": " + result.getState() + " - " + result.getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * Set the A3 client to be used for authentication.
+     * @param a3Client
+     */
+    public static void setA3Client(A3Client a3Client) {
+        AuthenticationFilter.a3Client = a3Client;
     }
 
     public class Authorizer implements SecurityContext {
@@ -132,7 +158,7 @@ public class AuthenticationFilter implements ContainerRequestFilter {
         }
 
         public boolean isUserInRole(String role) {
-            return (role.equals(user.role));
+            return (user.roles != null) && user.roles.contains(role);
         }
 
         public boolean isSecure() {
@@ -147,11 +173,11 @@ public class AuthenticationFilter implements ContainerRequestFilter {
     public static class User {
 
         public String username;
-        public String role;
+        public Set<String> roles;
 
-        public User(String username, String role) {
+        public User(String username, Set<String> roles) {
             this.username = username;
-            this.role = role;
+            this.roles = roles;
         }
     }
 

@@ -54,6 +54,9 @@ doesn't actively ask the user to provide it.
 The username and password is verified using Cloudname A3.
 
 TBD: About A3
+TBD: Should we use org.cloudname.a3.jaxrs.JerseyRequestFilter instead of AuthenticationFilter.
+Requires context injection of A3Client (-> com.comoyo.payment.rest.provider.A3ClientProvider).
+- see KodeeWebAppContextFactory
 
 Customizing the App
 -------------------

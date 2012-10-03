@@ -1,5 +1,6 @@
 package org.cloudname.example.restapp.server;
 
+import org.cloudname.example.restapp.server.security.A3ClientInitializer;
 import org.cloudname.flags.Flag;
 
 import com.comoyo.base.Base;
@@ -41,7 +42,10 @@ public final class Main {
     public static void main(final String [] args) throws Exception {
 
         final Base base = new Base();
-        base.loadOpts(Main.class).parseFlags(args);
+        base
+            .loadOpts(Main.class)
+            .loadOpts(A3ClientInitializer.class)
+            .parseFlags(args);
 
         if (base.helpFlagged()) {
             base.printHelp(System.out);
@@ -54,6 +58,8 @@ public final class Main {
         }
 
         base.init();
+
+        A3ClientInitializer.tryInitializeA3Client();
 
         WebServer webServer = new WebServer(
                 SERVICE_NAME,

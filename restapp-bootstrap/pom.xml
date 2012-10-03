@@ -10,7 +10,9 @@
     <description>Use this as a base for creating your own Cloudname-based REST applications.</description>
     <url>https://github.com/Cloudname/cloudname</url>
 
-    <organization><name>Example Organization (used by Base's varz servlet)</name></organization>
+    <organization>
+        <name>Example Organization (used by Base's varz servlet)</name>
+    </organization>
 
     <dependencyManagement>
         <dependencies>
@@ -31,6 +33,12 @@
             <dependency>
                 <groupId>org.cloudname</groupId>
                 <artifactId>flags</artifactId>
+                <version>${cn.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>org.cloudname</groupId>
+                <artifactId>a3</artifactId>
                 <version>${cn.version}</version>
             </dependency>
 
@@ -90,6 +98,12 @@
             <artifactId>jetty-servlet</artifactId>
             <version>${jetty.version}</version>
         </dependency>
+
+            <dependency>
+                <groupId>org.cloudname</groupId>
+                <artifactId>a3</artifactId>
+                <version>${cn.version}</version>
+            </dependency>
 
         <dependency>
             <groupId>com.sun.jersey</groupId>

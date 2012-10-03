@@ -2,8 +2,12 @@ package org.cloudname.example.restapp.rs;
 
 import static org.junit.Assert.assertEquals;
 
+import java.io.IOException;
+
 import javax.ws.rs.core.Response.Status;
 
+import org.cloudname.example.restapp.server.security.A3ClientInitializer;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import com.sun.jersey.api.client.ClientResponse;
@@ -19,8 +23,14 @@ public class ExampleSecuredResourceIT extends AbstractResourceTester {
     private static final String TEST_PASSWORD2 = "anotherTestUser_psw";
     private static final String INVALID_PASSWORD = "this psw isn't valid!";
 
+    @BeforeClass
+    public static void setUpA3Client() throws IOException {
+        A3ClientInitializer.setUserDbPathForTesting("/test-clients.json");
+        A3ClientInitializer.tryInitializeA3Client();
+    }
+
     @Test
-    public void access_forbidden_if_no_credentials_provided() throws Exception {
+    public void not_allowed_if_no_credentials_provided() throws Exception {
 
         final ClientResponse response =
                 resource().path("/secure-resource").get(ClientResponse.class);
@@ -29,7 +39,7 @@ public class ExampleSecuredResourceIT extends AbstractResourceTester {
     }
 
     @Test
-    public void unauthorized_if_wrong_password() throws Exception {
+    public void not_allowed_if_wrong_password() throws Exception {
 
         setAuthentication(TEST_USER, INVALID_PASSWORD);
 
@@ -40,14 +50,13 @@ public class ExampleSecuredResourceIT extends AbstractResourceTester {
     }
 
     @Test
-    public void unauthorized_if_wrong_role() throws Exception {
+    public void not_allowed_if_wrong_role() throws Exception {
 
         setAuthentication(TEST_USER2_WRONG_ROLE, TEST_PASSWORD2);
 
         final ClientResponse response =
                 resource().path("/secure-resource").get(ClientResponse.class);
 
-        // The filter throws 403 even though it should ratherthrow 401 (unauthorized)
         assertHttpStatus(Status.FORBIDDEN, response);
     }
 
