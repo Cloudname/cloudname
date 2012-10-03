@@ -10,6 +10,8 @@
     <description>Use this as a base for creating your own Cloudname-based REST applications.</description>
     <url>https://github.com/Cloudname/cloudname</url>
 
+    <organization><name>Example Organization (used by Base's varz servlet)</name></organization>
+
     <dependencyManagement>
         <dependencies>
 
@@ -158,6 +160,7 @@
                     <archive>
                         <manifest>
                             <mainClass>org.cloudname.example.restapp.server.Main</mainClass>
+                            <addDefaultImplementationEntries>true</addDefaultImplementationEntries>
                         </manifest>
                     </archive>
                 </configuration>
