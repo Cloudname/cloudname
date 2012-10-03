@@ -99,11 +99,10 @@
             <version>${jetty.version}</version>
         </dependency>
 
-            <dependency>
-                <groupId>org.cloudname</groupId>
-                <artifactId>a3</artifactId>
-                <version>${cn.version}</version>
-            </dependency>
+        <dependency>
+            <groupId>org.cloudname</groupId>
+            <artifactId>a3</artifactId>
+        </dependency>
 
         <dependency>
             <groupId>com.sun.jersey</groupId>
@@ -223,7 +222,6 @@
         <cn.jersey.version>1.8</cn.jersey.version>
         <cn.jsr250-api.version>1.0</cn.jsr250-api.version>
         <cn.version>2.10.1</cn.version>
-
     </properties>
 
 </project>

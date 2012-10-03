@@ -10,13 +10,13 @@ import java.util.logging.Logger;
 
 import javax.ws.rs.core.Response.Status;
 
-import org.cloudname.example.restapp.server.AuthenticationFilter;
+import org.cloudname.a3.jaxrs.JerseyRoleBasedAccessControlResourceFilterFactory;
+import org.cloudname.example.restapp.server.security.AuthenticationFilter;
 import org.cloudname.testtools.Net;
 import org.junit.Before;
 import org.junit.BeforeClass;
 
 import com.sun.jersey.api.client.ClientResponse;
-import com.sun.jersey.api.container.filter.RolesAllowedResourceFilterFactory;
 import com.sun.jersey.test.framework.AppDescriptor;
 import com.sun.jersey.test.framework.JerseyTest;
 import com.sun.jersey.test.framework.WebAppDescriptor;
@@ -51,16 +51,19 @@ public abstract class AbstractResourceTester extends JerseyTest {
 
     @Override
     public final AppDescriptor configure() {
+        // NOTE: The config should be kept in sync with
+        // org.cloudname.example.restapp.server.WebServer.configureJerseyParams
         return new WebAppDescriptor.Builder()
                 .initParam(
                         "com.sun.jersey.config.property.packages",
                         REST_RESOURCE_PACKAGE
-                                + ";org.codehaus.jackson.jaxrs")
+                                + ";org.codehaus.jackson.jaxrs"
+                                + ";org.cloudname.a3.jaxrs") // A3 authentication exception mapper
                 .initParam("com.sun.jersey.api.json.POJOMappingFeature", "true")
                 // Active our authentication filter:
                 .initParam("com.sun.jersey.spi.container.ContainerRequestFilters", AuthenticationFilter.class.getName())
                 // Enable @RolesAllowed:
-                .initParam("com.sun.jersey.spi.container.ResourceFilters", RolesAllowedResourceFilterFactory.class.getName())
+                .initParam("com.sun.jersey.spi.container.ResourceFilters", JerseyRoleBasedAccessControlResourceFilterFactory.class.getName())
                 // Add info about request matching to response headers:
                 .initParam("com.sun.jersey.config.feature.Trace", "true")
                 .build();

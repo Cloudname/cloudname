@@ -2,7 +2,6 @@ package org.cloudname.example.restapp.server.security;
 
 import com.google.common.io.Closeables;
 import org.cloudname.a3.A3Client;
-import org.cloudname.example.restapp.server.AuthenticationFilter;
 import org.cloudname.flags.Flag;
 
 import java.io.*;

@@ -13,7 +13,6 @@ import org.junit.Test;
 import com.sun.jersey.api.client.ClientResponse;
 import com.sun.jersey.api.client.filter.HTTPBasicAuthFilter;
 
-
 public class ExampleSecuredResourceIT extends AbstractResourceTester {
 
     /** A valid user with the required role example-admin, known during test runs. @see AuthenticationFilter */
@@ -35,7 +34,7 @@ public class ExampleSecuredResourceIT extends AbstractResourceTester {
         final ClientResponse response =
                 resource().path("/secure-resource").get(ClientResponse.class);
 
-        assertHttpStatus(Status.FORBIDDEN, response);
+        assertHttpStatus(Status.UNAUTHORIZED, response);
     }
 
     @Test

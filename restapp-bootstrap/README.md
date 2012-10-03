@@ -47,16 +47,9 @@ Authentication and Authorization
 --------------------------------
 
 You can use the JSR-250 annotations such as `@RolesAllowed` to limit access to a service
-(see the ExampleSecuredResource). Right now the `AuthenticationFilet` only the Basic HTTP
-authentication and it expects that authentication information is sent with the request and
-doesn't actively ask the user to provide it.
+(see the ExampleSecuredResource).
 
 The username and password is verified using Cloudname A3.
-
-TBD: About A3
-TBD: Should we use org.cloudname.a3.jaxrs.JerseyRequestFilter instead of AuthenticationFilter.
-Requires context injection of A3Client (-> com.comoyo.payment.rest.provider.A3ClientProvider).
-- see KodeeWebAppContextFactory
 
 Customizing the App
 -------------------

@@ -4,6 +4,8 @@ import java.io.File;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import org.cloudname.a3.jaxrs.JerseyRoleBasedAccessControlResourceFilterFactory;
+import org.cloudname.example.restapp.server.security.AuthenticationFilter;
 import org.eclipse.jetty.server.Connector;
 import org.eclipse.jetty.server.Handler;
 import org.eclipse.jetty.server.NCSARequestLog;
@@ -14,7 +16,6 @@ import org.eclipse.jetty.server.handler.RequestLogHandler;
 import org.eclipse.jetty.servlet.ServletContextHandler;
 import org.eclipse.jetty.servlet.ServletHolder;
 
-import com.sun.jersey.api.container.filter.RolesAllowedResourceFilterFactory;
 import com.sun.jersey.spi.container.servlet.ServletContainer;
 
 /**
@@ -136,15 +137,23 @@ public final class WebServer {
     private void configureJerseyParams(final ServletHolder restServlet) {
         // Setting package path where Jersey looks for Providers and Resources
         restServlet.setInitParameter("com.sun.jersey.config.property.packages",
-                REST_RESOURCE_PACKAGES + ";org.codehaus.jackson.jaxrs");
+                REST_RESOURCE_PACKAGES +
+                ";org.codehaus.jackson.jaxrs" +
+                ";org.cloudname.a3.jaxrs"); // A3 authentication exception mapper
         // Allows jackson to map from JAXB annotated pojo's to JSON
         restServlet.setInitParameter("com.sun.jersey.api.json.POJOMappingFeature", "true");
         // Disabling WADL because it's not very REST-like
         restServlet.setInitParameter("com.sun.jersey.config.feature.DisableWADL", "false");
+        configureAuthenticationAndAuthorization(restServlet);
+    }
+
+    private void configureAuthenticationAndAuthorization(final ServletHolder restServlet) {
         // Active our authentication filter:
-        restServlet.setInitParameter("com.sun.jersey.spi.container.ContainerRequestFilters", AuthenticationFilter.class.getName());
+        restServlet.setInitParameter("com.sun.jersey.spi.container.ContainerRequestFilters"
+                , AuthenticationFilter.class.getName());
         // Enable @RolesAllowed:
-        restServlet.setInitParameter("com.sun.jersey.spi.container.ResourceFilters", RolesAllowedResourceFilterFactory.class.getName());
+        restServlet.setInitParameter("com.sun.jersey.spi.container.ResourceFilters"
+                , JerseyRoleBasedAccessControlResourceFilterFactory.class.getName());
     }
 
     private RequestLogHandler configureRequestLoggerIfDesired() {
