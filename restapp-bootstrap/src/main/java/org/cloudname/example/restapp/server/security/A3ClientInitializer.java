@@ -18,10 +18,10 @@ import java.util.logging.Logger;
 public enum A3ClientInitializer {
     ;
 
-    @Flag(name = "a3-client-path", description = "Who should we say hello to?")
+    @Flag(name = "a3-client-path", description = "Classpath to an A3 user database file(usually called clinets.json); start with /")
     private static String userDbPath = "/client.json";
 
-    @Flag(name = "a3-client-file", description = "Who should we say hello to?")
+    @Flag(name = "a3-client-file", description = "Path to an A3 user database file (usually called clinets.json)")
     private static String userDbFile = null;
 
     private static final Logger log = Logger.getLogger(A3Client.class.getName());
