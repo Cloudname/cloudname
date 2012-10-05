@@ -19,4 +19,9 @@ public class A3Principal implements Principal {
     public User getAuthenticatedUser() {
         return authenticatedUser;
     }
+
+    @Override
+    public String toString() {
+        return "A3Principal[" + getName() + "]";
+    }
 }
