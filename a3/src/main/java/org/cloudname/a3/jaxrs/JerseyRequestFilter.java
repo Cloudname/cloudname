@@ -1,24 +1,23 @@
 package org.cloudname.a3.jaxrs;
 
+import com.sun.jersey.api.container.MappableContainerException;
+import com.sun.jersey.core.util.Base64;
+import com.sun.jersey.spi.container.ContainerRequest;
+import com.sun.jersey.spi.container.ContainerRequestFilter;
+
 import java.security.Principal;
 
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
-import javax.ws.rs.ext.Provider;
 
 import org.cloudname.a3.A3Client;
 import org.cloudname.a3.A3Principal;
 import org.cloudname.a3.AuthnResult;
 import org.cloudname.a3.domain.User;
 
-import com.sun.jersey.api.container.MappableContainerException;
-import com.sun.jersey.core.util.Base64;
-import com.sun.jersey.spi.container.ContainerRequest;
-import com.sun.jersey.spi.container.ContainerRequestFilter;
-
 /**
- * Check the authentication header and set user principal on the request's security contexts
+ * Checks the authentication header and sets user principal on the request's security contexts
  * according to it. It can be then accessed in REST resources via
  * <code>@Context SecurityContext sc</code> or used to limit access to them based on
  * the user's roles and <code>@RolesAllowed</code> in cooperation with
@@ -30,7 +29,7 @@ import com.sun.jersey.spi.container.ContainerRequestFilter;
  *
  * <h4>Dependencies</h4>
  * The filter expects an {@link A3Client} instance to be provided by Jersey. For that to work
- * you need to have a {@link Provider} creating it available somewhere where Jersey can
+ * you need to have a @{@link javax.ws.rs.ext.Provider.Provider} creating it available somewhere where Jersey can
  * find it.
  *
  * <h4>Configuration</h4>

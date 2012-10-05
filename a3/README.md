@@ -11,8 +11,7 @@ name, password, role(s), custom properties and more.
 Standalone use
 --------------
 
-    org.cloudname.a3.A3Client a3Client = ...;
-    if (a3Client.authenticate("user", "psw").isOk) ...;
+See `/a3/src/test/java/org/cloudname/a3/A3ClientTest.java` for examples.
 
 Use with Jersey
 ---------------
