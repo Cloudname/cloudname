@@ -1,7 +1,9 @@
 package org.cloudname.a3.jaxrs;
 
 import com.sun.jersey.api.container.MappableContainerException;
+
 import com.sun.jersey.core.util.Base64;
+
 import com.sun.jersey.spi.container.ContainerRequest;
 import com.sun.jersey.spi.container.ContainerRequestFilter;
 
