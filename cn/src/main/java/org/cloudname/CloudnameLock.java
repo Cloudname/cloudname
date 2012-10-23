@@ -28,6 +28,8 @@ package org.cloudname;
  */
 public interface CloudnameLock {
 
+    public static final String LOCK_FOLDER_NAME = "locks";
+
     /**
      * The scopes where a lock can be placed based on the coordinate of the lock owner.
      */
