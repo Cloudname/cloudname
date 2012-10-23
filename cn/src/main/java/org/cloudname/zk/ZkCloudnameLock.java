@@ -65,7 +65,7 @@ public class ZkCloudnameLock implements CloudnameLock {
         this.scope = scope;
         this.lockName = lockName;
 
-        final StringBuilder path = new StringBuilder("/cn/" + coordinate.getCell());
+        final StringBuilder path = new StringBuilder("/" + CloudnameLock.LOCK_FOLDER_NAME + "/" + coordinate.getCell());
         if (scope == Scope.USER || scope == Scope.SERVICE) {
             path.append("/")
                 .append(coordinate.getUser());
@@ -74,7 +74,7 @@ public class ZkCloudnameLock implements CloudnameLock {
             path.append("/")
                 .append(coordinate.getService());
         }
-        path.append("/locks");
+        path.append("/" + CloudnameLock.LOCK_FOLDER_NAME);
         lockPath = path.toString();
     }
 
