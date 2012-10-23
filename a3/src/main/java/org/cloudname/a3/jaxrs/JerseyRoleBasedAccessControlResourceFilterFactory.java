@@ -24,20 +24,27 @@ import javax.ws.rs.core.SecurityContext;
 
 /**
  * This class is based on
- * com.sun.jersey.api.container.filter.RolesAllowedResourceFilterFactory,
+ * {@link com.sun.jersey.api.container.filter.RolesAllowedResourceFilterFactory}
+ * and also supports <code>@RolesAllowed</code> etc.
  * but with the modification that unauthenticated, unauthorized
  * requests will result in a HTTP 401 Unauthorized, rather than a 403
  * Forbidden, thus indicating (on unsuccessful requests) to
  * non-authenticating clients that they should try sending
  * authenticated requests.
- *
- * It would be preferrable to _wrap_ an instance of
+ * <p>
+ * To enable this filter, set the Jersey init parameter
+ * <code>com.sun.jersey.spi.container.ContainerRequestFilters</code>
+ * to <code>{@link org.cloudname.a3.jaxrs.JerseyRoleBasedAccessControlResourceFilterFactory}</code>.
+ * (See the JavaDoc of {@link com.sun.jersey.api.container.filter.RolesAllowedResourceFilterFactory}
+ * for details.)
+ * <p>
+ * It would be preferable to _wrap_ an instance of
  * RolesAllowedResourceFilterFactory and use decoration to achieve our
  * slight twist, rather than replicate its entire source (and miss out
  * on updates), but since that class relies on container injection of
  * a private field, we are unable to instantiate it properly. How
  * lovely life is when people write code only for containers.
- *
+ * <p>
  * Apologies for the name. This is a factory that creates resource
  * filters that provide role-based access control when used with
  * Jersey. I couldn't come up with a shorter name that wasn't

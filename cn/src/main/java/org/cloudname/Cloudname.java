@@ -15,7 +15,6 @@ public interface Cloudname {
      * Cloudname cn = ...
      * Coordinate coordinate = ...
      * ServiceHandle serviceHandle = cn.claim(coordinate);
-     * final CountDownLatch latch = new CountDownLatch(1);
      * boolean claimSuccess = serviceHandle.waitForCoordinateOkSeconds(10);
      *
      * @param coordinate of the service we wish to claim.
