@@ -1,16 +1,15 @@
 package org.cloudname.a3.domain;
 
-import java.util.Set;
-import java.util.Map;
-
 import java.io.IOException;
-
-import org.codehaus.jackson.annotate.JsonCreator;
-import org.codehaus.jackson.annotate.JsonProperty;
-
-import org.codehaus.jackson.map.ObjectMapper;
+import java.util.Map;
+import java.util.Set;
 
 import org.joda.time.DateTime;
+
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.joda.JodaModule;
 
 /**
  * User domain object.  This is supposed to be immutable which is why
@@ -169,7 +168,9 @@ public class User {
      */
     public String toJson() {
         try {
-            return new ObjectMapper().writeValueAsString(this);
+            final ObjectMapper mapper = new ObjectMapper();
+            mapper.registerModule(new JodaModule());
+			return mapper.writeValueAsString(this);
         } catch (IOException e) {
             return null;
         }
@@ -179,7 +180,9 @@ public class User {
      * Create a User instance from a JSON string.
      */
     public static User fromJson(String json) throws IOException {
-        return new ObjectMapper().readValue(json, User.class);
+        final ObjectMapper mapper = new ObjectMapper();
+        mapper.registerModule(new JodaModule());
+		return mapper.readValue(json, User.class);
     }
 
     @Override
