@@ -206,6 +206,9 @@ public class ZkCloudnameLock implements CloudnameLock {
         String nodeToWatch = "";
         int nodeNumberToWatch = -1;
         for (final String child : children) {
+            if (!child.startsWith(this.lockName)) {
+                continue;
+            }
             final int childNumber = getNodeNumber(child);
             if (childNumber < createdNumber && childNumber > nodeNumberToWatch) {
                 nodeNumberToWatch = childNumber;
@@ -293,6 +296,7 @@ public class ZkCloudnameLock implements CloudnameLock {
     /**
      * Get the trailing number of a sequential ephemeral node. Node path looks like
      * this "/cn/pathToLock/lockname000000001", and this method returns "000000001" in this case.
+     * Only use for finding the node number of the current lockname.
      */
     private int getNodeNumber(String node) {
         //TODO (acidmoose): Consider replacing with regex
