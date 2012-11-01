@@ -217,11 +217,11 @@
 
         <jetty.version>8.1.7.v20120910</jetty.version>
 
-        <base.version>3.5.2</base.version>
+        <base.version>3.5.5</base.version>
         <cn.junit.version>4.8.1</cn.junit.version>
         <cn.jersey.version>1.8</cn.jersey.version>
         <cn.jsr250-api.version>1.0</cn.jsr250-api.version>
-        <cn.version>2.10.1</cn.version>
+        <cn.version>2.10.3</cn.version>
     </properties>
 
 </project>
