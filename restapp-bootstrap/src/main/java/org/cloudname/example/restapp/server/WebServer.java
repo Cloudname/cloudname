@@ -118,8 +118,7 @@ public final class WebServer {
 
         try {
             log.log(Level.INFO,
-                    "Starting " + serviceName + " server on port " + port + " ( http://0.0.0.0:" + port + " )",
-                    new Object[] { serviceName, port, port });
+                    "Starting " + serviceName + " server on port " + port + " ( http://0.0.0.0:" + port + " )");
             server.start();
         } catch (Exception e) {
             throw new RuntimeException(e);

@@ -1,10 +1,10 @@
 package org.cloudname.example.restapp.rs;
 
+import static org.hamcrest.Matchers.is;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertThat;
 
 import java.io.IOException;
-
-import javax.ws.rs.core.Response.Status;
 
 import org.cloudname.example.restapp.server.security.A3ClientInitializer;
 import org.junit.BeforeClass;
@@ -34,7 +34,7 @@ public class ExampleSecuredResourceIT extends AbstractResourceTester {
         final ClientResponse response =
                 resource().path("/secure-resource").get(ClientResponse.class);
 
-        assertHttpStatus(Status.UNAUTHORIZED, response);
+        assertThat(response.getClientResponseStatus(), is(ClientResponse.Status.UNAUTHORIZED));
     }
 
     @Test
@@ -45,7 +45,7 @@ public class ExampleSecuredResourceIT extends AbstractResourceTester {
         final ClientResponse response =
                 resource().path("/secure-resource").get(ClientResponse.class);
 
-        assertHttpStatus(Status.UNAUTHORIZED, response);
+        assertThat(response.getClientResponseStatus(), is(ClientResponse.Status.UNAUTHORIZED));
     }
 
     @Test
@@ -56,7 +56,7 @@ public class ExampleSecuredResourceIT extends AbstractResourceTester {
         final ClientResponse response =
                 resource().path("/secure-resource").get(ClientResponse.class);
 
-        assertHttpStatus(Status.FORBIDDEN, response);
+        assertThat(response.getClientResponseStatus(), is(ClientResponse.Status.FORBIDDEN));
     }
 
     @Test
@@ -67,7 +67,7 @@ public class ExampleSecuredResourceIT extends AbstractResourceTester {
         final ClientResponse response =
                 resource().path("/secure-resource").get(ClientResponse.class);
 
-        assertHttpStatus(Status.OK, response);
+        assertThat(response.getClientResponseStatus(), is(ClientResponse.Status.OK));
 
         String responseBody = response.getEntity(String.class);
 

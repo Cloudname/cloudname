@@ -1,10 +1,11 @@
 package org.cloudname.example.restapp.rs;
 
-import static org.junit.Assert.*;
+import static org.hamcrest.Matchers.is;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertThat;
 
 import org.junit.Test;
 
-import javax.ws.rs.core.Response.Status;
 import com.sun.jersey.api.client.ClientResponse;
 
 /**
@@ -23,7 +24,7 @@ public class ExampleCollectionResourceIT extends AbstractResourceTester {
         final ClientResponse response =
                 resource().path("/").get(ClientResponse.class);
 
-        assertHttpStatus(Status.OK, response);
+        assertThat(response.getClientResponseStatus(), is(ClientResponse.Status.OK));
 
         String responseBody = response.getEntity(String.class);
         // Note: getEntity returns null in subsequent calls

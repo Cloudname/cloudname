@@ -1,7 +1,5 @@
 package org.cloudname.example.restapp.rs;
 
-import static org.junit.Assert.fail;
-
 import java.io.File;
 import java.io.IOException;
 import java.util.logging.FileHandler;
@@ -16,7 +14,6 @@ import org.cloudname.testtools.Net;
 import org.junit.Before;
 import org.junit.BeforeClass;
 
-import com.sun.jersey.api.client.ClientResponse;
 import com.sun.jersey.test.framework.AppDescriptor;
 import com.sun.jersey.test.framework.JerseyTest;
 import com.sun.jersey.test.framework.WebAppDescriptor;
@@ -98,26 +95,5 @@ public abstract class AbstractResourceTester extends JerseyTest {
     @Override
     public final void setUp() throws Exception {
         super.setUp();
-    }
-
-    /**
-     * Verify that the response's status is as expected, provide useful error message if not,
-     * including the response body (that might carry some details of the failure).
-     *
-     * @param expectedStatus
-     *            (required) What status you expected; example: {@link Status#OK}
-     *            (Use JAX-RS' Response.Status, not the Jersey-specific ClientResponse.Status.)
-     * @param actualResponse
-     *            (required) The response, from st. like
-     *            <code>{@code resource().path("exampleResource").get(ClientResponse.class);}</code>
-     */
-    public static void assertHttpStatus(final Status expectedStatus, final ClientResponse actualResponse) {
-        int actualStatus = actualResponse.getStatus();
-        if (actualStatus != expectedStatus.getStatusCode()) {
-            String responseBody = actualResponse.getEntity(String.class);
-            fail("Expected status " + expectedStatus.getStatusCode() + " but got " + actualStatus
-                    + "; response body: '" + responseBody + "'" + "\nheaders:" + actualResponse.getHeaders());
-        }
-
     }
 }
