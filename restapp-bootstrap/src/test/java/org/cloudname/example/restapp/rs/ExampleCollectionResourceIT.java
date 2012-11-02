@@ -18,7 +18,7 @@ import com.sun.jersey.api.client.ClientResponse;
 public class ExampleCollectionResourceIT extends AbstractResourceTester {
 
     @Test
-    public void get_should_return_http_ok_and_the_message() throws Exception {
+    public void getWorks() throws Exception {
 
         final ClientResponse response =
                 resource().path("/").get(ClientResponse.class);

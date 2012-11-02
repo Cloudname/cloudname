@@ -29,7 +29,7 @@ public class ExampleSecuredResourceIT extends AbstractResourceTester {
     }
 
     @Test
-    public void not_allowed_if_no_credentials_provided() throws Exception {
+    public void unahtorizedIfNoCredentials() throws Exception {
 
         final ClientResponse response =
                 resource().path("/secure-resource").get(ClientResponse.class);
@@ -38,7 +38,7 @@ public class ExampleSecuredResourceIT extends AbstractResourceTester {
     }
 
     @Test
-    public void not_allowed_if_wrong_password() throws Exception {
+    public void unahtorizedIfWrongPassword() throws Exception {
 
         setAuthentication(TEST_USER, INVALID_PASSWORD);
 
@@ -49,7 +49,7 @@ public class ExampleSecuredResourceIT extends AbstractResourceTester {
     }
 
     @Test
-    public void not_allowed_if_wrong_role() throws Exception {
+    public void unahtorizedIfWrongRole() throws Exception {
 
         setAuthentication(TEST_USER2_WRONG_ROLE, TEST_PASSWORD2);
 
@@ -60,7 +60,7 @@ public class ExampleSecuredResourceIT extends AbstractResourceTester {
     }
 
     @Test
-    public void access_granted_if_correct_credentials_and_role() throws Exception {
+    public void okIfGoodCredentials() throws Exception {
 
         setAuthentication(TEST_USER, TEST_PASSWORD);
 

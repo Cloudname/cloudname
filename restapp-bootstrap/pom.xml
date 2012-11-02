@@ -14,67 +14,31 @@
         <name>Example Organization (used by Base's varz servlet)</name>
     </organization>
 
-    <dependencyManagement>
-        <dependencies>
+    <properties>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 
-            <!-- Internal dependencies -->
-            <dependency>
-                <groupId>org.cloudname</groupId>
-                <artifactId>cn</artifactId>
-                <version>${cn.version}</version>
-            </dependency>
+        <jetty.version>8.1.7.v20120910</jetty.version>
 
-            <dependency>
-                <groupId>org.cloudname</groupId>
-                <artifactId>testtools</artifactId>
-                <version>${cn.version}</version>
-            </dependency>
-
-            <dependency>
-                <groupId>org.cloudname</groupId>
-                <artifactId>flags</artifactId>
-                <version>${cn.version}</version>
-            </dependency>
-
-            <dependency>
-                <groupId>org.cloudname</groupId>
-                <artifactId>a3</artifactId>
-                <version>${cn.version}</version>
-            </dependency>
-
-            <dependency>
-                <groupId>junit</groupId>
-                <artifactId>junit</artifactId>
-                <version>${cn.junit.version}</version>
-                <scope>test</scope>
-            </dependency>
-
-            <dependency>
-                <groupId>com.sun.jersey</groupId>
-                <artifactId>jersey-server</artifactId>
-                <version>${cn.jersey.version}</version>
-            </dependency>
-
-            <dependency>
-                <groupId>javax.annotation</groupId>
-                <artifactId>jsr250-api</artifactId>
-                <version>${cn.jsr250-api.version}</version>
-            </dependency>
-
-        </dependencies>
-    </dependencyManagement>
+        <base.version>3.5.5</base.version>
+        <cn.junit.version>4.8.1</cn.junit.version>
+        <cn.jersey.version>1.8</cn.jersey.version>
+        <cn.jsr250-api.version>1.0</cn.jsr250-api.version>
+        <cn.version>2.10.3</cn.version>
+    </properties>
 
     <dependencies>
 
         <dependency>
             <groupId>com.sun.jersey</groupId>
             <artifactId>jersey-server</artifactId>
+            <version>${cn.jersey.version}</version>
         </dependency>
 
         <dependency>
             <!-- @RolesAllowed etc. -->
             <groupId>javax.annotation</groupId>
             <artifactId>jsr250-api</artifactId>
+            <version>${cn.jsr250-api.version}</version>
         </dependency>
 
         <dependency>
@@ -86,6 +50,7 @@
         <dependency>
             <groupId>org.cloudname</groupId>
             <artifactId>flags</artifactId>
+            <version>${cn.version}</version>
         </dependency>
 
         <dependency>
@@ -102,6 +67,7 @@
         <dependency>
             <groupId>org.cloudname</groupId>
             <artifactId>a3</artifactId>
+            <version>${cn.version}</version>
         </dependency>
 
         <dependency>
@@ -127,12 +93,14 @@
         <dependency>
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>
+            <version>${cn.junit.version}</version>
             <scope>test</scope>
         </dependency>
 
         <dependency>
             <groupId>org.cloudname</groupId>
             <artifactId>testtools</artifactId>
+            <version>${cn.version}</version>
             <scope>test</scope>
         </dependency>
 
@@ -211,17 +179,5 @@
             </plugin>
         </plugins>
     </build>
-
-    <properties>
-        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-
-        <jetty.version>8.1.7.v20120910</jetty.version>
-
-        <base.version>3.5.5</base.version>
-        <cn.junit.version>4.8.1</cn.junit.version>
-        <cn.jersey.version>1.8</cn.jersey.version>
-        <cn.jsr250-api.version>1.0</cn.jsr250-api.version>
-        <cn.version>2.10.3</cn.version>
-    </properties>
 
 </project>
