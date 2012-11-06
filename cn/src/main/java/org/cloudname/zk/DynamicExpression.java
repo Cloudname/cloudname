@@ -280,7 +280,7 @@ class DynamicExpression implements Watcher, TrackedCoordinate.ExpressionResolver
                             Resolver.ResolverListener.Event.NEW_ENDPOINT, endpoint);
                     clientPicture.put(key, endpoint);
                 } else {
-                    if (! clientPicture.get(key).equalsEndpoint(endpoint)) {
+                    if (! clientPicture.get(key).equals(endpoint)) {
                         clientCallback.endpointEvent(
                                 Resolver.ResolverListener.Event.REMOVED_ENDPOINT, clientPicture.get(key));
                         clientCallback.endpointEvent(

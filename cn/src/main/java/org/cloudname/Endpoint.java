@@ -75,8 +75,9 @@ public class Endpoint {
         return endpointData;
     }
 
-    public boolean equalsEndpoint(Endpoint endpoint) {
-       return endpoint.toJson().equals(toJson());
+    @Override
+    public boolean equals(Object endpoint) {
+        return endpoint instanceof Endpoint && ((Endpoint) endpoint).toJson().equals(toJson());
     }
 
     public int hashCode() {
