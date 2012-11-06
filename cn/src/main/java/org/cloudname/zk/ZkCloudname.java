@@ -35,23 +35,28 @@ import java.io.IOException;
  *
  *
  * @author borud
+ * @author dybdahl
+ * @author storsveen
  */
 public final class ZkCloudname extends Thread implements Cloudname, Watcher {
 
     private static final int SESSION_TIMEOUT = 5000;
 
     private static final Logger log = Logger.getLogger(ZkCloudname.class.getName());
+    private static final Object zkMonitor = new Object();
+    private static final Object closedMonitor = new Object();
+    private final Object retryMonitor = new Object();
 
     // Instance variables
     private ZooKeeper zkNotThreadSafe;
 
     private ZooKeeper getZk() {
-        synchronized (this) {
+        synchronized (zkMonitor) {
             return zkNotThreadSafe;
         }
     }
     private void setZk(ZooKeeper zk) {
-        synchronized (this) {
+        synchronized (zkMonitor) {
             zkNotThreadSafe = zk;
         }
     }
@@ -66,6 +71,7 @@ public final class ZkCloudname extends Thread implements Cloudname, Watcher {
     private ZkResolver resolver = null;
 
     private int connectingCounter = 0;
+
 
     private ZkCloudname(Builder builder) {
         connectString = builder.getConnectString();
@@ -120,7 +126,7 @@ public final class ZkCloudname extends Thread implements Cloudname, Watcher {
                 }
             }
 
-            synchronized (isClosed) {
+            synchronized (closedMonitor) {
                 if (isClosed) {
                     return;
                 }
@@ -171,12 +177,14 @@ public final class ZkCloudname extends Thread implements Cloudname, Watcher {
      * When calling this function, the zookeeper state should be either connected or closed.
      * @return
      */
-    public synchronized void retryConnection() {
-        log.fine("Retrying connection to ZooKeeper.");
-        try {
-            setZk(new ZooKeeper(connectString, SESSION_TIMEOUT, this));
-        } catch (IOException e) {
-            log.log(Level.SEVERE, "RetryConnection failed for some reason:" + e.getMessage());
+    public void retryConnection() {
+        synchronized (retryMonitor) {
+            log.fine("Retrying connection to ZooKeeper.");
+            try {
+                setZk(new ZooKeeper(connectString, SESSION_TIMEOUT, this));
+            } catch (IOException e) {
+                log.log(Level.SEVERE, "RetryConnection failed for some reason:" + e.getMessage());
+            }
         }
     }
 
@@ -408,7 +416,7 @@ public final class ZkCloudname extends Thread implements Cloudname, Watcher {
         }
         getZk().close();
         log.fine("ZooKeeper session closed for " + connectString);
-        synchronized (isClosed) {
+        synchronized (closedMonitor) {
             isClosed = true;
         }
     }
