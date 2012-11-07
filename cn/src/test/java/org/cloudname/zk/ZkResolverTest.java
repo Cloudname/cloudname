@@ -28,7 +28,6 @@ import static org.junit.Assert.*;
  * @author borud
  */
 public class ZkResolverTest {
-    private ZooKeeper zk;
     private Resolver resolver;
 
     @Rule
@@ -42,56 +41,12 @@ public class ZkResolverTest {
      */
     @Before
     public void setup() throws Exception {
-        // Speed up tests waiting for this event to happen.
-        DynamicExpression.TIME_BETWEEN_NODE_SCANNING_MS = 200;
-
-        File rootDir = temp.newFolder("zk-test");
-        final int zkport = Net.getFreePort();
-
-        // Set up and initialize the embedded ZooKeeper
-        final EmbeddedZooKeeper ezk = new EmbeddedZooKeeper(rootDir, zkport);
-        ezk.init();
-
-        // Set up a zookeeper client that we can use for inspection
-        final CountDownLatch connectedLatch = new CountDownLatch(1);
-        zk = new ZooKeeper("localhost:" + zkport, 1000, new Watcher() {
-            public void process(WatchedEvent event) {
-                if (event.getState() == Event.KeeperState.SyncConnected) {
-                    connectedLatch.countDown();
-                }
-            }
-        });
-        connectedLatch.await();
-        //Make 4 endpoints divided between 2 coordinates
-        final Coordinate coordinateRunning = Coordinate.parse("1.service.user.cell");
-        final Coordinate coordinateDraining = Coordinate.parse("0.service.user.cell");
-
-        Cloudname cn = new ZkCloudname.Builder().setConnectString("localhost:" + zkport).build().connect();
-        cn.createCoordinate(coordinateRunning);
-        cn.createCoordinate(coordinateDraining);
-
-        ServiceHandle handleRunning = cn.claim(coordinateRunning);
-        assertTrue(handleRunning.waitForCoordinateOkSeconds(30));
-
-        handleRunning.putEndpoint(new Endpoint(coordinateRunning, "foo", "localhost", 1234, "http", "data"));
-        handleRunning.putEndpoint(new Endpoint(coordinateRunning, "bar", "localhost", 1235, "http", null));
-        ServiceStatus statusRunning = new ServiceStatus(ServiceState.RUNNING, "Running message");
-        handleRunning.setStatus(statusRunning);
-
-        ServiceHandle handleDraining = cn.claim(coordinateDraining);
-        assertTrue(handleDraining.waitForCoordinateOkSeconds(10));
-        handleDraining.putEndpoint(new Endpoint(coordinateDraining, "foo", "localhost", 5555, "http", "data"));
-        handleDraining.putEndpoint(new Endpoint(coordinateDraining, "bar", "localhost", 5556, "http", null));
-
-        ServiceStatus statusDraining = new ServiceStatus(ServiceState.DRAINING, "Draining message");
-        handleDraining.setStatus(statusDraining);
-        resolver = cn.getResolver();
+        resolver = new ZkResolver.Builder()
+                .addStrategy(new StrategyAll())
+                .addStrategy(new StrategyAny())
+                .build();
     }
 
-    @After
-    public void tearDown() throws Exception {
-        zk.close();
-    }
     // Valid endpoints.
     public static final String[] validEndpointPatterns = new String[] {
             "http.1.service.user.cell",
@@ -113,67 +68,6 @@ public class ZkResolverTest {
             "some-endpoint.somestrategy.service.user.cell",
     };
 
-    @Test
-    public void testBasicSyncResolving() throws Exception {
-        List<Endpoint> endpoints = resolver.resolve("foo.1.service.user.cell");
-        assertEquals(1, endpoints.size());
-        assertEquals("foo", endpoints.get(0).getName());
-        assertEquals("localhost", endpoints.get(0).getHost());
-        assertEquals("1.service.user.cell", endpoints.get(0).getCoordinate().toString());
-        assertEquals("data", endpoints.get(0).getEndpointData());
-        assertEquals("http", endpoints.get(0).getProtocol());
-    }
-
-    /**
-     * Tests that all registered endpoints are returned.
-     */
-    @Test
-    public void testGetCoordinateDataAll() throws Exception {
-        Resolver.CoordinateDataFilter filter = new Resolver.CoordinateDataFilter();
-        Set<Endpoint> endpoints = resolver.getEndpoints(filter);
-        assertEquals(4, endpoints.size());
-    }
-
-    /**
-     * Tests that all methods of the filters are called and some basic filtering are functional.
-     */
-    @Test
-    public void testGetCoordinateDataFilterOptions() throws Exception {
-        final StringBuilder filterCalls = new StringBuilder();
-
-        Resolver.CoordinateDataFilter filter = new Resolver.CoordinateDataFilter() {
-            @Override
-            public boolean includeCell(final String datacenter) {
-                filterCalls.append(datacenter).append(":");
-                return true;
-            }
-            @Override
-            public boolean includeUser(final String user) {
-                filterCalls.append(user).append(":");
-                return true;
-            }
-            @Override
-            public boolean includeService(final String service) {
-                filterCalls.append(service).append(":");
-                return true;
-            }
-            @Override
-            public boolean includeEndpointname(final String endpointName) {
-                return endpointName.equals("foo");
-            }
-            @Override
-            public boolean includeServiceState(final ServiceState state) {
-                return state == ServiceState.RUNNING;
-            }
-        };
-        Set<Endpoint> endpoints = resolver.getEndpoints(filter);
-        assertEquals(1, endpoints.size());
-        Endpoint selectedEndpoint = endpoints.iterator().next();
-
-        assertEquals("foo", selectedEndpoint.getName());
-        assertEquals("cell:user:service:", filterCalls.toString());
-    }
-
     @Test(expected=IllegalArgumentException.class)
     public void testRegisterSameListenerTwice() throws Exception {
         Resolver.ResolverListener resolverListener = new Resolver.ResolverListener() {
@@ -184,23 +78,6 @@ public class ZkResolverTest {
         };
         resolver.addResolverListener("foo.all.service.user.cell", resolverListener);
         resolver.addResolverListener("bar.all.service.user.cell", resolverListener);
-    }
-
-    @Test
-    public void testAnyResolving() throws Exception {
-        List<Endpoint> endpoints = resolver.resolve("foo.any.service.user.cell");
-        assertEquals(1, endpoints.size());
-        assertEquals("foo", endpoints.get(0).getName());
-        assertEquals("localhost", endpoints.get(0).getHost());
-        assertEquals("1.service.user.cell", endpoints.get(0).getCoordinate().toString());
-    }
-
-    @Test
-    public void testAllResolving() throws Exception {
-        List<Endpoint> endpoints = resolver.resolve("all.service.user.cell");
-        assertEquals(2, endpoints.size());
-        assertEquals("foo", endpoints.get(0).getName());
-        assertEquals("bar", endpoints.get(1).getName());
     }
 
     @Test

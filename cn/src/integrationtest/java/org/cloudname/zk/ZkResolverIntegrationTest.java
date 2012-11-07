@@ -40,9 +40,6 @@ public class ZkResolverIntegrationTest {
      * directory.  The setup procedure also allocates a port that is
      * free for the ZooKeeper server so that you should be able to run
      * multiple instances of this test.
-     * TODO: This exact same method is in ZkResolverTest.
-     * Should there even be an integration test for ZkResolver? All tests only depend on ZK.
-     * Maybe merge this class with ZkResolverTest yet again?
      */
     @Before
     public void setup() throws Exception {
@@ -115,6 +112,86 @@ public class ZkResolverIntegrationTest {
         assertEquals(ServiceState.RUNNING, status.getState());
         assertEquals("Running message", status.getMessage());
     }
+
+    @Test
+    public void testBasicSyncResolving() throws Exception {
+        List<Endpoint> endpoints = cn.getResolver().resolve("foo.1.service.user.cell");
+        assertEquals(1, endpoints.size());
+        assertEquals("foo", endpoints.get(0).getName());
+        assertEquals("localhost", endpoints.get(0).getHost());
+        assertEquals("1.service.user.cell", endpoints.get(0).getCoordinate().toString());
+        assertEquals("data", endpoints.get(0).getEndpointData());
+        assertEquals("http", endpoints.get(0).getProtocol());
+    }
+
+
+    @Test
+    public void testAnyResolving() throws Exception {
+        List<Endpoint> endpoints = cn.getResolver().resolve("foo.any.service.user.cell");
+        assertEquals(1, endpoints.size());
+        assertEquals("foo", endpoints.get(0).getName());
+        assertEquals("localhost", endpoints.get(0).getHost());
+        assertEquals("1.service.user.cell", endpoints.get(0).getCoordinate().toString());
+    }
+
+    @Test
+    public void testAllResolving() throws Exception {
+        List<Endpoint> endpoints = cn.getResolver().resolve("all.service.user.cell");
+        assertEquals(2, endpoints.size());
+        assertEquals("foo", endpoints.get(0).getName());
+        assertEquals("bar", endpoints.get(1).getName());
+    }
+
+    /**
+     * Tests that all registered endpoints are returned.
+     */
+    @Test
+    public void testGetCoordinateDataAll() throws Exception {
+        Resolver.CoordinateDataFilter filter = new Resolver.CoordinateDataFilter();
+        Set<Endpoint> endpoints = cn.getResolver().getEndpoints(filter);
+        assertEquals(4, endpoints.size());
+    }
+
+    /**
+     * Tests that all methods of the filters are called and some basic filtering are functional.
+     */
+    @Test
+    public void testGetCoordinateDataFilterOptions() throws Exception {
+        final StringBuilder filterCalls = new StringBuilder();
+
+        Resolver.CoordinateDataFilter filter = new Resolver.CoordinateDataFilter() {
+            @Override
+            public boolean includeCell(final String datacenter) {
+                filterCalls.append(datacenter).append(":");
+                return true;
+            }
+            @Override
+            public boolean includeUser(final String user) {
+                filterCalls.append(user).append(":");
+                return true;
+            }
+            @Override
+            public boolean includeService(final String service) {
+                filterCalls.append(service).append(":");
+                return true;
+            }
+            @Override
+            public boolean includeEndpointname(final String endpointName) {
+                return endpointName.equals("foo");
+            }
+            @Override
+            public boolean includeServiceState(final ServiceState state) {
+                return state == ServiceState.RUNNING;
+            }
+        };
+        Set<Endpoint> endpoints = cn.getResolver().getEndpoints(filter);
+        assertEquals(1, endpoints.size());
+        Endpoint selectedEndpoint = endpoints.iterator().next();
+
+        assertEquals("foo", selectedEndpoint.getName());
+        assertEquals("cell:user:service:", filterCalls.toString());
+    }
+
 
     /**
      * Test an unclaimed coordinate and a path that is not complete.
@@ -244,7 +321,7 @@ public class ZkResolverIntegrationTest {
                 }
             }
         });
-        assertTrue(latchWrapper.latch.await(2000, TimeUnit.MILLISECONDS));
+        assertTrue(latchWrapper.latch.await(5000, TimeUnit.MILLISECONDS));
         assertEquals(1, endpointListNew.size());
         assertEquals("foo", endpointListNew.get(0).getName());
         assertEquals("1.service.user.cell", endpointListNew.get(0).getCoordinate().toString());
@@ -288,7 +365,7 @@ public class ZkResolverIntegrationTest {
             }
         };
         resolver.addResolverListener("foo.all.service.user.cell", resolverListener);
-        assertTrue(latchWrapper.latch.await(2000, TimeUnit.MILLISECONDS));
+        assertTrue(latchWrapper.latch.await(5000, TimeUnit.MILLISECONDS));
         assertEquals(1, endpointListNew.size());
         assertEquals("foo", endpointListNew.get(0).getName());
         assertEquals("1.service.user.cell", endpointListNew.get(0).getCoordinate().toString());

@@ -311,9 +311,9 @@ public class ZkCloudnameIntegrationTest {
 
         log.info("Connection down.");
 
-        Thread.sleep(900);
+        Thread.sleep(9000);
         log.info("Recreating connection soon" + forwarderPort + "->" + zkport);
-        Thread.sleep(200);
+        Thread.sleep(1000);
         assertEquals(CoordinateListener.Event.NO_CONNECTION_TO_STORAGE,
                 listener.events.get(listener.events.size() -1 ));
         forwarder = new PortForwarder(forwarderPort, "127.0.0.1", zkport);
@@ -326,7 +326,7 @@ public class ZkCloudnameIntegrationTest {
             }
             Thread.sleep(300);
         }
-        Thread.sleep(450);
+        Thread.sleep(4500);
         assertEquals(CoordinateListener.Event.COORDINATE_OK, listener.events.get(listener.events.size() -1 ));
 
         forwarder.terminate();
