@@ -300,7 +300,7 @@ public class ZkCloudnameLockTest {
 
         public void doWork() {
             if (busy)
-                fail("Work is allready being done.");
+                fail("Work is already being done.");
             busy = true;
             try {
                 Thread.sleep(simulatedWorkTime);

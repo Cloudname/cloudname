@@ -1,6 +1,5 @@
 package org.cloudname.zk;
 
-import org.apache.zookeeper.ZooDefs;
 import org.cloudname.*;
 
 import org.apache.zookeeper.WatchedEvent;
@@ -12,7 +11,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.*;
 
-import org.cloudname.testtools.network.PortForwarder;
 import org.junit.*;
 import org.junit.rules.TemporaryFolder;
 import static org.junit.Assert.*;
@@ -32,13 +30,8 @@ import java.util.logging.Logger;
 public class ZkCloudnameTest {
     private static Logger log = Logger.getLogger(ZkCloudnameTest.class.getName());
 
-    private EmbeddedZooKeeper ezk;
     private ZooKeeper zk;
     private int zkport;
-    private PortForwarder forwarder;
-    private int forwarderPort;
-    private ZkCloudname cn = null;
-    private ServiceHandle serviceHandle;
 
     @Rule public TemporaryFolder temp = new TemporaryFolder();
 
@@ -57,20 +50,19 @@ public class ZkCloudnameTest {
         );
 
         // Set up and initialize the embedded ZooKeeper
-        ezk = new EmbeddedZooKeeper(rootDir, zkport);
+        final EmbeddedZooKeeper ezk = new EmbeddedZooKeeper(rootDir, zkport);
         ezk.init();
 
         // Set up a zookeeper client that we can use for inspection
         final CountDownLatch connectedLatch = new CountDownLatch(1);
 
-
         zk = new ZooKeeper("localhost:" + zkport, 1000, new Watcher() {
-                public void process(WatchedEvent event) {
-                    if (event.getState() == Event.KeeperState.SyncConnected) {
-                        connectedLatch.countDown();
-                    }
+            public void process(WatchedEvent event) {
+                if (event.getState() == Event.KeeperState.SyncConnected) {
+                    connectedLatch.countDown();
                 }
-            });
+            }
+        });
         connectedLatch.await();
 
         System.out.println("ZooKeeper port is " + zkport);
@@ -101,8 +93,8 @@ public class ZkCloudnameTest {
      */
     @Test
     public void testSimple() throws Exception {
-        Coordinate c = Coordinate.parse("1.service.user.cell");
-        cn = new ZkCloudname.Builder().setConnectString("localhost:" + zkport).build().connect();
+        final Coordinate c = Coordinate.parse("1.service.user.cell");
+        final ZkCloudname cn = makeLocalZkCloudname();
 
         assertFalse(pathExists("/cn/cell/user/service/1"));
         cn.createCoordinate(c);
@@ -113,7 +105,7 @@ public class ZkCloudnameTest {
         assertFalse(pathExists("/cn/cell/user/service/1/status"));
 
         // Claiming the coordinate creates the status node
-        ServiceHandle handle = cn.claim(c);
+        final ServiceHandle handle = cn.claim(c);
         assertTrue(handle.waitForCoordinateOkSeconds(3));
         assertNotNull(handle);
         final CountDownLatch latch = new CountDownLatch(1);
@@ -203,72 +195,22 @@ public class ZkCloudnameTest {
     }
 
     /**
-     * Try to claim coordinate twice
-     */
-    @Test
-    public void testDoubleClaim() throws CloudnameException, InterruptedException {
-        Coordinate c = Coordinate.parse("2.service.user.cell");
-        ZkCloudname cn = null;
-        final CountDownLatch okCounter = new  CountDownLatch(1);     
-        final CountDownLatch failCounter = new  CountDownLatch(1);
-        
-        CoordinateListener listener = new CoordinateListener() {
-
-            @Override
-            public void onCoordinateEvent(Event event, String message) {
-                switch (event) {
-
-                    case COORDINATE_OK:
-                        okCounter.countDown();
-                        break;
-                    case NO_CONNECTION_TO_STORAGE:
-                        failCounter.countDown();
-                        break;
-                    case COORDINATE_CORRUPTED:
-                    case COORDINATE_OUT_OF_SYNC:
-                    case NOT_OWNER:
-                        fail("not expected");
-                        break;
-                }
-            }
-        };
-        
-        try {
-            cn = new ZkCloudname.Builder().setConnectString("localhost:" + zkport).build().connect();
-        } catch (CloudnameException e) {
-            fail("connecting to localhost failed.");
-        }
-
-        try {
-            cn.createCoordinate(c);
-        } catch (CoordinateExistsException e) {
-            fail("should not happen.");
-        }
-        cn.claim(c).registerCoordinateListener(listener);
-        cn.claim(c).registerCoordinateListener(listener);
-            
-
-    }
-
-
-    /**
      * Claim non-existing coordinate
      */
     @Test
     public void testCoordinateNotFound() throws CloudnameException, InterruptedException {
         final Coordinate c = Coordinate.parse("3.service.user.cell");
-        final ZkCloudname cn = new ZkCloudname.Builder().setConnectString("localhost:" + zkport).build().connect();
+        final Cloudname cn = makeLocalZkCloudname();
 
-
-        ExecutorService executor = Executors.newCachedThreadPool();
-        Callable<Object> task = new Callable<Object>() {
+        final ExecutorService executor = Executors.newCachedThreadPool();
+        final Callable<Object> task = new Callable<Object>() {
             public Object call() throws InterruptedException {
                 return cn.claim(c);
             }
         };
-        Future<Object> future = executor.submit(task);
+        final Future<Object> future = executor.submit(task);
         try {
-            Object result = future.get(300, TimeUnit.MILLISECONDS);
+            future.get(300, TimeUnit.MILLISECONDS);
         } catch (TimeoutException ex) {
             // handle the timeout
             log.info("Got time out, nice!");
@@ -283,304 +225,52 @@ public class ZkCloudnameTest {
     }
 
     /**
-     * A coordinate listener that stores events and calls a latch.
+     * Try to claim coordinate twice
      */
-    class UnitTestCoordinateListener implements CoordinateListener {
+    @Test
+    public void testDoubleClaim() throws CloudnameException, InterruptedException {
+        final Coordinate c = Coordinate.parse("2.service.user.cell");
+        final CountDownLatch okCounter = new  CountDownLatch(1);
+        final CountDownLatch failCounter = new  CountDownLatch(1);
 
-        final public List<Event> events = new CopyOnWriteArrayList<Event>();
+        final CoordinateListener listener = new CoordinateListener() {
+            @Override
+            public void onCoordinateEvent(Event event, String message) {
+                switch (event) {
 
-        final private CountDownLatch latch1, latch2;
-        
-        UnitTestCoordinateListener(CountDownLatch latch1, CountDownLatch latch2) {
-            this.latch1 = latch1;
-            this.latch2 = latch2;
+                    case COORDINATE_OK:
+                        okCounter.countDown();
+                        break;
+                    case NO_CONNECTION_TO_STORAGE:
+                        failCounter.countDown();
+                        break;
+                    default: //Any other Event is unexpected.
+                        fail("not expected");
+                        break;
+                }
+            }
+        };
+        Cloudname cn = null;
+        try {
+            cn = makeLocalZkCloudname();
+        } catch (CloudnameException e) {
+            fail("connecting to localhost failed.");
         }
 
-        @Override
-        public void onCoordinateEvent(Event event, String message) {
-            System.err.println("Got unit test even " + event.toString() + " " + message);
-            events.add(event);
-            latch1.countDown();
-            latch2.countDown();
-        }
-    }
-
-    private UnitTestCoordinateListener setUpListenerEnvironment(
-            CountDownLatch connectedLatch1, CountDownLatch connectedLatch2) throws Exception {
-        forwarderPort = Net.getFreePort();
-        forwarder = new PortForwarder(forwarderPort, "127.0.0.1", zkport);
-        Coordinate c = Coordinate.parse("1.service.user.cell");
-
-        cn = new ZkCloudname.Builder().setConnectString("localhost:" + forwarderPort).build().connect();
         try {
             cn.createCoordinate(c);
-        } catch (CoordinateException e) {
-            fail(e.toString());
+        } catch (CoordinateExistsException e) {
+            fail("should not happen.");
         }
-        UnitTestCoordinateListener listener = new UnitTestCoordinateListener(connectedLatch1, connectedLatch2);
-
-        serviceHandle = cn.claim(c);
-        serviceHandle.registerCoordinateListener(listener);
- 
-        return listener;
-    }
-
-    @Test
-    public void testCoordinateListenerInitialEvent() throws  Exception {
-        final CountDownLatch connectedLatch1 = new CountDownLatch(2);
-        final CountDownLatch connectedLatch2 = new CountDownLatch(2);
-        UnitTestCoordinateListener listener = setUpListenerEnvironment(connectedLatch1, connectedLatch2);
-        assertTrue(connectedLatch1.await(15, TimeUnit.SECONDS));
-        assertEquals(2, listener.events.size());
-        assertEquals(CoordinateListener.Event.COORDINATE_OK, listener.events.get(1));
-        forwarder.terminate();
-    }
-
-    @Test
-    public void testCoordinateListenerConnectionDies() throws  Exception {
-        final CountDownLatch connectedLatch1 = new CountDownLatch(1);
-        final CountDownLatch connectedLatch2 = new CountDownLatch(2);
-        UnitTestCoordinateListener listener = setUpListenerEnvironment(connectedLatch1, connectedLatch2);
-        assertTrue(connectedLatch1.await(20, TimeUnit.SECONDS));
-        log.info("Killing zookeeper");
-        ezk.shutdown();
-        forwarder.terminate();
-        assertTrue(connectedLatch2.await(20, TimeUnit.SECONDS));
-        int size = listener.events.size();
-        assertTrue(size > 1);
-        log.info("status " + listener.events.toString());
-        assertEquals(CoordinateListener.Event.NO_CONNECTION_TO_STORAGE, listener.events.get(size - 1));
-    }
-
-    @Test
-    public void testZookeeperRestarts() throws  Exception {
-        final CountDownLatch connectedLatch1 = new CountDownLatch(1);
-        final CountDownLatch connectedLatch2 = new CountDownLatch(3);
-        UnitTestCoordinateListener listener = setUpListenerEnvironment(connectedLatch1, connectedLatch2);
-        assertTrue(connectedLatch1.await(20, TimeUnit.SECONDS));
-        log.info("Killing zookeeper");
-        forwarder.terminate();
-
-        ezk.shutdown();
-
-        ezk.del();
-
-        ezk.init();
-        Thread.sleep(2000);
-        forwarder = new PortForwarder(forwarderPort, "127.0.0.1", zkport);
-
-        int timeoutSecs = 30;
-        while (--timeoutSecs > 0) {
-            Thread.sleep(1000);
-
-
-        }
-        Coordinate c = Coordinate.parse("1.service.user.cell");
-        cn.createCoordinate(c);
-
-        Thread.sleep(9000);
-
-        assertEquals(listener.events.get(listener.events.size() - 1), CoordinateListener.Event.COORDINATE_OK);
-    }
-
-    @Test
-    public void testCoordinateListenerCoordinateCorrupted() throws  Exception {
-        final CountDownLatch connectedLatch1 = new CountDownLatch(2);
-        final CountDownLatch connectedLatch2 = new CountDownLatch(3);
-        UnitTestCoordinateListener listener = setUpListenerEnvironment(connectedLatch1, connectedLatch2);
-        assertTrue(connectedLatch1.await(20, TimeUnit.SECONDS));
-        log.info("Corrupting coordinate.");
-        String garbage = "sdfgsdfgsfgdsdfgsdfgsdfg";
-        byte[] garbageBytes = garbage.getBytes("UTF-16LE");
-
-        zk.setData("/cn/cell/user/service/1/status", garbageBytes, -1);
-        assertTrue(connectedLatch2.await(20, TimeUnit.SECONDS));
-        assertEquals(3, listener.events.size());
-        assertEquals(CoordinateListener.Event.COORDINATE_OUT_OF_SYNC, listener.events.get(2));
-        forwarder.terminate();
-    }
-
-    @Test
-    public void testCoordinateListenerCoordinateOutOfSync() throws  Exception {
-        final CountDownLatch connectedLatch1 = new CountDownLatch(2);
-        final CountDownLatch connectedLatch2 = new CountDownLatch(4);
-        UnitTestCoordinateListener listener = setUpListenerEnvironment(connectedLatch1, connectedLatch2);
-        assertTrue(connectedLatch1.await(20, TimeUnit.SECONDS));
-
-        log.info("Writing different coordinate.");
-        String source = "\"{\\\"state\\\":\\\"STARTING\\\",\\\"message\\\":\\\"Lost hamster.\\\"}\" {}";
-        byte[] byteArray = source.getBytes(Util.CHARSET_NAME);
-
-        zk.setData("/cn/cell/user/service/1/status", byteArray, -1);
-        log.info("Done writing different coordinate.");
-        assertTrue(connectedLatch2.await(20, TimeUnit.SECONDS));
-
-        assertEquals(CoordinateListener.Event.NOT_OWNER, listener.events.get(3));
-        forwarder.terminate();
-    }
-
-    @Test
-    public void testCoordinateListenerCoordinateLost() throws  Exception {
-        final CountDownLatch connectedLatch1 = new CountDownLatch(1);
-        final CountDownLatch connectedLatch2 = new CountDownLatch(3);
-        UnitTestCoordinateListener listener = setUpListenerEnvironment(connectedLatch1, connectedLatch2);
-        assertTrue(connectedLatch1.await(20, TimeUnit.SECONDS));
-        log.info("Deleting coordinate");
-        forwarder.terminate();
-        zk.delete("/cn/cell/user/service/1/status", -1);
-        zk.delete("/cn/cell/user/service/1/config", -1);
-        zk.delete("/cn/cell/user/service/1", -1);
-        forwarder = new PortForwarder(forwarderPort, "127.0.0.1", zkport);
-        assertTrue(connectedLatch2.await(20, TimeUnit.SECONDS));
-        int i = 0;
-        while (listener.events.get(listener.events.size() - 1 ) != CoordinateListener.Event.NOT_OWNER) {
-            Thread.sleep(30);
-            ++i;
-            if (i > 100) {
-                fail("Did not get COORDINATE_VANISHED");
-            }
-        }
-        forwarder.terminate();
-    }
-
-    @Test
-    public void testCoordinateListenerStolenCoordinate() throws Exception {
-
-        final CountDownLatch connectedLatch1 = new CountDownLatch(1);
-        final CountDownLatch connectedLatch2 = new CountDownLatch(2);
-        UnitTestCoordinateListener listener = setUpListenerEnvironment(connectedLatch1, connectedLatch2);
-        assertTrue(connectedLatch1.await(20, TimeUnit.SECONDS));
-        log.info("Killing zookeeper");
-        assertTrue(zk.getState() == ZooKeeper.States.CONNECTED);
-
-        log.info("Killing connection");
-        forwarder.terminate();
-
-        zk.delete("/cn/cell/user/service/1/status", -1);
-        Util.mkdir(zk, "/cn/cell/user/service/1/status" , ZooDefs.Ids.OPEN_ACL_UNSAFE);
-
-        forwarder = new PortForwarder(forwarderPort, "127.0.0.1", zkport);
-
-        assertTrue(connectedLatch2.await(6, TimeUnit.SECONDS));
-
-        int i = 0;
-        int q = -1;
-        while (true) {
-            if (q != listener.events.size()) {
-                q = listener.events.size();
-            }
-            if (listener.events.get(listener.events.size() - 1 ) == CoordinateListener.Event.NOT_OWNER) {
-                break;
-            }
-
-            Thread.sleep(10);
-            ++i;
-            if (i > 1000) {
-                fail("Did not get NOT_OWNER");
-            }
-        }
-
-        //cn2.close();
-        // We use the same path for the new ezk, so it reads up the old state, and hence the coordinate is ok.
-//        assertEquals(CoordinateListener.Event.COORDINATE_OK, listener.events.get(2));
-        forwarder.terminate();
-    }
-
-
-    @Test
-    public void testCoordinateListenerConnectionDiesReconnect() throws  Exception {
-        final CountDownLatch connectedLatch1 = new CountDownLatch(2);
-        final CountDownLatch connectedLatch2 = new CountDownLatch(4);
-        UnitTestCoordinateListener listener = setUpListenerEnvironment(connectedLatch1, connectedLatch2);
-        assertTrue(connectedLatch1.await(20, TimeUnit.SECONDS));
-
-
-        log.info("Killing connection");
-        forwarder.terminate();
-        log.info("Recreating connection" + forwarderPort + "->" + zkport);
-
-        forwarder = new PortForwarder(forwarderPort, "127.0.0.1", zkport);
-        assertTrue(connectedLatch1.await(20, TimeUnit.SECONDS));
-        assertEquals(CoordinateListener.Event.COORDINATE_OK, listener.events.get(listener.events.size() -1 ));
-    }
-
-    /**
-     * In This test the ZK server thinks the client is connected, but the client wants to reconnect due to a disconnect.
-     * This test might be flaky since it has timing with sleeps. If it becomes a problem we disable the test.
-     * It works on my computer and is useful for debugging the reconnect functionality.
-     */
-    @Test
-    public void testCoordinateListenerConnectionDiesReconnectAfterTimeoutClient() throws  Exception {
-        final CountDownLatch connectedLatch1 = new CountDownLatch(2);
-        final CountDownLatch connectedLatch2 = new CountDownLatch(6);
-        UnitTestCoordinateListener listener = setUpListenerEnvironment(connectedLatch1, connectedLatch2);
-        assertTrue(connectedLatch1.await(20, TimeUnit.SECONDS));
-        assertEquals(CoordinateListener.Event.COORDINATE_OK,
-                listener.events.get(listener.events.size() -1 ));
-        log.info("Killing connection");
-        forwarder.terminate();
-
-        log.info("Connection down.");
-
-        Thread.sleep(3400);
-        log.info("Recreating connection soon" + forwarderPort + "->" + zkport);
-
-        assertEquals(CoordinateListener.Event.NO_CONNECTION_TO_STORAGE,
-                listener.events.get(listener.events.size() -1 ));
-        forwarder = new PortForwarder(forwarderPort, "127.0.0.1", zkport);
-        assertTrue(connectedLatch2.await(20, TimeUnit.SECONDS));
-
-
-        for (int c = 0; c < 100; c++) {
-            if (CoordinateListener.Event.COORDINATE_OK == listener.events.get(listener.events.size() -1 ))  {
-                break;
-            }
-            Thread.sleep(100);
-        }
-        assertEquals(CoordinateListener.Event.COORDINATE_OK, listener.events.get(listener.events.size() -1 ));
-
-        forwarder.terminate();
-    }
-
-    @Test
-    public void testCoordinateListenerConnectionDiesReconnectAfterTimeout() throws  Exception {
-        final CountDownLatch connectedLatch1 = new CountDownLatch(2);
-        final CountDownLatch connectedLatch2 = new CountDownLatch(6);
-        UnitTestCoordinateListener listener = setUpListenerEnvironment(connectedLatch1, connectedLatch2);
-        assertTrue(connectedLatch1.await(20, TimeUnit.SECONDS));
-        assertEquals(CoordinateListener.Event.COORDINATE_OK,
-                listener.events.get(listener.events.size() -1 ));
-        log.info("Killing connection");
-        forwarder.terminate();
-
-        log.info("Connection down.");
-
-        Thread.sleep(9000);
-        log.info("Recreating connection soon" + forwarderPort + "->" + zkport);
-        Thread.sleep(1000);
-        assertEquals(CoordinateListener.Event.NO_CONNECTION_TO_STORAGE,
-                listener.events.get(listener.events.size() -1 ));
-        forwarder = new PortForwarder(forwarderPort, "127.0.0.1", zkport);
-        assertTrue(connectedLatch2.await(20, TimeUnit.SECONDS));
-
-
-        for (int c = 0; c < 100; c++) {
-            if (CoordinateListener.Event.COORDINATE_OK == listener.events.get(listener.events.size() -1 ))  {
-                break;
-            }
-            Thread.sleep(300);
-        }
-        Thread.sleep(4500);
-        assertEquals(CoordinateListener.Event.COORDINATE_OK, listener.events.get(listener.events.size() -1 ));
-
-        forwarder.terminate();
+        cn.claim(c).registerCoordinateListener(listener);
+        cn.claim(c).registerCoordinateListener(listener);
     }
 
 
     @Test
     public void testDestroyBasic() throws Exception {
-        Coordinate c = Coordinate.parse("1.service.user.cell");
-        ZkCloudname cn = new ZkCloudname.Builder().setConnectString("localhost:" + zkport).build().connect();
+        final Coordinate c = Coordinate.parse("1.service.user.cell");
+        final Cloudname cn = makeLocalZkCloudname();
         cn.createCoordinate(c);
         assertTrue(pathExists("/cn/cell/user/service/1/config"));
         cn.destroyCoordinate(c);
@@ -590,9 +280,9 @@ public class ZkCloudnameTest {
 
     @Test
     public void testDestroyTwoInstances() throws Exception {
-        Coordinate c1 = Coordinate.parse("1.service.user.cell");
-        Coordinate c2 = Coordinate.parse("2.service.user.cell");
-        ZkCloudname cn = new ZkCloudname.Builder().setConnectString("localhost:" + zkport).build().connect();
+        final Coordinate c1 = Coordinate.parse("1.service.user.cell");
+        final Coordinate c2 = Coordinate.parse("2.service.user.cell");
+        final Cloudname cn = makeLocalZkCloudname();
         cn.createCoordinate(c1);
         cn.createCoordinate(c2);
         assertTrue(pathExists("/cn/cell/user/service/1/config"));
@@ -604,10 +294,10 @@ public class ZkCloudnameTest {
 
     @Test
     public void testDestroyClaimed() throws Exception {
-        Coordinate c = Coordinate.parse("1.service.user.cell");
-        ZkCloudname cn = new ZkCloudname.Builder().setConnectString("localhost:" + zkport).build().connect();
+        final Coordinate c = Coordinate.parse("1.service.user.cell");
+        final Cloudname cn = makeLocalZkCloudname();
         cn.createCoordinate(c);
-        ServiceHandle handle = cn.claim(c);
+        cn.claim(c);
         try {
             cn.destroyCoordinate(c);
             fail("Expected exception to happen");
@@ -615,54 +305,14 @@ public class ZkCloudnameTest {
         }
     }
 
-    /**
-     * Tests that one process claims a coordinate, then another process tries to claim the same coordinate.
-     * The first coordinate looses connection to ZooKeeper and the other process gets the coordinate.
-     * @throws Exception
-     */
-    @Test
-    public void testFastHardRestart() throws Exception {
-        Coordinate c = Coordinate.parse("1.service.user.cell");
-        final CountDownLatch claimLatch1 = new CountDownLatch(1);
-        forwarderPort = Net.getFreePort();
-        forwarder = new PortForwarder(forwarderPort, "127.0.0.1", zkport);
-        Cloudname cn1 = new ZkCloudname.Builder().setConnectString("localhost:" + forwarderPort).build().connect();
-        cn1.createCoordinate(c);
-         
-        ServiceHandle handle1 = cn1.claim(c);
-        handle1.registerCoordinateListener(new CoordinateListener() {
-
-            @Override
-            public void onCoordinateEvent(Event event, String message) {
-                 if (event == Event.COORDINATE_OK) {
-                     claimLatch1.countDown();
-                 }
-            }
-        });
-        assertTrue(claimLatch1.await(5, TimeUnit.SECONDS));
-        final CountDownLatch claimLatch2 = new CountDownLatch(1);
-        Cloudname cn2 = new ZkCloudname.Builder().setConnectString("localhost:" + zkport).build().connect();
-
-        ServiceHandle handle2 = cn2.claim(c);
-
-        forwarder.terminate();
-
-        assertTrue(handle2.waitForCoordinateOkSeconds(20));
-
-        ServiceStatus status = new ServiceStatus(ServiceState.RUNNING, "updated status");
-        handle2.setStatus(status);
-
-        Cloudname cn3 = new ZkCloudname.Builder().setConnectString("localhost:" + zkport).build().connect();
-        ServiceStatus statusRetrieved = cn3.getStatus(c);
-        assertEquals("updated status", statusRetrieved.getMessage());
-        
-    }
-
     private boolean pathExists(String path) throws Exception {
         return (null != zk.exists(path, false));
     }
 
-    private String fetchNodeData(String path) throws Exception {
-        return new String(zk.getData(path, null, null), "UTF-8");
+    /**
+     * Makes a local ZkCloudname instance with the port given by zkPort.
+     */
+    private ZkCloudname makeLocalZkCloudname() throws CloudnameException {
+        return new ZkCloudname.Builder().setConnectString("localhost:" + zkport).build().connect();
     }
 }

@@ -89,7 +89,7 @@ public class ClaimedCoordinate implements Watcher, ZkUserInterface {
      */
     private List<TrackedConfig> trackedConfigList =
             Collections.synchronizedList(new ArrayList<TrackedConfig>());
-    
+
     /**
      * Constructor, the ZooKeeper instances is retrieved from implementing the ZkUserInterface so the object
      * is not ready to be used before the ZooKeeper instance is received.
@@ -124,7 +124,7 @@ public class ClaimedCoordinate implements Watcher, ZkUserInterface {
         sendEventToCoordinateListener(CoordinateListener.Event.NO_CONNECTION_TO_STORAGE,
                 "Got message from parent watcher.");
     }
-    
+
     /**
      * This is implementing part of ZkUserInterface.
      */
@@ -133,11 +133,11 @@ public class ClaimedCoordinate implements Watcher, ZkUserInterface {
         log.fine("ClaimedCoordinate: Got new ZeeKeeper, starting potential cleanup, path: " + path);
         synchronized (this) {
             this.zk = zk;
-            
+
             for (TrackedConfig trackedConfig : trackedConfigList) {
                 trackedConfig.newZooKeeperInstance(zk);
             }
-            
+
             // We always start by assuming it is unclaimed.
             consistencyState = ConsistencyState.OUT_OF_SYNC;
 
@@ -148,7 +148,7 @@ public class ClaimedCoordinate implements Watcher, ZkUserInterface {
             claim(zk);
         }
     }
-    
+
     /**
      * This class implements the logic for handling callbacks from ZooKeeper on claim.
      * In general we could just ignore errors since we have a time based retry mechanism. However,
@@ -213,7 +213,7 @@ public class ClaimedCoordinate implements Watcher, ZkUserInterface {
                     log.info("Claimed processed ok, path: " + path);
                     claimedCoordinate.sendEventToCoordinateListener(CoordinateListener.Event.COORDINATE_OK, "claimed");
                     return;
-                
+
                 case NODEEXISTS:
                     // Someone has already claimed the coordinate. It might have been us in a different thread.
                     // If we already have claimed the coordinate then don't care. Else notify the client.
@@ -227,7 +227,7 @@ public class ClaimedCoordinate implements Watcher, ZkUserInterface {
                     }
                     log.info("Claimed fail, node already exists and probably not by us, path: " + path);
                     claimedCoordinate.sendEventToCoordinateListener(
-                        CoordinateListener.Event.NOT_OWNER, "Node already exists.");
+                            CoordinateListener.Event.NOT_OWNER, "Node already exists.");
                     checkVersion = true;
                     return;
                 case NONODE:
@@ -277,8 +277,10 @@ public class ClaimedCoordinate implements Watcher, ZkUserInterface {
                 }
             }
             checkVersion = false;
-            log.fine("We are out-of-sync, have a zookeeper connection, and are started, trying reclaim: " + path);
-            claim(zk);
+            if(zkCoordinateData!=null) {
+                log.fine("We are out-of-sync, have a zookeeper connection, and are started, trying reclaim: " + path);
+                claim(zk);
+            }
         }
     }
 
@@ -334,7 +336,7 @@ public class ClaimedCoordinate implements Watcher, ZkUserInterface {
      * @return serialized version of the instance data.
      */
     public synchronized String toString() {
-       return zkCoordinateData.snapshot().toString();
+        return zkCoordinateData.snapshot().toString();
     }
 
     /**
@@ -508,7 +510,7 @@ public class ClaimedCoordinate implements Watcher, ZkUserInterface {
             if (! started) {
                 throw new IllegalStateException("Not started yet: " + consistencyState.name());
             }
-            
+
             if (consistencyState == ConsistencyState.OUT_OF_SYNC) {
                 throw new CloudnameException("No proper connection with zookeeper.");
             }

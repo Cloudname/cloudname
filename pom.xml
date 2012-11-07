@@ -43,6 +43,9 @@
 
     <!-- Internal dependency versions -->
     <cn.version>2.11-SNAPSHOT</cn.version>
+
+    <integrationSourceDirectory>src/integrationtest</integrationSourceDirectory>
+    <integrationOutputDirectory>target/integrationtest-classes</integrationOutputDirectory>
   </properties>
 
   <modules>
@@ -221,6 +224,136 @@
 
     </dependencies>
   </dependencyManagement>
+  <profiles>
+    <profile>
+      <activation>
+        <file><exists>src/integrationtest</exists></file>
+      </activation>
+      <id>it</id>
+      <build>
+        <pluginManagement>
+          <plugins>
+            <plugin>
+              <groupId>org.apache.maven.plugins</groupId>
+              <artifactId>maven-surefire-plugin</artifactId>
+              <version>2.10</version>
+              <configuration>
+                <test>**/*.java</test>
+              </configuration>
+            </plugin>
+            <plugin>
+              <groupId>org.apache.maven.plugins</groupId>
+              <artifactId>maven-antrun-plugin</artifactId>
+              <executions>
+                <execution>
+                  <id>create-directory</id>
+                  <phase>pre-integration-test</phase>
+                  <goals>
+                    <goal>run</goal>
+                  </goals>
+                  <configuration>
+                    <tasks>
+                      <echo message="Creating Directory ${integrationOutputDirectory}" />
+                      <mkdir dir="${integrationOutputDirectory}" />
+                    </tasks>
+                  </configuration>
+                </execution>
+              </executions>
+            </plugin>
+            <plugin>
+              <groupId>org.codehaus.mojo</groupId>
+              <artifactId>build-helper-maven-plugin</artifactId>
+              <version>1.5</version>
+              <executions>
+                <execution>
+                  <id>add-test-sources</id>
+                  <phase>pre-integration-test</phase>
+                  <goals>
+                    <goal>add-test-source</goal>
+                  </goals>
+                  <configuration>
+                    <sources>
+                      <source>${integrationSourceDirectory}/java</source>
+                    </sources>
+                  </configuration>
+                </execution>
+                <execution>
+                  <id>add-test-resources</id>
+                  <phase>pre-integration-test</phase>
+                  <goals>
+                    <goal>add-test-resource</goal>
+                  </goals>
+                  <configuration>
+                    <resources>
+                      <resource>
+                        <directory>${integrationSourceDirectory}/java</directory>
+                        <targetPath>${integrationOutputDirectory}</targetPath>
+                      </resource>
+                    </resources>
+                  </configuration>
+                </execution>
+                <execution>
+                  <id>add-empty-directory</id>
+                  <phase>pre-integration-test</phase>
+                  <goals>
+                    <goal>add-test-resource</goal>
+                  </goals>
+                  <configuration>
+                    <resources>
+                      <resource>
+                        <directory>${integrationSourceDirectory}/java</directory>
+                        <targetPath>${integrationOutputDirectory}</targetPath>
+                        <excludes>
+                          <exclude>**/*</exclude>
+                        </excludes>
+                      </resource>
+                    </resources>
+                  </configuration>
+                </execution>
+              </executions>
+            </plugin>
+            <plugin>
+              <groupId>org.apache.maven.plugins</groupId>
+              <artifactId>maven-compiler-plugin</artifactId>
+              <version>2.3.2</version>
+              <executions>
+                <execution>
+                  <phase>pre-integration-test</phase>
+                  <goals>
+                    <goal>testCompile</goal>
+                  </goals>
+                  <configuration>
+                    <compilerArguments>
+                      <d>${basedir}/${integrationOutputDirectory}</d>
+                    </compilerArguments>
+                  </configuration>
+                </execution>
+              </executions>
+            </plugin>
+            <plugin>
+              <artifactId>maven-failsafe-plugin</artifactId>
+              <version>2.8</version>
+              <configuration>
+                <testClassesDirectory>${integrationOutputDirectory}</testClassesDirectory>
+                <reportsDirectory>${integrationOutputDirectory}/failsafe-reports</reportsDirectory>
+                <test>**/*.java</test>
+                <additionalClasspathElements>
+                  <additionalClasspathElement>${integrationSourceDirectory}/resources</additionalClasspathElement>
+                </additionalClasspathElements>
+              </configuration>
+              <executions>
+                <execution>
+                  <goals>
+                    <goal>integration-test</goal>
+                  </goals>
+                </execution>
+              </executions>
+            </plugin>
+          </plugins>
+        </pluginManagement>
+      </build>
+    </profile>
+  </profiles>
 </project>
 
   
