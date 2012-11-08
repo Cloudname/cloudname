@@ -13,6 +13,7 @@ import java.util.ArrayList;
 
 import java.util.logging.Logger;
 
+import org.hamcrest.core.Is;
 import org.junit.*;
 import static org.junit.Assert.*;
 import org.junit.rules.TemporaryFolder;
@@ -72,8 +73,14 @@ public class ArchiverTest {
                                          "some payload " + i));
         }
 
-        for (Timber.LogEvent ev : events) {
-            archiver.handle(ev);
+        long offset = 0L;
+        int counter = 1;
+        for (final Timber.LogEvent ev : events) {
+            final WriteReport wr = archiver.handle(ev);
+            Assert.assertThat(wr.getWriteCount(), Is.is(counter));
+            counter++;
+            Assert.assertThat(wr.getStartOffset(), Is.is(offset));
+            offset = wr.getEndOffset();
         }
     }
 
