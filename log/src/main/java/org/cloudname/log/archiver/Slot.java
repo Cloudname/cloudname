@@ -136,7 +136,8 @@ public class Slot {
     /**
      * Write LogEvent to slot file.
      */
-    public void write(Timber.LogEvent event) throws IOException {
+    public WriteReport write(final Timber.LogEvent event) throws IOException {
+        final WriteReport wr = new WriteReport();
         // Ensure that we have a RecordWriter
         if (null == currentWriter) {
 
@@ -158,14 +159,22 @@ public class Slot {
             writeCount = 0;
         }
 
+        wr.setSlotFile(currentFile);
+        wr.setStartOffset(numBytesInFile);
+
         // Invariant: we have a currentWriter
         numBytesInFile += currentWriter.write(event);
         writeCount++;
+
+        wr.setEndOffset(numBytesInFile);
+        wr.setWriteCount(writeCount);
 
         // Check if it is time to finish this file
         if (numBytesInFile > maxSize) {
             closeInternal();
         }
+
+        return wr;
     }
 
     /**

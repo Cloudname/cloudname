@@ -62,14 +62,15 @@ public class Archiver {
      * @throws ArchiverException if an io error occurred when trying
      *   to write a log event.  The original IO exception causing the
      *   problem will be chained.
+     * @return WriteReport containing information about the write operation.
      */
-    public void handle(Timber.LogEvent logEvent) {
+    public WriteReport handle(Timber.LogEvent logEvent) {
         if (closed) {
             throw new IllegalStateException("Archiver was closed");
         }
 
         try {
-            getSlot(logEvent).write(logEvent);
+            return getSlot(logEvent).write(logEvent);
         } catch (IOException e) {
             throw new ArchiverException("Got IOException while handling logEvent", e);
         }
