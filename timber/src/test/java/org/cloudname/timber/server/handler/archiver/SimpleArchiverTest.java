@@ -1,20 +1,14 @@
 package org.cloudname.timber.server.handler.archiver;
 
-import org.cloudname.log.pb.Timber;
-
-import org.cloudname.timber.server.handler.LogEventHandler;
 import org.cloudname.log.LogUtil;
-
-import com.google.protobuf.ByteString;
+import org.cloudname.log.pb.Timber;
+import org.junit.Rule;
+import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
 
 import java.io.File;
-
-import java.util.List;
 import java.util.ArrayList;
-
-import org.junit.*;
-import static org.junit.Assert.*;
-import org.junit.rules.TemporaryFolder;
+import java.util.List;
 
 /**
  * Unit test for SimpleArchiver.
@@ -30,8 +24,8 @@ public class SimpleArchiverTest {
      * Test initialization with existing path.
      */
     @Test public void testInitialization() throws Exception {
-        String logPath = temp.newFolder("test1").getAbsolutePath();
-        SimpleArchiver archiver = new SimpleArchiver(logPath, MEGABYTE);
+        final String logPath = temp.newFolder("test1").getAbsolutePath();
+        final SimpleArchiver archiver = new SimpleArchiver(logPath, MEGABYTE);
         archiver.init();
     }
 
@@ -39,10 +33,10 @@ public class SimpleArchiverTest {
      * Test initialization with path that does not exist.
      */
     @Test public void testInitializationUnexist() throws Exception {
-        String logPath = temp.newFolder("test2").getAbsolutePath()
+        final String logPath = temp.newFolder("test2").getAbsolutePath()
             + File.separator
             + "unexist";
-        SimpleArchiver archiver = new SimpleArchiver(logPath, MEGABYTE);
+        final SimpleArchiver archiver = new SimpleArchiver(logPath, MEGABYTE);
         archiver.init();
     }
 
@@ -50,13 +44,13 @@ public class SimpleArchiverTest {
      * Try to log some messages.
      */
     @Test public void testWithMessages() throws Exception {
-        String logPath = temp.newFolder("test3").getAbsolutePath();
-        SimpleArchiver archiver = new SimpleArchiver(logPath, MEGABYTE);
+        final String logPath = temp.newFolder("test3").getAbsolutePath();
+        final SimpleArchiver archiver = new SimpleArchiver(logPath, MEGABYTE);
         archiver.init();
 
         final int count = 1000;
 
-        List<Timber.LogEvent> events = new ArrayList<Timber.LogEvent>(count);
+        final List<Timber.LogEvent> events = new ArrayList<Timber.LogEvent>(count);
 
         for (int i = 0; i < count; i++) {
             events.add(LogUtil.textEvent(10,
@@ -65,7 +59,7 @@ public class SimpleArchiverTest {
                                          "some payload " + i));
         }
 
-        for (Timber.LogEvent ev : events) {
+        for (final Timber.LogEvent ev : events) {
             archiver.handle(ev);
         }
     }
