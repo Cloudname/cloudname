@@ -15,61 +15,39 @@ import java.util.regex.Matcher;
  *
  * @author borud
  */
-public final class ZkResolver implements Resolver, ZkUserInterface {
+public final class ZkResolver implements Resolver, ZkObjectHandler.ConnectionStateChanged {
 
     private static final Logger log = Logger.getLogger(ZkResolver.class.getName());
 
-    private ZooKeeper zk = null;
-
     private Map<String, ResolverStrategy> strategies;
 
+    private final ZkObjectHandler.Client zkGetter;
+
+    private final Object dynamicAddressMonitor = new Object();
+
+    private Map<ResolverListener, DynamicExpression> dynamicAddressesByListener = new HashMap<ResolverListener, DynamicExpression>();
+
     @Override
-    public void zooKeeperDown() {
-        synchronized (this) {
-            this.zk = null;
+    public void connectionUp() {
+        synchronized (dynamicAddressMonitor) {
+            for (ResolverListener listener : dynamicAddressesByListener.keySet()) {
+                listener.endpointEvent(ResolverListener.Event.CONNECTION_OK, null);
+            }
+        }
+    }
+
+    @Override
+    public void connectionDown() {
+        synchronized (dynamicAddressMonitor) {
             for (ResolverListener listener : dynamicAddressesByListener.keySet()) {
                 listener.endpointEvent(ResolverListener.Event.LOST_CONNECTION, null);
             }
         }
     }
 
-    @Override
-    public void newZooKeeperInstance(ZooKeeper zk) {
-        log.fine("ZkResolver, new zeekeeper instance.");
-        synchronized (this) {
-            this.zk = zk;
-            for (ResolverListener listener : dynamicAddressesByListener.keySet()) {
-                listener.endpointEvent(ResolverListener.Event.CONNECTION_OK, null);
-            }
-            for (DynamicExpression expression : dynamicAddressesByListener.values()) {
-                expression.newZooKeeperInstance(zk);
-            }
-        }
-    }
-
-
-    private Map<ResolverListener, DynamicExpression> dynamicAddressesByListener = new HashMap<ResolverListener, DynamicExpression>();
-    
-    @Override
-    public void timeEvent() {
-        for (DynamicExpression dynamicExpression : dynamicAddressesByListener.values()) {
-            dynamicExpression.timeEvent();
-        }
-    }
-
-    private ZooKeeper getZooKeeper() throws CloudnameException {
-        synchronized (this) {
-            if (zk == null) {
-                throw new CloudnameException("Connection to ZooKeeper is down.");
-            }
-            return zk;
-        }
-    }
-            
-    
     public static class Builder {
 
-        private Map<String, ResolverStrategy> strategies = new HashMap<String, ResolverStrategy>();
+        final private Map<String, ResolverStrategy> strategies = new HashMap<String, ResolverStrategy>();
 
         public Builder addStrategy(ResolverStrategy strategy) {
             strategies.put(strategy.getName(), strategy);
@@ -80,8 +58,8 @@ public final class ZkResolver implements Resolver, ZkUserInterface {
             return strategies;
         }
 
-        public ZkResolver build() {
-            return new ZkResolver(this);
+        public ZkResolver build(ZkObjectHandler.Client zkGetter) {
+            return new ZkResolver(this, zkGetter);
         }
 
     }
@@ -127,8 +105,6 @@ public final class ZkResolver implements Resolver, ZkUserInterface {
     /**
      * Inner class to keep track of parameters parsed from addressExpression.
      */
-
-
     static class Parameters {
         private String endpointName = null;
         private Integer instance = null;
@@ -148,7 +124,8 @@ public final class ZkResolver implements Resolver, ZkUserInterface {
                    trySetStrategyPattern(addressExpression) ||
                    trySetInstancePattern(addressExpression) ||
                    trySetEndpointStrategyPattern(addressExpression))) {
-                throw new IllegalStateException("Could not parse addressExpression:" + addressExpression);
+                throw new IllegalStateException(
+                        "Could not parse addressExpression:" + addressExpression);
             }
 
         }
@@ -163,7 +140,8 @@ public final class ZkResolver implements Resolver, ZkUserInterface {
         
         /**
          * Returns strategy.
-         * @return the string (e.g. "all" or "any", or "" if there is no strategy (but instance is specified).
+         * @return the string (e.g. "all" or "any", or "" if there is no strategy
+         * (but instance is specified).
          */
         public String getStrategy() {
             return strategy;
@@ -272,8 +250,10 @@ public final class ZkResolver implements Resolver, ZkUserInterface {
      * Constructor, to be called from the inner Dynamic class.
      * @param builder
      */
-    private ZkResolver(Builder builder) {
+    private ZkResolver(Builder builder, ZkObjectHandler.Client zkGetter) {
         this.strategies = builder.getStrategies();
+        this.zkGetter = zkGetter;
+        zkGetter.registerListener(this);
     }
 
     
@@ -285,7 +265,7 @@ public final class ZkResolver implements Resolver, ZkUserInterface {
             // have some particular semantics.  That smells like a problem
             // waiting to happen.
 
-        ZooKeeper localZkPointer = getZooKeeper();
+        ZooKeeper localZkPointer = zkGetter.getZookeeper();
         if (localZkPointer == null) {
             throw new CloudnameException("No connection to ZooKeeper.");
         }
@@ -293,18 +273,20 @@ public final class ZkResolver implements Resolver, ZkUserInterface {
 
         List<Endpoint> endpoints = new ArrayList<Endpoint>();
         for (Integer instance : instances) {
-            String statusPath = ZkCoordinatePath.getStatusPath(parameters.getCell(), parameters.getUser(),
+            String statusPath = ZkCoordinatePath.getStatusPath(
+                    parameters.getCell(), parameters.getUser(),
                     parameters.getService(), instance);
 
             try {
-                if (! Util.exist(getZooKeeper(), statusPath)) {
+                if (! Util.exist(localZkPointer, statusPath)) {
                     continue;
                 }
             } catch (InterruptedException e) {
                 throw new CloudnameException(e);
 
             }
-            ZkCoordinateData zkCoordinateData = ZkCoordinateData.loadCoordinateData(statusPath, localZkPointer, null);
+            ZkCoordinateData zkCoordinateData = ZkCoordinateData.loadCoordinateData(
+                    statusPath, localZkPointer, null);
             addEndpoints(zkCoordinateData.snapshot(), endpoints, parameters.getEndpointName());
 
         }
@@ -316,8 +298,8 @@ public final class ZkResolver implements Resolver, ZkUserInterface {
     }
 
     @Override
-    public void removeResolverListener(ResolverListener listener) {
-        synchronized (this) {
+    public void removeResolverListener(final ResolverListener listener) {
+        synchronized (dynamicAddressMonitor) {
             DynamicExpression expression = dynamicAddressesByListener.remove(listener);
             if (expression == null) {
                 throw new IllegalArgumentException("Do not have the listener in my list.");
@@ -334,11 +316,12 @@ public final class ZkResolver implements Resolver, ZkUserInterface {
      * @return the endpoints that passes the filter
      */
     @Override
-    public Set<Endpoint> getEndpoints(Resolver.CoordinateDataFilter filter)
+    public Set<Endpoint> getEndpoints(final Resolver.CoordinateDataFilter filter)
             throws CloudnameException, InterruptedException {
 
         final Set<Endpoint> endpointsIncluded = new HashSet<Endpoint>();
         String cellPath = ZkCoordinatePath.getCloudnameRoot();
+        final ZooKeeper zk =  zkGetter.getZookeeper();
         try {
             List<String> cells = zk.getChildren(cellPath, false);
             for (String cell : cells) {
@@ -369,12 +352,12 @@ public final class ZkResolver implements Resolver, ZkUserInterface {
                             ZkCoordinateData zkCoordinateData = null;
                             try {
                                 zkCoordinateData = ZkCoordinateData.loadCoordinateData(
-                                        statusPath, getZooKeeper(), null);
+                                        statusPath, zk, null);
                             } catch (CloudnameException e) {
-                                // This is ok, an unclaimed node will not have status data, we ignore it even
-                                // though there might also be other exception (this should be rare).
-                                // The advantage is that we don't need to check if the node exists and hence
-                                // reduce the load on zookeeper.
+                                // This is ok, an unclaimed node will not have status data, we
+                                // ignore it even though there might also be other exception
+                                // (this should be rare). The advantage is that we don't need to
+                                // check if the node exists and hence reduce the load on zookeeper.
                                 continue;
                             }
                             Set<Endpoint> endpoints = zkCoordinateData.snapshot().getEndpoints();
@@ -397,18 +380,24 @@ public final class ZkResolver implements Resolver, ZkUserInterface {
     }
 
     @Override
-    public void addResolverListener(String expression, ResolverListener listener) throws CloudnameException {
-        DynamicExpression dynamicExpression = new DynamicExpression(expression, listener, this);
-        dynamicExpression.newZooKeeperInstance(zk);
-        synchronized (this) {
-            DynamicExpression previousExpression = dynamicAddressesByListener.put(listener, dynamicExpression);
+    public void addResolverListener(String expression, ResolverListener listener)
+            throws CloudnameException {
+        DynamicExpression dynamicExpression =
+                new DynamicExpression(expression, listener, this, zkGetter);
+
+        synchronized (dynamicAddressMonitor) {
+            DynamicExpression previousExpression = dynamicAddressesByListener.put(
+                    listener, dynamicExpression);
             if (previousExpression != null) {
                 throw new IllegalArgumentException("It is not legal to register a listener twice.");
             }
         }
+        dynamicExpression.start();
     }
 
-    public static void addEndpoints(ZkCoordinateData.Snapshot statusAndEndpoints, List<Endpoint> endpoints, String endpointname) {
+    public static void addEndpoints(
+            ZkCoordinateData.Snapshot statusAndEndpoints, List<Endpoint> endpoints,
+            String endpointname) {
         if (statusAndEndpoints.getServiceStatus().getState() != ServiceState.RUNNING) {
             return;
         }
@@ -422,7 +411,8 @@ public final class ZkResolver implements Resolver, ZkUserInterface {
         }
     }
 
-    private List<Integer> resolveInstances(Parameters parameters, ZooKeeper zk) throws CloudnameException {
+    private List<Integer> resolveInstances(Parameters parameters, ZooKeeper zk)
+            throws CloudnameException {
         List<Integer> instances = new ArrayList<Integer>();
         if (parameters.getInstance() > -1) {
             instances.add(parameters.getInstance());
@@ -438,7 +428,8 @@ public final class ZkResolver implements Resolver, ZkUserInterface {
         return instances;
     }
 
-    private List<Integer> getInstances(ZooKeeper zk, String path) throws CloudnameException, InterruptedException {
+    private List<Integer> getInstances(ZooKeeper zk, String path)
+            throws CloudnameException, InterruptedException {
         List<Integer> paths = new ArrayList<Integer>();
         try {
             List<String> children = zk.getChildren(path, false /* watcher */);

@@ -1,21 +1,10 @@
 package org.cloudname.zk;
 
-import org.apache.zookeeper.WatchedEvent;
-import org.apache.zookeeper.Watcher;
-import org.apache.zookeeper.ZooKeeper;
 import org.cloudname.*;
-import org.cloudname.testtools.Net;
-import org.cloudname.testtools.zookeeper.EmbeddedZooKeeper;
-import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
-
-import java.io.File;
-import java.util.List;
-import java.util.Set;
-import java.util.concurrent.CountDownLatch;
 
 import static org.junit.Assert.*;
 
@@ -44,7 +33,7 @@ public class ZkResolverTest {
         resolver = new ZkResolver.Builder()
                 .addStrategy(new StrategyAll())
                 .addStrategy(new StrategyAny())
-                .build();
+                .build(new ZkObjectHandler(null).getClient());
     }
 
     // Valid endpoints.
