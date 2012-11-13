@@ -233,6 +233,7 @@ public class ZkResolverIntegrationTest {
 
             @Override
             public void endpointEvent(Event event, Endpoint endpoint) {
+                System.err.println("---------->" + event.name() + " " + endpoint.toString());
                 switch (event) {
 
                     case NEW_ENDPOINT:
@@ -246,17 +247,18 @@ public class ZkResolverIntegrationTest {
                 }
             }
         });
-        assertTrue(latchWrapper.latch.await(5000, TimeUnit.MILLISECONDS));
+        assertTrue(latchWrapper.latch.await(24000, TimeUnit.MILLISECONDS));
         assertEquals(1, endpointListNew.size());
         assertEquals("foo", endpointListNew.get(0).getName());
         assertEquals("1.service.user.cell", endpointListNew.get(0).getCoordinate().toString());
         endpointListNew.clear();
-
         latchWrapper.latch = new CountDownLatch(1);
 
         undrain();
 
-        assertTrue(latchWrapper.latch.await(5000, TimeUnit.MILLISECONDS));
+
+        assertTrue(latchWrapper.latch.await(25000, TimeUnit.MILLISECONDS));
+
         assertEquals(1, endpointListNew.size());
 
         assertEquals("foo", endpointListNew.get(0).getName());
@@ -267,7 +269,7 @@ public class ZkResolverIntegrationTest {
 
         changeEndpoint();
 
-        assertTrue(latchWrapper.latch.await(5000, TimeUnit.MILLISECONDS));
+        assertTrue(latchWrapper.latch.await(26000, TimeUnit.MILLISECONDS));
 
         assertEquals(1, endpointListRemoved.size());
 
@@ -283,7 +285,7 @@ public class ZkResolverIntegrationTest {
 
         drain();
 
-        assertTrue(latchWrapper.latch.await(5000, TimeUnit.MILLISECONDS));
+        assertTrue(latchWrapper.latch.await(27000, TimeUnit.MILLISECONDS));
 
         assertEquals(1, endpointListRemoved.size());
 

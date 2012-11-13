@@ -131,10 +131,10 @@ public class ZkCloudnameTest {
                 configLatch2.countDown();
             }
         });
-        assertTrue(configLatch1.await(2, TimeUnit.SECONDS));
+        assertTrue(configLatch1.await(5, TimeUnit.SECONDS));
         assertEquals(buffer.toString(), "");
         zk.setData("/cn/cell/user/service/1/config", "hello".getBytes(), -1);
-        assertTrue(configLatch2.await(2, TimeUnit.SECONDS));
+        assertTrue(configLatch2.await(5, TimeUnit.SECONDS));
         assertEquals(buffer.toString(), "hello");
 
         assertTrue(pathExists("/cn/cell/user/service/1/status"));
