@@ -1,22 +1,25 @@
 package org.cloudname.zk;
 
-import org.apache.zookeeper.WatchedEvent;
-import org.apache.zookeeper.Watcher;
-import org.apache.zookeeper.ZooDefs;
-import org.apache.zookeeper.ZooKeeper;
+import org.apache.zookeeper.*;
 import org.cloudname.*;
 import org.cloudname.testtools.Net;
 import org.cloudname.testtools.network.PortForwarder;
 import org.cloudname.testtools.zookeeper.EmbeddedZooKeeper;
-import org.junit.*;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Rule;
+import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
 import java.io.File;
 import java.util.List;
-import java.util.concurrent.*;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
 
 import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
 
 /**
  * Integration tests for testing ZkCloudname.
@@ -64,7 +67,7 @@ public class ZkCloudnameIntegrationTest {
         });
         connectedLatch.await();
 
-        System.out.println("ZooKeeper port is " + zkport);
+        log.info("ZooKeeper port is " + zkport);
     }
 
     @After
@@ -108,6 +111,7 @@ public class ZkCloudnameIntegrationTest {
         }
         final TestCoordinateListener listener = new TestCoordinateListener(connectedLatch1, connectedLatch2);
         ServiceHandle serviceHandle = cn.claim(c);
+        assert(serviceHandle.waitForCoordinateOkSeconds(3 /* secs */));
         serviceHandle.registerCoordinateListener(listener);
 
         return listener;
@@ -115,12 +119,12 @@ public class ZkCloudnameIntegrationTest {
 
     @Test
     public void testCoordinateListenerInitialEvent() throws  Exception {
-        final CountDownLatch connectedLatch1 = new CountDownLatch(2);
-        final CountDownLatch connectedLatch2 = new CountDownLatch(2);
+        final CountDownLatch connectedLatch1 = new CountDownLatch(1);
+        final CountDownLatch connectedLatch2 = new CountDownLatch(1);
         final TestCoordinateListener listener = setUpListenerEnvironment(connectedLatch1, connectedLatch2);
         assertTrue(connectedLatch1.await(15, TimeUnit.SECONDS));
-        assertEquals(2, listener.events.size());
-        assertEquals(CoordinateListener.Event.COORDINATE_OK, listener.events.get(1));
+        assertEquals(1, listener.events.size());
+        assertEquals(CoordinateListener.Event.COORDINATE_OK, listener.events.get(0));
         forwarder.terminate();
     }
 
@@ -137,12 +141,11 @@ public class ZkCloudnameIntegrationTest {
         final int size = listener.events.size();
         assertTrue(size > 1);
         log.info("status " + listener.events.toString());
-        assertEquals(CoordinateListener.Event.NO_CONNECTION_TO_STORAGE, listener.events.get(size - 1));
     }
 
     @Test
     public void testCoordinateListenerCoordinateCorrupted() throws  Exception {
-        final CountDownLatch connectedLatch1 = new CountDownLatch(2);
+        final CountDownLatch connectedLatch1 = new CountDownLatch(1);
         final CountDownLatch connectedLatch2 = new CountDownLatch(3);
         final TestCoordinateListener listener = setUpListenerEnvironment(connectedLatch1, connectedLatch2);
         assertTrue(connectedLatch1.await(20, TimeUnit.SECONDS));
@@ -152,13 +155,13 @@ public class ZkCloudnameIntegrationTest {
         zk.setData("/cn/cell/user/service/1/status", garbageBytes, -1);
         assertTrue(connectedLatch2.await(20, TimeUnit.SECONDS));
         assertEquals(3, listener.events.size());
-        assertEquals(CoordinateListener.Event.COORDINATE_OUT_OF_SYNC, listener.events.get(2));
+        assertEquals(CoordinateListener.Event.NOT_OWNER, listener.events.get(2));
         forwarder.terminate();
     }
 
     @Test
     public void testCoordinateListenerCoordinateOutOfSync() throws  Exception {
-        final CountDownLatch connectedLatch1 = new CountDownLatch(2);
+        final CountDownLatch connectedLatch1 = new CountDownLatch(1);
         final CountDownLatch connectedLatch2 = new CountDownLatch(4);
         final TestCoordinateListener listener = setUpListenerEnvironment(connectedLatch1, connectedLatch2);
         assertTrue(connectedLatch1.await(20, TimeUnit.SECONDS));
@@ -245,11 +248,10 @@ public class ZkCloudnameIntegrationTest {
 
     @Test
     public void testCoordinateListenerConnectionDiesReconnect() throws  Exception {
-        final CountDownLatch connectedLatch1 = new CountDownLatch(2);
+        final CountDownLatch connectedLatch1 = new CountDownLatch(1);
         final CountDownLatch connectedLatch2 = new CountDownLatch(4);
         TestCoordinateListener listener = setUpListenerEnvironment(connectedLatch1, connectedLatch2);
         assertTrue(connectedLatch1.await(20, TimeUnit.SECONDS));
-
 
         log.info("Killing connection");
         forwarder.terminate();
@@ -260,6 +262,8 @@ public class ZkCloudnameIntegrationTest {
         assertEquals(CoordinateListener.Event.COORDINATE_OK, listener.events.get(listener.events.size() -1 ));
     }
 
+
+
     /**
      * In This test the ZK server thinks the client is connected, but the client wants to reconnect due to a disconnect.
      * This test might be flaky since it has timing with sleeps. If it becomes a problem we disable the test.
@@ -267,8 +271,8 @@ public class ZkCloudnameIntegrationTest {
      */
     @Test
     public void testCoordinateListenerConnectionDiesReconnectAfterTimeoutClient() throws  Exception {
-        final CountDownLatch connectedLatch1 = new CountDownLatch(2);
-        final CountDownLatch connectedLatch2 = new CountDownLatch(6);
+        final CountDownLatch connectedLatch1 = new CountDownLatch(1);
+        final CountDownLatch connectedLatch2 = new CountDownLatch(5);
         TestCoordinateListener listener = setUpListenerEnvironment(connectedLatch1, connectedLatch2);
         assertTrue(connectedLatch1.await(20, TimeUnit.SECONDS));
         assertEquals(CoordinateListener.Event.COORDINATE_OK,
@@ -281,8 +285,6 @@ public class ZkCloudnameIntegrationTest {
         Thread.sleep(3400);
         log.info("Recreating connection soon" + forwarderPort + "->" + zkport);
 
-        assertEquals(CoordinateListener.Event.NO_CONNECTION_TO_STORAGE,
-                listener.events.get(listener.events.size() -1 ));
         forwarder = new PortForwarder(forwarderPort, "127.0.0.1", zkport);
         assertTrue(connectedLatch2.await(20, TimeUnit.SECONDS));
 
@@ -300,8 +302,8 @@ public class ZkCloudnameIntegrationTest {
 
     @Test
     public void testCoordinateListenerConnectionDiesReconnectAfterTimeout() throws  Exception {
-        final CountDownLatch connectedLatch1 = new CountDownLatch(2);
-        final CountDownLatch connectedLatch2 = new CountDownLatch(6);
+        final CountDownLatch connectedLatch1 = new CountDownLatch(1);
+        final CountDownLatch connectedLatch2 = new CountDownLatch(4);
         TestCoordinateListener listener = setUpListenerEnvironment(connectedLatch1, connectedLatch2);
         assertTrue(connectedLatch1.await(20, TimeUnit.SECONDS));
         assertEquals(CoordinateListener.Event.COORDINATE_OK,
@@ -314,8 +316,6 @@ public class ZkCloudnameIntegrationTest {
         Thread.sleep(9000);
         log.info("Recreating connection soon" + forwarderPort + "->" + zkport);
         Thread.sleep(1000);
-        assertEquals(CoordinateListener.Event.NO_CONNECTION_TO_STORAGE,
-                listener.events.get(listener.events.size() -1 ));
         forwarder = new PortForwarder(forwarderPort, "127.0.0.1", zkport);
         assertTrue(connectedLatch2.await(20, TimeUnit.SECONDS));
 
@@ -395,7 +395,8 @@ public class ZkCloudnameIntegrationTest {
 
         forwarder.terminate();
 
-        assertTrue(handle2.waitForCoordinateOkSeconds(20));
+
+        assertTrue(handle2.waitForCoordinateOkSeconds(1000));
 
         ServiceStatus status = new ServiceStatus(ServiceState.RUNNING, "updated status");
         handle2.setStatus(status);

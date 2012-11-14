@@ -19,6 +19,8 @@ public class ZkServiceHandle implements ServiceHandle {
     private ClaimedCoordinate claimedCoordinate;
     private static final Logger log = Logger.getLogger(ZkServiceHandle.class.getName());
 
+    private final ZkObjectHandler.Client zkClient;
+
     private final Coordinate coordinate;
     
     /**
@@ -26,9 +28,10 @@ public class ZkServiceHandle implements ServiceHandle {
      *
      * @param claimedCoordinate the claimed coordinate for this service handle.
      */
-    public ZkServiceHandle(ClaimedCoordinate claimedCoordinate, Coordinate coordinate) {
+    public ZkServiceHandle(ClaimedCoordinate claimedCoordinate, Coordinate coordinate, ZkObjectHandler.Client zkClient) {
         this.claimedCoordinate = claimedCoordinate;
         this.coordinate = coordinate;
+        this.zkClient = zkClient;
     }
 
 
@@ -79,8 +82,9 @@ public class ZkServiceHandle implements ServiceHandle {
 
     @Override
     public void registerConfigListener(ConfigListener listener) {
-        TrackedConfig trackedConfig = new TrackedConfig(ZkCoordinatePath.getConfigPath(coordinate, null), listener);
+        TrackedConfig trackedConfig = new TrackedConfig(ZkCoordinatePath.getConfigPath(coordinate, null), listener, zkClient);
         claimedCoordinate.registerTrackedConfig(trackedConfig);
+        trackedConfig.start();
     }
 
     @Override

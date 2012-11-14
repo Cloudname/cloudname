@@ -131,10 +131,10 @@ public class ZkCloudnameTest {
                 configLatch2.countDown();
             }
         });
-        assertTrue(configLatch1.await(2, TimeUnit.SECONDS));
+        assertTrue(configLatch1.await(5, TimeUnit.SECONDS));
         assertEquals(buffer.toString(), "");
         zk.setData("/cn/cell/user/service/1/config", "hello".getBytes(), -1);
-        assertTrue(configLatch2.await(2, TimeUnit.SECONDS));
+        assertTrue(configLatch2.await(5, TimeUnit.SECONDS));
         assertEquals(buffer.toString(), "hello");
 
         assertTrue(pathExists("/cn/cell/user/service/1/status"));
@@ -231,7 +231,6 @@ public class ZkCloudnameTest {
     public void testDoubleClaim() throws CloudnameException, InterruptedException {
         final Coordinate c = Coordinate.parse("2.service.user.cell");
         final CountDownLatch okCounter = new  CountDownLatch(1);
-        final CountDownLatch failCounter = new  CountDownLatch(1);
 
         final CoordinateListener listener = new CoordinateListener() {
             @Override
@@ -240,9 +239,6 @@ public class ZkCloudnameTest {
 
                     case COORDINATE_OK:
                         okCounter.countDown();
-                        break;
-                    case NO_CONNECTION_TO_STORAGE:
-                        failCounter.countDown();
                         break;
                     default: //Any other Event is unexpected.
                         fail("not expected");

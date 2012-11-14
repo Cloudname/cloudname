@@ -43,24 +43,10 @@ public final class ZkCloudname extends Thread implements Cloudname, Watcher {
     private static final int SESSION_TIMEOUT = 5000;
 
     private static final Logger log = Logger.getLogger(ZkCloudname.class.getName());
-    
-    private final Object zkMonitor = new Object();
+
     private final Object closedMonitor = new Object();
-    private final Object retryMonitor = new Object();
 
-    // Instance variables
-    private ZooKeeper zkNotThreadSafe;
-
-    private ZooKeeper getZk() {
-        synchronized (zkMonitor) {
-            return zkNotThreadSafe;
-        }
-    }
-    private void setZk(ZooKeeper zk) {
-        synchronized (zkMonitor) {
-            zkNotThreadSafe = zk;
-        }
-    }
+    private  ZkObjectHandler zkObjectHandler = null;
 
     private final String connectString;
 
@@ -83,55 +69,60 @@ public final class ZkCloudname extends Thread implements Cloudname, Watcher {
     public void run() {
 
         while (true) {
-            ZooKeeper zk = getZk();
-            if (zk != null && zk.getState() != ZooKeeper.States.CONNECTED) {
-                log.fine("Not connected to ZooKeeper: " + zk.getState().name());
-            }
-
-            if (zk != null && zk.getState() == ZooKeeper.States.CONNECTED) {
-                connectingCounter = 0;
-            }
-
-            if (zk != null && zk.getState() == ZooKeeper.States.CONNECTING) {
-                connectingCounter++;
-                if (connectingCounter > 10) {
-                    log.fine("Long time in connecting, trying a close first.");
-                    try {
-                        zk.close();
-                        connectingCounter = 0;
-                    } catch (InterruptedException e) {
-                        log.fine("Interrupted while closing, exiting loop: " + e.getMessage());
-                        return;
-                    }
-                }
-            }
-
-            if (zk != null && zk.getState() == ZooKeeper.States.CLOSED) {
-                retryConnection();
-                try {
-                    // Wait a bit so the next reconnection does not happen to frequently.
-                    Thread.sleep(10000);
-                } catch (InterruptedException e) {
-                    return;
-                }
-            }
+            // First sleep a bit, and then check if we should exit.
             try {
-                Thread.sleep(2000);
+                Thread.sleep(1000);
             } catch (InterruptedException e) {
                 return;
             }
-            zk = getZk();
-            if (zk != null && zk.getState() == ZooKeeper.States.CONNECTED) {
-                for (ZkUserInterface user : users.keySet()) {
-                    user.timeEvent();
-                }
-            }
-
             synchronized (closedMonitor) {
                 if (isClosed) {
                     return;
                 }
             }
+
+            final ZooKeeper.States state = zkObjectHandler.getClient().getZookeeper().getState();
+
+            if (state == ZooKeeper.States.CONNECTED) {
+                zkObjectHandler.connectionUp();
+                connectingCounter = 0;
+                continue;
+            }
+
+            zkObjectHandler.connectionDown();
+
+            if (state == ZooKeeper.States.CONNECTING) {
+                connectingCounter++;
+                if (connectingCounter > 10) {
+                    log.fine("Long time in connecting, forcing a close of zookeeper,.");
+                    zkObjectHandler.close();
+                    connectingCounter = 0;
+                }
+                continue;
+            }
+
+
+
+
+            if (state == ZooKeeper.States.CLOSED) {
+                log.fine("Retrying connection to ZooKeeper.");
+                try {
+                    zkObjectHandler.setZooKeeper(new ZooKeeper(connectString, SESSION_TIMEOUT, this));
+                } catch (IOException e) {
+                    log.log(Level.SEVERE, "RetryConnection failed for some reason:" + e.getMessage(), e);
+                }
+                try {
+                    // Wait a bit so the next reconnection does not happen to
+                    // frequently in case of problems.
+                    Thread.sleep(10000);
+                } catch (InterruptedException e) {
+                    return;
+                }
+                continue;
+            }
+
+            log.severe("Unknown state " + state + " closing....");
+            zkObjectHandler.close();
         }
     }
 
@@ -144,21 +135,23 @@ public final class ZkCloudname extends Thread implements Cloudname, Watcher {
      */
     public ZkCloudname connectWithTimeout(long waitTime, TimeUnit waitUnit) throws CloudnameException {
 
-        try {         
-            setZk(new ZooKeeper(connectString, SESSION_TIMEOUT, this));
+        try {
+            zkObjectHandler = new ZkObjectHandler(new ZooKeeper(connectString, SESSION_TIMEOUT, this));
                           
             if (! connectedSignal.await(waitTime, waitUnit)) {
+                zkObjectHandler.close();
                 throw new CloudnameException("Connecting to ZooKeeper timed out.");
             }
             log.fine("Connected to ZooKeeper " + connectString);
         } catch (IOException e) {
+            zkObjectHandler.close();
             throw new CloudnameException(e);
         } catch (InterruptedException e) {
+            zkObjectHandler.close();
             throw new CloudnameException(e);
         }
-        resolver =  new ZkResolver.Builder().addStrategy(new StrategyAll()).addStrategy(new StrategyAny()).build();
-        users.put(resolver, 1);
-        resolver.newZooKeeperInstance(getZk());
+        resolver =  new ZkResolver.Builder().addStrategy(new StrategyAll())
+                .addStrategy(new StrategyAny()).build(zkObjectHandler.getClient());
         start();
         return this;
     }
@@ -174,46 +167,19 @@ public final class ZkCloudname extends Thread implements Cloudname, Watcher {
     }
 
 
-    /**
-     * When calling this function, the zookeeper state should be either connected or closed.
-     * @return
-     */
-    public void retryConnection() {
-        synchronized (retryMonitor) {
-            log.fine("Retrying connection to ZooKeeper.");
-            try {
-                setZk(new ZooKeeper(connectString, SESSION_TIMEOUT, this));
-            } catch (IOException e) {
-                log.log(Level.SEVERE, "RetryConnection failed for some reason:" + e.getMessage());
-            }
-        }
-    }
-
-    private Map<ZkUserInterface, Integer> users =
-            Collections.synchronizedMap(new WeakHashMap<ZkUserInterface, Integer>());
-
-    private void notifyUsersConnectionDown() {
-        for (ZkUserInterface user : users.keySet()) {
-            user.zooKeeperDown();
-        }
-    } 
 
     @Override
     public void process(WatchedEvent event) {
         log.fine("Got event in ZkCloudname: " + event.toString());
         if (event.getState() == Event.KeeperState.Disconnected || event.getState() == Event.KeeperState.Expired) {
-            notifyUsersConnectionDown();
+            zkObjectHandler.connectionDown();
         }
         
         // Initial connection to ZooKeeper is completed.
         if (event.getState() == Event.KeeperState.SyncConnected) {
+            zkObjectHandler.connectionUp();
             // The first connection set up is blocking, this will unblock the connection.
             connectedSignal.countDown();
-            // Notify the users that the connection is up.
-            for (ZkUserInterface user : users.keySet()) {
-                user.newZooKeeperInstance(getZk());
-            }
-            return;
         }
     }
 
@@ -232,9 +198,9 @@ public final class ZkCloudname extends Thread implements Cloudname, Watcher {
         // that's ok -- so a more correct name for this method would
         // be ensureCoordinate(), but that might confuse developers.
         String root = ZkCoordinatePath.getCoordinateRoot(coordinate);
-
+        final ZooKeeper zk = zkObjectHandler.getClient().getZookeeper();
         try {
-            if (Util.exist(getZk(), root)) {
+            if (Util.exist(zk, root)) {
                 throw new CoordinateExistsException("Coordinate already created:" +root);
             }
         } catch (InterruptedException e) {
@@ -242,7 +208,7 @@ public final class ZkCloudname extends Thread implements Cloudname, Watcher {
         }
 
         try {
-            Util.mkdir(getZk(), root, Ids.OPEN_ACL_UNSAFE);
+            Util.mkdir(zk, root, Ids.OPEN_ACL_UNSAFE);
         } catch (InterruptedException e) {
             throw new CloudnameException(e);
         }
@@ -251,7 +217,7 @@ public final class ZkCloudname extends Thread implements Cloudname, Watcher {
         String configPath = ZkCoordinatePath.getConfigPath(coordinate, null);
         try {
             log.fine("Creating config node " + configPath);
-            getZk().create(configPath, null, Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
+            zk.create(configPath, null, Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
         } catch (KeeperException e) {
             throw new CloudnameException(e);
         } catch (InterruptedException e) {
@@ -270,9 +236,9 @@ public final class ZkCloudname extends Thread implements Cloudname, Watcher {
         String statusPath = ZkCoordinatePath.getStatusPath(coordinate);
         String configPath = ZkCoordinatePath.getConfigPath(coordinate, null);
         String rootPath = ZkCoordinatePath.getCoordinateRoot(coordinate);
-
+        final ZooKeeper zk = zkObjectHandler.getClient().getZookeeper();
         try {
-            if (! Util.exist(getZk(), rootPath)) {
+            if (! Util.exist(zk, rootPath)) {
                 throw new CoordinateMissingException("Coordinate not found: " + rootPath);
             }
         } catch (InterruptedException e) {
@@ -284,7 +250,7 @@ public final class ZkCloudname extends Thread implements Cloudname, Watcher {
 
         // if someone claims while we delete configPath and instance (root) node.
         try {
-            if (Util.exist(getZk(), configPath) && Util.hasChildren(getZk(), configPath)) {
+            if (Util.exist(zk, configPath) && Util.hasChildren(zk, configPath)) {
                 throw new CoordinateDeletionException("Coordinate has config node.");
             }
         } catch (InterruptedException e) {
@@ -292,7 +258,7 @@ public final class ZkCloudname extends Thread implements Cloudname, Watcher {
         }
 
         try {
-            if (Util.exist(getZk(), statusPath)) {
+            if (Util.exist(zk, statusPath)) {
                 throw new CoordinateDeletionException("Coordinate is claimed.");
             }
         } catch (InterruptedException e) {
@@ -304,7 +270,7 @@ public final class ZkCloudname extends Thread implements Cloudname, Watcher {
         // We want to keep 3 levels of nodes (/cn/%CELL%/%USER%).
         int deletedNodes = 0;
         try {
-            deletedNodes = Util.deletePathKeepRootLevels(getZk(), configPath, 3);
+            deletedNodes = Util.deletePathKeepRootLevels(zk, configPath, 3);
         } catch (InterruptedException e) {
             throw new CloudnameException(e);
         }
@@ -328,14 +294,12 @@ public final class ZkCloudname extends Thread implements Cloudname, Watcher {
         String statusPath = ZkCoordinatePath.getStatusPath(coordinate);
         log.fine("Claiming " + coordinate.asString() + " (" + statusPath + ")");
 
-        ClaimedCoordinate statusAndEndpoints = new ClaimedCoordinate(coordinate);
-        users.put(statusAndEndpoints, 1 /* random number due to there is no weak hash set, only map */);
+        ClaimedCoordinate statusAndEndpoints = new ClaimedCoordinate(coordinate, zkObjectHandler.getClient());
 
         // If we have come thus far we have succeeded in creating the
         // CN_STATUS_NAME node within the service coordinate directory
         // in ZooKeeper and we can give the client a ServiceHandle.
-        ZkServiceHandle handle = new ZkServiceHandle(statusAndEndpoints, coordinate);
-        statusAndEndpoints.newZooKeeperInstance(getZk());
+        ZkServiceHandle handle = new ZkServiceHandle(statusAndEndpoints, coordinate, zkObjectHandler.getClient());
         statusAndEndpoints.start();
         return handle;
     }
@@ -349,7 +313,7 @@ public final class ZkCloudname extends Thread implements Cloudname, Watcher {
     @Override
     public ServiceStatus getStatus(Coordinate coordinate) throws CloudnameException {
         String statusPath = ZkCoordinatePath.getStatusPath(coordinate);
-        ZkCoordinateData zkCoordinateData = ZkCoordinateData.loadCoordinateData(statusPath, getZk(), null);
+        ZkCoordinateData zkCoordinateData = ZkCoordinateData.loadCoordinateData(statusPath, zkObjectHandler.getClient().getZookeeper(), null);
         return zkCoordinateData.snapshot().getServiceStatus();
     }
 
@@ -357,11 +321,12 @@ public final class ZkCloudname extends Thread implements Cloudname, Watcher {
     public void setConfig(Coordinate coordinate, final String newConfig, final String oldConfig) throws CoordinateMissingException, CloudnameException {
         String configPath = ZkCoordinatePath.getConfigPath(coordinate, null);
         int version = -1;
+        final ZooKeeper zk = zkObjectHandler.getClient().getZookeeper();
         if (oldConfig != null) {
             Stat stat = new Stat();
             byte [] data = null;
             try {
-                data = getZk().getData(configPath, false, stat);
+                data = zk.getData(configPath, false, stat);
             } catch (KeeperException e) {
                 throw new CloudnameException(e);
             } catch (InterruptedException e) {
@@ -378,7 +343,7 @@ public final class ZkCloudname extends Thread implements Cloudname, Watcher {
             version = stat.getVersion();
         }
         try {
-            getZk().setData(configPath, newConfig.getBytes(Util.CHARSET_NAME), version);
+            zk.setData(configPath, newConfig.getBytes(Util.CHARSET_NAME), version);
         } catch (KeeperException e) {
             throw new CloudnameException(e);
         } catch (InterruptedException e) {
@@ -394,7 +359,7 @@ public final class ZkCloudname extends Thread implements Cloudname, Watcher {
         String configPath = ZkCoordinatePath.getConfigPath(coordinate, null);
         Stat stat = new Stat();
         try {
-            byte[] data = getZk().getData(configPath, false, stat);
+            byte[] data = zkObjectHandler.getClient().getZookeeper().getData(configPath, false, stat);
             if (data == null) {
                 return null;
             }
@@ -412,10 +377,7 @@ public final class ZkCloudname extends Thread implements Cloudname, Watcher {
      * Close the connection to ZooKeeper.
      */
     public void close() throws InterruptedException {
-        if (null == getZk()) {
-            throw new IllegalStateException("Cannot releaseClaim(): Not connected to ZooKeeper");
-        }
-        getZk().close();
+        zkObjectHandler.close();
         log.fine("ZooKeeper session closed for " + connectString);
         synchronized (closedMonitor) {
             isClosed = true;
@@ -427,7 +389,7 @@ public final class ZkCloudname extends Thread implements Cloudname, Watcher {
      * @param nodeList
      */
     public void listRecursively(List<String> nodeList) throws CloudnameException, InterruptedException {
-        Util.listRecursively(getZk(), ZkCoordinatePath.getCloudnameRoot(), nodeList);
+        Util.listRecursively(zkObjectHandler.getClient().getZookeeper(), ZkCoordinatePath.getCloudnameRoot(), nodeList);
     }
 
     /**

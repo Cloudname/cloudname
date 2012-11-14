@@ -8,6 +8,10 @@ import org.cloudname.Endpoint;
 import org.cloudname.Resolver;
 
 import java.util.*;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Logger;
 
 /**
@@ -17,7 +21,7 @@ import java.util.logging.Logger;
  * watcher events. For keeping track of new nodes, it does a scan on regular intervals.
  * @author dybdahl
  */
-class DynamicExpression implements Watcher, TrackedCoordinate.ExpressionResolverNotify, ZkUserInterface {
+class DynamicExpression implements Watcher, TrackedCoordinate.ExpressionResolverNotify {
 
     /**
      * Keeps track of what picture (what an expression has resolved to) is sent to the user so that
@@ -76,26 +80,39 @@ class DynamicExpression implements Watcher, TrackedCoordinate.ExpressionResolver
     private long lastResolveMs = 0;
 
     private boolean stopped = false;
-    private ZooKeeper zk = null;
+
     private final ZkResolver zkResolver;
+
+    private final ZkObjectHandler.Client zkClient;
+
+    private final ScheduledExecutorService scheduler =
+            Executors.newSingleThreadScheduledExecutor();
+
+    private final AtomicInteger rescanCounter = new AtomicInteger();
 
     /**
      * Start getting notified about changes to expression.
      * @param expression Coordinate expression.
      * @param clientCallback called on changes and initially.
      */
-    public DynamicExpression(String expression, Resolver.ResolverListener clientCallback, ZkResolver zkResolver) {
+    public DynamicExpression(String expression, Resolver.ResolverListener clientCallback, ZkResolver zkResolver, ZkObjectHandler.Client zkClient) {
         this.clientCallback = clientCallback;
         this.parameters = new ZkResolver.Parameters(expression);
         this.zkResolver = zkResolver;
+        this.zkClient = zkClient;
     }
 
     /**
      * Stop receiving callbacks about coordinate.
      */
     public void stop() {
+        scheduler.shutdown();
+
         synchronized (this) {
             stopped = true;
+            for (TrackedCoordinate trackedCoordinate : coordinateByPath.values()) {
+                trackedCoordinate.stop();
+            }
             coordinateByPath.clear();
         }
     }
@@ -116,25 +133,33 @@ class DynamicExpression implements Watcher, TrackedCoordinate.ExpressionResolver
         return pathsToRefresh;
     }
 
+    public void start() {
+        final  long periodicDelayMs = 1000;
+        scheduler.scheduleWithFixedDelay(new ResolveProblems(), 1 /* initial delay ms */,
+                periodicDelayMs, TimeUnit.MILLISECONDS);
+    }
+
+
     /**
      * Method  from ZkUserInterface.
      * The method will try to resolve the expression from time to time and check if there are paths that are
      * scheduled for refresh.
      */
-    @Override
-    public void timeEvent() {
-        // Is it time to check for new nodes?
-        if (timeToReresolve()) {
-            resolve();
-            notifyClient();
-            synchronized (this) {
-                lastResolveMs = System.currentTimeMillis();
+    class ResolveProblems implements Runnable {
+        @Override
+        public void run() {
+
+            // Is it time to check for new nodes?
+            if (rescanCounter.incrementAndGet() % 10 == 1) {
+                resolve();
+                notifyClient();
             }
-        }
-        // Periodically check every node for changes.
-        List<String>  pathsToRefresh = pullPathsToBeRefreshed();
-        for (String path : pathsToRefresh) {
-            refreshPathWithWatcher(path);
+
+            // Periodically check every node for changes.
+            List<String>  pathsToRefresh = pullPathsToBeRefreshed();
+            for (String path : pathsToRefresh) {
+                refreshPathWithWatcher(path);
+            }
         }
     }
 
@@ -189,24 +214,11 @@ class DynamicExpression implements Watcher, TrackedCoordinate.ExpressionResolver
         notifyClient();
     }
 
-    /**
-     * Method  from ZkUserInterface.
-     */
-    @Override
-    public void zooKeeperDown() {
 
-    }
 
-    /**
-     * Method  from ZkUserInterface.
-     */
-    @Override
-    public void newZooKeeperInstance(ZooKeeper zk) {
-        this.zk = zk;
-    }
 
     private void resolve() {
-        List<Endpoint> endpoints = null;
+        List<Endpoint> endpoints;
         synchronized (this) {
             try {
               endpoints = zkResolver.resolve(parameters.getExpression());
@@ -222,21 +234,41 @@ class DynamicExpression implements Watcher, TrackedCoordinate.ExpressionResolver
         for (Endpoint endpoint : endpoints) {
             String statusPath = ZkCoordinatePath.getStatusPath(endpoint.getCoordinate());
 
-            TrackedCoordinate trackedCoordinate = new TrackedCoordinate(this, statusPath);
-            trackedCoordinate.newZooKeeperInstance(zk);
+            TrackedCoordinate trackedCoordinate = new TrackedCoordinate(this, statusPath, zkClient);
+            trackedCoordinate.start();
+            try {
+                trackedCoordinate.waitForFirstData();
+            } catch (InterruptedException e) {
+                log.severe("Got interrupt while waiting for data." + e.getMessage());
+                return;
+            }
+
             tempStatusAndEndpointsMap.put(statusPath, trackedCoordinate);
         }
 
-
         synchronized (this) {
+            for (TrackedCoordinate trackedCoordinate : coordinateByPath.values()) {
+                trackedCoordinate.stop();
+            }
             coordinateByPath.clear();
             coordinateByPath.putAll(tempStatusAndEndpointsMap);
-            lastResolveMs = System.currentTimeMillis();
         }
     }
 
     private String getEndpointKey(Endpoint endpoint) {
         return endpoint.getCoordinate().asString() + "@" + endpoint.getName();
+    }
+
+
+    private List<Endpoint> getNewEndpoints() {
+        List<Endpoint> newEndpoints = new ArrayList<Endpoint>();
+        for (TrackedCoordinate trackedCoordinate : coordinateByPath.values()) {
+            if (trackedCoordinate.getCoordinatedata() != null) {
+                ZkResolver.addEndpoints(
+                        trackedCoordinate.getCoordinatedata(), newEndpoints, parameters.getEndpointName());
+            }
+        }
+        return newEndpoints;
     }
 
     private void notifyClient() {
@@ -245,15 +277,10 @@ class DynamicExpression implements Watcher, TrackedCoordinate.ExpressionResolver
                 return;
             }
         }
+
         // First generate a fresh list of endpoints.
-        List<Endpoint> newEndpoints = new ArrayList<Endpoint>();
         synchronized (this) {
-            for (TrackedCoordinate trackedCoordinate : coordinateByPath.values()) {
-                if (trackedCoordinate.getCoordinatedata() != null) {
-                    ZkResolver.addEndpoints(
-                            trackedCoordinate.getCoordinatedata(), newEndpoints, parameters.getEndpointName());
-                }
-            }
+            List<Endpoint> newEndpoints = getNewEndpoints();
 
             Map<String, Endpoint> newEndpointsByName = new HashMap<String, Endpoint>();
             for (Endpoint endpoint : newEndpoints) {
@@ -262,6 +289,7 @@ class DynamicExpression implements Watcher, TrackedCoordinate.ExpressionResolver
 
             Iterator<Map.Entry<String, Endpoint>> it = clientPicture.entrySet().iterator();
             while (it.hasNext()) {
+
                 Map.Entry<String, Endpoint> endpointEntry = it.next();
                 String key = endpointEntry.getKey();
 
@@ -308,11 +336,6 @@ class DynamicExpression implements Watcher, TrackedCoordinate.ExpressionResolver
         }
     }
 
-    private boolean timeToReresolve() {
-        synchronized (this) {
-            return lastResolveMs + TIME_BETWEEN_NODE_SCANNING_MS < System.currentTimeMillis();
-        }
-    }
 
     private void refreshPathWithWatcher(String path) {
         synchronized (this) {
@@ -321,7 +344,8 @@ class DynamicExpression implements Watcher, TrackedCoordinate.ExpressionResolver
                 // Endpoint has been removed while waiting for refresh.
                 return;
             }
-            trackedCoordinate.newZooKeeperInstance(zk);
+            trackedCoordinate.refreshAsync();
         }
     }
+
 }
