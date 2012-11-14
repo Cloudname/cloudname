@@ -218,7 +218,7 @@ class DynamicExpression implements Watcher, TrackedCoordinate.ExpressionResolver
 
 
     private void resolve() {
-        List<Endpoint> endpoints = null;
+        List<Endpoint> endpoints;
         synchronized (this) {
             try {
               endpoints = zkResolver.resolve(parameters.getExpression());
@@ -279,9 +279,8 @@ class DynamicExpression implements Watcher, TrackedCoordinate.ExpressionResolver
         }
 
         // First generate a fresh list of endpoints.
-        List<Endpoint> newEndpoints = new ArrayList<Endpoint>();
         synchronized (this) {
-            newEndpoints = getNewEndpoints();
+            List<Endpoint> newEndpoints = getNewEndpoints();
 
             Map<String, Endpoint> newEndpointsByName = new HashMap<String, Endpoint>();
             for (Endpoint endpoint : newEndpoints) {

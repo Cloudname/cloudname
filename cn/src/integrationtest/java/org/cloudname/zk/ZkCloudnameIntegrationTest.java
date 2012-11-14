@@ -1,22 +1,25 @@
 package org.cloudname.zk;
 
-import org.apache.zookeeper.WatchedEvent;
-import org.apache.zookeeper.Watcher;
-import org.apache.zookeeper.ZooDefs;
-import org.apache.zookeeper.ZooKeeper;
+import org.apache.zookeeper.*;
 import org.cloudname.*;
 import org.cloudname.testtools.Net;
 import org.cloudname.testtools.network.PortForwarder;
 import org.cloudname.testtools.zookeeper.EmbeddedZooKeeper;
-import org.junit.*;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Rule;
+import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
 import java.io.File;
 import java.util.List;
-import java.util.concurrent.*;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
 
 import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
 
 /**
  * Integration tests for testing ZkCloudname.
@@ -138,7 +141,6 @@ public class ZkCloudnameIntegrationTest {
         final int size = listener.events.size();
         assertTrue(size > 1);
         log.info("status " + listener.events.toString());
-        assertEquals(CoordinateListener.Event.NO_CONNECTION_TO_STORAGE, listener.events.get(size - 1));
     }
 
     @Test
@@ -283,8 +285,6 @@ public class ZkCloudnameIntegrationTest {
         Thread.sleep(3400);
         log.info("Recreating connection soon" + forwarderPort + "->" + zkport);
 
-        assertEquals(CoordinateListener.Event.NO_CONNECTION_TO_STORAGE,
-                listener.events.get(listener.events.size() -1 ));
         forwarder = new PortForwarder(forwarderPort, "127.0.0.1", zkport);
         assertTrue(connectedLatch2.await(20, TimeUnit.SECONDS));
 
@@ -316,8 +316,6 @@ public class ZkCloudnameIntegrationTest {
         Thread.sleep(9000);
         log.info("Recreating connection soon" + forwarderPort + "->" + zkport);
         Thread.sleep(1000);
-        assertEquals(CoordinateListener.Event.NO_CONNECTION_TO_STORAGE,
-                listener.events.get(listener.events.size() -1 ));
         forwarder = new PortForwarder(forwarderPort, "127.0.0.1", zkport);
         assertTrue(connectedLatch2.await(20, TimeUnit.SECONDS));
 

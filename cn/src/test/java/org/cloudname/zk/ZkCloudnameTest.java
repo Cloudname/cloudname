@@ -231,7 +231,6 @@ public class ZkCloudnameTest {
     public void testDoubleClaim() throws CloudnameException, InterruptedException {
         final Coordinate c = Coordinate.parse("2.service.user.cell");
         final CountDownLatch okCounter = new  CountDownLatch(1);
-        final CountDownLatch failCounter = new  CountDownLatch(1);
 
         final CoordinateListener listener = new CoordinateListener() {
             @Override
@@ -240,9 +239,6 @@ public class ZkCloudnameTest {
 
                     case COORDINATE_OK:
                         okCounter.countDown();
-                        break;
-                    case NO_CONNECTION_TO_STORAGE:
-                        failCounter.countDown();
                         break;
                     default: //Any other Event is unexpected.
                         fail("not expected");

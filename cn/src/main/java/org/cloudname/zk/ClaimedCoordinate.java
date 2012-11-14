@@ -18,9 +18,9 @@ import java.util.logging.Logger;
 
 /**
  * This class keeps track of coordinate data and endpoints for a coordinate. It is notified about the state
- * of ZooKeeper connection by implementing the ZkUserInterface. It implements the Watcher interface to
- * track the specific path of the coordinate. This is useful for being notified if something happens
- * to the coordinate (if it is overwritten etc).
+ * of ZooKeeper connection by implementing the ZkObjectHandler.ConnectionStateChanged.
+ * It implements the Watcher interface to track the specific path of the coordinate.
+ * This is useful for being notified if something happens to the coordinate (if it is overwritten etc).
  *
  * @author dybdahl
  */
@@ -28,7 +28,8 @@ public class ClaimedCoordinate implements Watcher, ZkObjectHandler.ConnectionSta
 
     public CloudnameLock getCloudnameLock(CloudnameLock.Scope scope, String lockName) {
         return new ZkCloudnameLock(zkClient.getZookeeper(), coordinate, scope, lockName);
-    }
+
+}
 
     private final AtomicBoolean isSynchronizedWithZooKeeper = new AtomicBoolean(false);
 
@@ -107,6 +108,7 @@ public class ClaimedCoordinate implements Watcher, ZkObjectHandler.ConnectionSta
      * @return this.
      */
     public ClaimedCoordinate start()  {
+        zkClient.registerListener(this); //TODO(dybdahl): Uncommenting this line breaks some resolver integration tests.
         started.set(true);
         final  long periodicDelayMs = 2000;
         scheduler.scheduleWithFixedDelay(new ResolveProblems(), 1 /* initial delay ms */,
@@ -170,9 +172,6 @@ public class ClaimedCoordinate implements Watcher, ZkObjectHandler.ConnectionSta
                             return;
                         } catch (CloudnameException e) {
                             LOG.fine("Problems writing config." + e.getMessage());
-                            claimedCoordinate.sendEventToCoordinateListener(
-                                    CoordinateListener.Event.NO_CONNECTION_TO_STORAGE,
-                                    "Can not write config after claim: " + returnCode.name());
                             return;
                         }
                     }
@@ -223,9 +222,6 @@ public class ClaimedCoordinate implements Watcher, ZkObjectHandler.ConnectionSta
 
                 default:
                     // Random problem, report the problem to the client.
-                    claimedCoordinate.sendEventToCoordinateListener(
-                            CoordinateListener.Event.NO_CONNECTION_TO_STORAGE,
-                            "Could not reclaim coordinate. Return code: " + returnCode.name());
                     return;
             }
         }
@@ -295,6 +291,12 @@ public class ClaimedCoordinate implements Watcher, ZkObjectHandler.ConnectionSta
      */
     public void releaseClaim() throws CloudnameException {
         scheduler.shutdown();
+        zkClient.deregisterListener(this);
+
+        for(TrackedConfig conf : trackedConfigList) {
+            conf.stop();
+        }
+        sendEventToCoordinateListener(CoordinateListener.Event.NOT_OWNER,"Released claim of coordinate");
 
         try {
             zkClient.getZookeeper().delete(path, lastStatusVersion.get());
@@ -328,8 +330,6 @@ public class ClaimedCoordinate implements Watcher, ZkObjectHandler.ConnectionSta
             coordinateListenerList.add(coordinateListener);
             if (isSynchronizedWithZooKeeper.get()) {
                 coordinateListener.onCoordinateEvent(CoordinateListener.Event.COORDINATE_OK, message);
-            } else {
-                sendEventToCoordinateListener(CoordinateListener.Event.NO_CONNECTION_TO_STORAGE, "Not ok ");
             }
         }
     }
@@ -365,8 +365,6 @@ public class ClaimedCoordinate implements Watcher, ZkObjectHandler.ConnectionSta
                         // If we lost connection, we don't attempt to register another watcher as this might be
                         // blocking forever. Parent will try to reconnect (reclaim) later.
                         isSynchronizedWithZooKeeper.set(false);
-                        sendEventToCoordinateListener(CoordinateListener.Event.NO_CONNECTION_TO_STORAGE,
-                                event.toString());
                         return;
                 }
                 return;

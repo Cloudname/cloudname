@@ -11,7 +11,7 @@ public class ZkObjectHandler {
     private ZooKeeper zooKeeper = null;
     private final Object zooKeeperMonitor = new Object();
 
-    private final Set<ConnectionStateChanged> registerredCallbacks =
+    private final Set<ConnectionStateChanged> registeredCallbacks =
             new HashSet<ConnectionStateChanged>();
     private final Object callbacksMonitor = new Object();
 
@@ -29,7 +29,7 @@ public class ZkObjectHandler {
     public void connectionUp() {
         isConnected.set(true);
         synchronized (callbacksMonitor) {
-            for (ConnectionStateChanged connectionStateChanged : registerredCallbacks) {
+            for (ConnectionStateChanged connectionStateChanged : registeredCallbacks) {
                 connectionStateChanged.connectionUp();
             }
         }
@@ -38,12 +38,16 @@ public class ZkObjectHandler {
     public void connectionDown() {
         isConnected.set(false);
         synchronized (callbacksMonitor) {
-            for (ConnectionStateChanged connectionStateChanged : registerredCallbacks) {
+            for (ConnectionStateChanged connectionStateChanged : registeredCallbacks) {
                 connectionStateChanged.connectionDown();
             }
         }
     }
 
+    /**
+     * Every class using Zookeeper has an instance of this Client class
+     * to check the connection and fetch the instance.
+     */
     public class Client {
         public ZooKeeper getZookeeper() {
             synchronized (zooKeeperMonitor) {
@@ -51,29 +55,33 @@ public class ZkObjectHandler {
             }
         }
 
+        /**
+         * Check if we are connected to Zookeeper
+         * @return True if zkCloudname confirmed connection <1000ms ago.
+         */
         public boolean isConnected() {
             return isConnected.get();
         }
 
         /**
          * Register a callback.
-         * @param connectionStateChanged
+         * @param connectionStateChanged Callback to register
          * @return true if this is a new callback.
          */
         public boolean registerListener(ConnectionStateChanged connectionStateChanged) {
             synchronized (callbacksMonitor) {
-                return registerredCallbacks.add(connectionStateChanged);
+                return registeredCallbacks.add(connectionStateChanged);
             }
         }
 
         /**
          * Deregister a callback.
-         * @param connectionStateChanged
+         * @param connectionStateChanged Callback to deregister.
          * @return true if the callback was registered.
          */
         public boolean deregisterListener(ConnectionStateChanged connectionStateChanged) {
             synchronized (callbacksMonitor) {
-                return registerredCallbacks.remove(connectionStateChanged);
+                return registeredCallbacks.remove(connectionStateChanged);
             }
         }
     }
@@ -89,12 +97,11 @@ public class ZkObjectHandler {
 
     public void close() {
         synchronized (zooKeeperMonitor) {
-            if (zooKeeper != null) {
-                try {
-                    zooKeeper.close();
-                } catch (InterruptedException e) {
-                    // ignore
-                }
+            if (zooKeeper == null) { return; }
+            try {
+                zooKeeper.close();
+            } catch (InterruptedException e) {
+                // ignore
             }
         }
     }

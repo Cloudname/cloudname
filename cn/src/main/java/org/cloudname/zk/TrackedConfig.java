@@ -3,7 +3,6 @@ package org.cloudname.zk;
 import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.WatchedEvent;
 import org.apache.zookeeper.Watcher;
-import org.apache.zookeeper.ZooKeeper;
 import org.apache.zookeeper.data.Stat;
 import org.cloudname.CloudnameException;
 import org.cloudname.ConfigListener;
@@ -26,19 +25,19 @@ public class TrackedConfig implements Watcher, ZkObjectHandler.ConnectionStateCh
 
     private String configData = null;
     private final ConfigListener configListener;
-    
+
     private static final Logger log = Logger.getLogger(TrackedConfig.class.getName());
 
     private final String path;
 
-    private AtomicBoolean upToDate = new AtomicBoolean(false);
+    private AtomicBoolean isSynchronizedWithZookeeper = new AtomicBoolean(false);
 
     private final ZkObjectHandler.Client zkClient;
     private final ScheduledExecutorService scheduler =
             Executors.newSingleThreadScheduledExecutor();
     /**
-     * Constructor, the ZooKeeper instances is retrieved from implementing the ZkUserInterface so the object
-     * is not ready to be used before the ZooKeeper instance is received.
+     * Constructor, the ZooKeeper instances is retrieved from ZkObjectHandler.Client,
+     * so we won't get it until the client reports we have a Zk Instance in the handler.
      * @param path is the path of the configuration of the coordinate.
      */
     public TrackedConfig(String path, ConfigListener configListener, ZkObjectHandler.Client zkClient) {
@@ -54,10 +53,11 @@ public class TrackedConfig implements Watcher, ZkObjectHandler.ConnectionStateCh
 
     @Override
     public void connectionDown() {
-        upToDate.set(false);
+        isSynchronizedWithZookeeper.set(false);
     }
 
     public void start() {
+        zkClient.registerListener(this);
         final  long periodicDelayMs = 2000;
         scheduler.scheduleWithFixedDelay(new ResolveProblems(), 1 /* initial delay ms */,
                 periodicDelayMs, TimeUnit.MILLISECONDS);
@@ -66,6 +66,7 @@ public class TrackedConfig implements Watcher, ZkObjectHandler.ConnectionStateCh
 
     public void stop() {
         scheduler.shutdown();
+        zkClient.deregisterListener(this);
     }
 
 
@@ -79,7 +80,7 @@ public class TrackedConfig implements Watcher, ZkObjectHandler.ConnectionStateCh
         public void run() {
 
             synchronized (this) {
-                if (upToDate.get())
+                if (isSynchronizedWithZookeeper.get())
                     return;
             }
             try {
@@ -112,8 +113,8 @@ public class TrackedConfig implements Watcher, ZkObjectHandler.ConnectionStateCh
 
 
     /**
-     * Handles even from ZooKeeper for this coordinate.
-     * @param event
+     * Handles event from ZooKeeper for this coordinate.
+     * @param event Event to handle
      */
     @Override public void process(WatchedEvent event) {
         log.severe("Got an event from ZooKeeper " + event.toString() + " path: " + path);
@@ -127,7 +128,7 @@ public class TrackedConfig implements Watcher, ZkObjectHandler.ConnectionStateCh
                     case AuthFailed:
                     case Expired:
                     default:
-                        upToDate.set(false);
+                        isSynchronizedWithZookeeper.set(false);
                         // If we lost connection, we don't attempt to register another watcher as this might
                         // be blocking forever. Parent might try to reconnect.
                         return;
@@ -135,13 +136,13 @@ public class TrackedConfig implements Watcher, ZkObjectHandler.ConnectionStateCh
                 break;
             case NodeDeleted:
                 synchronized (this) {
-                    upToDate.set(false);
+                    isSynchronizedWithZookeeper.set(false);
                     configData = null;
                 }
                 configListener.onConfigEvent(ConfigListener.Event.DELETED, "");
                 return;
             case NodeDataChanged:
-                upToDate.set(false);
+                isSynchronizedWithZookeeper.set(false);
                 return;
             case NodeChildrenChanged:
             case NodeCreated:
@@ -184,7 +185,7 @@ public class TrackedConfig implements Watcher, ZkObjectHandler.ConnectionStateCh
                 } else {
                     configData = new String(data, Util.CHARSET_NAME);
                 }
-                upToDate.set(true);
+                isSynchronizedWithZookeeper.set(true);
                 return oldConfig == null || ! oldConfig.equals(configData);
             } catch (KeeperException e) {
                 throw new CloudnameException(e);

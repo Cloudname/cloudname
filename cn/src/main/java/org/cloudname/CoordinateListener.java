@@ -16,11 +16,6 @@ public interface CoordinateListener {
         COORDINATE_OK,
 
         /**
-         * Connection lost to storage, no more events will occur.
-         */
-        NO_CONNECTION_TO_STORAGE,
-
-        /**
          * Problems with parsing the data in storage for this coordinate.
          */
         COORDINATE_CORRUPTED,

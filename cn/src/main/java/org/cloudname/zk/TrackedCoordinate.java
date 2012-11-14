@@ -26,11 +26,11 @@ public class TrackedCoordinate implements Watcher, ZkObjectHandler.ConnectionSta
     }
 
     private ZkCoordinateData.Snapshot coordinateData = null;
-    
+
     private static final Logger LOG = Logger.getLogger(TrackedCoordinate.class.getName());
     private final String path;
     private final ExpressionResolverNotify client;
-    private final AtomicBoolean needToReloadData = new AtomicBoolean(true);
+    private final AtomicBoolean isSynchronizedWithZookeeper = new AtomicBoolean(false);
     private final ZkObjectHandler.Client zkClient;
 
     private final ScheduledExecutorService scheduler =
@@ -55,14 +55,15 @@ public class TrackedCoordinate implements Watcher, ZkObjectHandler.ConnectionSta
 
     @Override
     public void connectionDown() {
-        needToReloadData.set(true);
+        isSynchronizedWithZookeeper.set(false);
     }
 
     public void refreshAsync() {
-        needToReloadData.set(true);
+        isSynchronizedWithZookeeper.set(false);
     }
 
     public void start() {
+        zkClient.registerListener(this);
         final  long periodicDelayMs = 2000;
         scheduler.scheduleWithFixedDelay(new ResolveProblems(), 1 /* initial delay ms */,
                 periodicDelayMs, TimeUnit.MILLISECONDS);
@@ -71,6 +72,7 @@ public class TrackedCoordinate implements Watcher, ZkObjectHandler.ConnectionSta
 
     public void stop() {
         scheduler.shutdown();
+        zkClient.deregisterListener(this);
     }
 
     public void waitForFirstData() throws InterruptedException {
@@ -85,12 +87,12 @@ public class TrackedCoordinate implements Watcher, ZkObjectHandler.ConnectionSta
     class ResolveProblems implements Runnable {
         @Override
         public void run() {
-            if (! needToReloadData.getAndSet(false)) {  return;  }
+            if (! isSynchronizedWithZookeeper.getAndSet(true)) {  return;  }
             try {
                 refreshCoordinateData();
 
             } catch (CloudnameException e) {
-                needToReloadData.set(true);
+                isSynchronizedWithZookeeper.set(false);
             }
             firstRound.countDown();
         }
@@ -112,8 +114,8 @@ public class TrackedCoordinate implements Watcher, ZkObjectHandler.ConnectionSta
 
 
     /**
-     * Handles even from ZooKeeper for this coordinate.
-     * @param event
+     * Handles event from ZooKeeper for this coordinate.
+     * @param event Event to handle
      */
     @Override public void process(WatchedEvent event) {
         LOG.fine("Got an event from ZooKeeper " + event.toString() + " path: " + path);
@@ -139,7 +141,7 @@ public class TrackedCoordinate implements Watcher, ZkObjectHandler.ConnectionSta
                 client.stateChanged();
                 return;
             case NodeDataChanged:
-                needToReloadData.set(true);
+                isSynchronizedWithZookeeper.set(false);
                 return;
             case NodeChildrenChanged:
             case NodeCreated:
@@ -149,10 +151,8 @@ public class TrackedCoordinate implements Watcher, ZkObjectHandler.ConnectionSta
             registerWatcher();
         } catch (CloudnameException e) {
             LOG.info("Got cloudname exception: " + e.getMessage());
-            return;
         } catch (InterruptedException e) {
             LOG.info("Got interrupted exception: " + e.getMessage());
-            return;
         }
     }
 
@@ -166,12 +166,12 @@ public class TrackedCoordinate implements Watcher, ZkObjectHandler.ConnectionSta
         if (! zkClient.isConnected()) {
             throw new CloudnameException("No connection to storage.");
         }
-        String oldDataSerialized = new String("");
+        String oldDataSerialized = "";
         if (null != coordinateData) {
             oldDataSerialized = coordinateData.serialize();
         }
         coordinateData = ZkCoordinateData.loadCoordinateData(path, zkClient.getZookeeper(), this).snapshot();
-        needToReloadData.set(false);
+        isSynchronizedWithZookeeper.set(true);
         if (! oldDataSerialized.equals(coordinateData.toString())) {
             client.stateChanged();
         }
@@ -179,7 +179,7 @@ public class TrackedCoordinate implements Watcher, ZkObjectHandler.ConnectionSta
 
     private void registerWatcher() throws CloudnameException, InterruptedException {
         try {
-             zkClient.getZookeeper().exists(path, this);
+            zkClient.getZookeeper().exists(path, this);
         } catch (KeeperException e) {
             throw new CloudnameException(e);
         }
