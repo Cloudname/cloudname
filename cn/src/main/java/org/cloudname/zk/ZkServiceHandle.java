@@ -19,6 +19,8 @@ public class ZkServiceHandle implements ServiceHandle {
     private ClaimedCoordinate claimedCoordinate;
     private static final Logger log = Logger.getLogger(ZkServiceHandle.class.getName());
 
+    private final ZkObjectHandler.Client zkClient;
+
     private final Coordinate coordinate;
     
     /**
@@ -26,16 +28,20 @@ public class ZkServiceHandle implements ServiceHandle {
      *
      * @param claimedCoordinate the claimed coordinate for this service handle.
      */
-    public ZkServiceHandle(ClaimedCoordinate claimedCoordinate, Coordinate coordinate) {
+    public ZkServiceHandle(
+            ClaimedCoordinate claimedCoordinate, Coordinate coordinate,
+            ZkObjectHandler.Client zkClient) {
         this.claimedCoordinate = claimedCoordinate;
         this.coordinate = coordinate;
+        this.zkClient = zkClient;
     }
 
 
     @Override
     public boolean waitForCoordinateOkSeconds(int seconds) throws InterruptedException {
         final CountDownLatch latch = new CountDownLatch(1);
-        registerCoordinateListener(new CoordinateListener() {
+
+        CoordinateListener listner = new CoordinateListener() {
 
             @Override
             public void onCoordinateEvent(Event event, String message) {
@@ -43,35 +49,43 @@ public class ZkServiceHandle implements ServiceHandle {
                     latch.countDown();
                 }
             }
-        });
-        return latch.await(seconds, TimeUnit.SECONDS);
+        };
+        registerCoordinateListener(listner);
+        boolean result = latch.await(seconds, TimeUnit.SECONDS);
+        claimedCoordinate.deregisterCoordinateListener(listner);
+        return result;
     }
 
 
     @Override
-    public void setStatus(ServiceStatus status) throws CoordinateMissingException, CloudnameException {
+    public void setStatus(ServiceStatus status)
+            throws CoordinateMissingException, CloudnameException {
         claimedCoordinate.updateStatus(status);
     }
 
     @Override
-    public void putEndpoints(List<Endpoint> endpoints) throws CoordinateMissingException, CloudnameException {
+    public void putEndpoints(List<Endpoint> endpoints)
+            throws CoordinateMissingException, CloudnameException {
         claimedCoordinate.putEndpoints(endpoints);
     }
 
     @Override
-    public void putEndpoint(Endpoint endpoint) throws CoordinateMissingException, CloudnameException {
+    public void putEndpoint(Endpoint endpoint)
+            throws CoordinateMissingException, CloudnameException {
         List<Endpoint> endpoints = new ArrayList<Endpoint>();
         endpoints.add(endpoint);
         putEndpoints(endpoints);
     }
 
     @Override
-    public void removeEndpoints(List<String> names) throws CoordinateMissingException, CloudnameException {
+    public void removeEndpoints(List<String> names)
+            throws CoordinateMissingException, CloudnameException {
         claimedCoordinate.removeEndpoints(names);
     }
 
     @Override
-    public void removeEndpoint(String name) throws CoordinateMissingException, CloudnameException {
+    public void removeEndpoint(String name)
+            throws CoordinateMissingException, CloudnameException {
         List<String> names = new ArrayList<String>();
         names.add(name);
         removeEndpoints(names);
@@ -79,8 +93,10 @@ public class ZkServiceHandle implements ServiceHandle {
 
     @Override
     public void registerConfigListener(ConfigListener listener) {
-        TrackedConfig trackedConfig = new TrackedConfig(ZkCoordinatePath.getConfigPath(coordinate, null), listener);
+        TrackedConfig trackedConfig = new TrackedConfig(
+                ZkCoordinatePath.getConfigPath(coordinate, null), listener, zkClient);
         claimedCoordinate.registerTrackedConfig(trackedConfig);
+        trackedConfig.start();
     }
 
     @Override
