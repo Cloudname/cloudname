@@ -1,7 +1,5 @@
 package org.cloudname.a3.domain;
 
-import org.codehaus.jackson.map.ObjectMapper;
-import org.codehaus.jackson.map.SerializationConfig;
 
 import java.util.Map;
 import java.util.Set;
@@ -14,6 +12,10 @@ import java.util.Collections;
 import java.util.Comparator;
 
 import java.io.IOException;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.datatype.joda.JodaModule;
 
 /**
  * Extremely simple user database which is simply a collection of
@@ -106,7 +108,8 @@ public class UserDB {
 
         try {
             ObjectMapper mapper = new ObjectMapper();
-            mapper.configure(SerializationConfig.Feature.INDENT_OUTPUT, true);
+            mapper.registerModule(new JodaModule());
+            mapper.configure(SerializationFeature.INDENT_OUTPUT, true);
 
             List<User> users = new ArrayList<User>(userMap.values());
 
@@ -129,7 +132,9 @@ public class UserDB {
      */
     public static UserDB fromJson(String json) {
         try {
-            User[] users = new ObjectMapper().readValue(json, User[].class);
+            final ObjectMapper mapper = new ObjectMapper();
+            mapper.registerModule(new JodaModule());
+            User[] users = mapper.readValue(json, User[].class);
             HashMap<String, User> m = new HashMap<String, User>();
             for (User user : users) {
                 m.put(user.getUsername(), user);
