@@ -5,6 +5,7 @@ import org.apache.zookeeper.ZooKeeper;
 import org.cloudname.*;
 
 import java.util.*;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.regex.Pattern;
 import java.util.regex.Matcher;
@@ -334,37 +335,46 @@ public final class ZkResolver implements Resolver, ZkUserInterface {
      * @return the endpoints that passes the filter
      */
     @Override
-    public Set<Endpoint> getEndpoints(Resolver.CoordinateDataFilter filter)
+    public Set<Endpoint> getEndpoints(final Resolver.CoordinateDataFilter filter)
             throws CloudnameException, InterruptedException {
 
         final Set<Endpoint> endpointsIncluded = new HashSet<Endpoint>();
-        String cellPath = ZkCoordinatePath.getCloudnameRoot();
+        final String cellPath = ZkCoordinatePath.getCloudnameRoot();
         try {
-            List<String> cells = zk.getChildren(cellPath, false);
-            for (String cell : cells) {
+            final List<String> cells = zk.getChildren(cellPath, false);
+            for (final String cell : cells) {
                 if (! filter.includeCell(cell)) {
                     continue;
                 }
-                String userPath = cellPath + "/" + cell;
-                List<String> users = zk.getChildren(userPath, false);
+                final String userPath = cellPath + "/" + cell;
+                final List<String> users = zk.getChildren(userPath, false);
                 
-                for (String user : users) {
+                for (final String user : users) {
                     if (! filter.includeUser(user)) {
                         continue;
                     }
-                    String servicePath = userPath + "/" + user;
-                    List<String> services = zk.getChildren(servicePath, false);
+                    final String servicePath = userPath + "/" + user;
+                    final List<String> services = zk.getChildren(servicePath, false);
 
-                    for (String service : services) {
+                    for (final String service : services) {
                         if (! filter.includeService(service)) {
                             continue;
                         }
-                        String instancePath = servicePath + "/" + service;
-                        List<String> instances = zk.getChildren(instancePath, false);
+                        final String instancePath = servicePath + "/" + service;
+                        final List<String> instances = zk.getChildren(instancePath, false);
 
-                        for (String instance : instances) {
-                            String statusPath = ZkCoordinatePath.getStatusPath(
-                                    cell, user, service, Integer.parseInt(instance));
+                        for (final String instance : instances) {
+                            final String statusPath;
+                            try {
+                                 statusPath = ZkCoordinatePath.getStatusPath(
+                                        cell, user, service, Integer.parseInt(instance));
+                            } catch (NumberFormatException e) {
+                                log.log(
+                                    Level.WARNING,
+                                    "Got non-number as instance in cn path. skipping.",
+                                    e);
+                                continue;
+                            }
 
                             ZkCoordinateData zkCoordinateData = null;
                             try {
@@ -377,8 +387,8 @@ public final class ZkResolver implements Resolver, ZkUserInterface {
                                 // reduce the load on zookeeper.
                                 continue;
                             }
-                            Set<Endpoint> endpoints = zkCoordinateData.snapshot().getEndpoints();
-                            for (Endpoint endpoint : endpoints) {
+                            final Set<Endpoint> endpoints = zkCoordinateData.snapshot().getEndpoints();
+                            for (final Endpoint endpoint : endpoints) {
                                 if (filter.includeEndpointname(endpoint.getName())) {
                                     if (filter.includeServiceState(
                                             zkCoordinateData.snapshot().getServiceStatus().getState())) {
