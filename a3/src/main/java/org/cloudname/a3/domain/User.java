@@ -170,7 +170,7 @@ public class User {
         try {
             final ObjectMapper mapper = new ObjectMapper();
             mapper.registerModule(new JodaModule());
-			return mapper.writeValueAsString(this);
+            return mapper.writeValueAsString(this);
         } catch (IOException e) {
             return null;
         }
@@ -182,7 +182,7 @@ public class User {
     public static User fromJson(String json) throws IOException {
         final ObjectMapper mapper = new ObjectMapper();
         mapper.registerModule(new JodaModule());
-		return mapper.readValue(json, User.class);
+        return mapper.readValue(json, User.class);
     }
 
     @Override
