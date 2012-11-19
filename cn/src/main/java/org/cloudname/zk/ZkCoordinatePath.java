@@ -25,7 +25,7 @@ public final class ZkCoordinatePath {
      * @param coordinate
      * @return the path of the coordinate in ZooKeeper (/cn/%cell%/%user%/%service%/%instance%).
      */
-    public static String getCoordinateRoot(Coordinate coordinate) {
+    public static String getCoordinateRoot(final Coordinate coordinate) {
         return coordinateAsPath(coordinate.getCell(), coordinate.getUser(), coordinate.getService(),
                 coordinate.getInstance());
     }
@@ -35,7 +35,7 @@ public final class ZkCoordinatePath {
      * @param coordinate
      * @return full status path (/cn/%cell%/%user%/%service%/%instance%/status)
      */
-    public static String getStatusPath(Coordinate coordinate) {
+    public static String getStatusPath(final Coordinate coordinate) {
         return getCoordinateRoot(coordinate) + "/" + CN_STATUS_NAME;
     }
 
@@ -46,7 +46,7 @@ public final class ZkCoordinatePath {
      * @return config path /cn/%cell%/%user%/%service%/%instance%/config or
      * /cn/%cell%/%user%/%service%/%instance%/config/%name%
      */
-    public static String getConfigPath(Coordinate coordinate, String name) {
+    public static String getConfigPath(final Coordinate coordinate, final String name) {
         if (name == null) {
             return getCoordinateRoot(coordinate) + "/" + CN_CONFIG_NAME;
         }
@@ -60,7 +60,8 @@ public final class ZkCoordinatePath {
      * @param service
      * @return path (/cn/%cell%/%user%/%service%)
      */
-    public static String coordinateWithoutInstanceAsPath(String cell, String user, String service) {
+    public static String coordinateWithoutInstanceAsPath(
+            final String cell, final String user, final String service) {
         return CN_PATH_PREFIX + "/" + cell + "/" + user + "/" + service;
     }
 
@@ -76,7 +77,8 @@ public final class ZkCoordinatePath {
      * @param instance
      * @return path (/cn/%cell%/%user%/%service%/%instance%)
      */
-    private static String coordinateAsPath(String cell, String user, String service, Integer instance) {
+    private static String coordinateAsPath(
+            final String cell, final String user, final String service, Integer instance) {
         return coordinateWithoutInstanceAsPath(cell, user, service) + "/" + instance.toString();
     }
 

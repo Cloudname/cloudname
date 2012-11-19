@@ -26,8 +26,8 @@ import java.util.Set;
 
 /**
  *  ZkCoordinateData represent the data regarding a coordinate. It can return an immutable snapshot.
- *  The class has support for deserializing and serializing the data and methods for accessing endpoints.
- *  The class is fully thread-safe.
+ *  The class has support for deserializing and serializing the data and methods for accessing
+ *  endpoints. The class is fully thread-safe.
  *
  *  @auther dybdahl
  */
@@ -41,16 +41,18 @@ public final class ZkCoordinateData {
     /**
      * The endpoints registered at the coordinate mapped by endpoint name.
      */
-    private Map<String, Endpoint> endpointsByName = new HashMap<String, Endpoint>();
+    private final Map<String, Endpoint> endpointsByName = new HashMap<String, Endpoint>();
 
     // Used for deserializing.
-    private ObjectMapper objectMapper = new ObjectMapper();
+    private final ObjectMapper objectMapper = new ObjectMapper();
+
+    private final Object localVariablesMonitor = new Object();
 
     /**
      * Create a new immutable snapshot object.
      */
     public Snapshot snapshot() {
-        synchronized (this) {
+        synchronized (localVariablesMonitor) {
             return new Snapshot(serviceStatus, endpointsByName);
         }
     }
@@ -59,23 +61,24 @@ public final class ZkCoordinateData {
      * Sets status, overwrite any existing status information.
      */
     public ZkCoordinateData setStatus(ServiceStatus status)  {
-        synchronized (this) {
+        synchronized (localVariablesMonitor) {
             this.serviceStatus = status;
             return this;
         }
     }
 
     /**
-     * Adds new endpoints to the builder. It is not legal to add a new endpoint with an endpoint that already
-     * exists.
+     * Adds new endpoints to the builder. It is not legal to add a new endpoint with an endpoint
+     * that already exists.
      */
-    public ZkCoordinateData putEndpoints(List<Endpoint> newEndpoints) {
-        synchronized (this) {
+    public ZkCoordinateData putEndpoints(final List<Endpoint> newEndpoints) {
+        synchronized (localVariablesMonitor) {
             for (Endpoint endpoint : newEndpoints) {
                 Endpoint previousEndpoint = endpointsByName.put(endpoint.getName(), endpoint);
                 // Calling put on an existing endpoint is not allowed.
                 if (null != previousEndpoint) {
-                    throw new IllegalArgumentException("endpoint already exists: " +  endpoint.getName());
+                    throw new IllegalArgumentException("endpoint already exists: "
+                            +  endpoint.getName());
                 }
             }
         }
@@ -85,14 +88,15 @@ public final class ZkCoordinateData {
     /**
      * Remove endpoints from the Dynamic object.
      */
-    public ZkCoordinateData removeEndpoints(List<String> names)  {
-        synchronized (this) {
+    public ZkCoordinateData removeEndpoints(final List<String> names)  {
+        synchronized (localVariablesMonitor) {
             for (String name : names) {
                 if (! endpointsByName.containsKey(name)) {
                     throw new IllegalArgumentException("endpoint does not exist: " +  name);
                 }
                 if (null == endpointsByName.remove(name)) {
-                    throw new IllegalArgumentException("Endpoint does not exists, null in internal structure." + name);
+                    throw new IllegalArgumentException(
+                            "Endpoint does not exists, null in internal structure." + name);
                 }
             }
         }
@@ -105,11 +109,11 @@ public final class ZkCoordinateData {
      * @throws IOException if something went wrong, should not happen on valid data.
      */
     public ZkCoordinateData deserialize(byte[] data) throws IOException {
-        synchronized (this) {
-            String stringData = new String(data, Util.CHARSET_NAME);
-            JsonFactory jsonFactory = new JsonFactory();
-            JsonParser jp = jsonFactory.createJsonParser(stringData);
-            String statusString = objectMapper.readValue(jp, new TypeReference<String>() {});
+        synchronized (localVariablesMonitor) {
+            final String stringData = new String(data, Util.CHARSET_NAME);
+            final JsonFactory jsonFactory = new JsonFactory();
+            final JsonParser jp = jsonFactory.createJsonParser(stringData);
+            final String statusString = objectMapper.readValue(jp, new TypeReference<String>() {});
             serviceStatus = ServiceStatus.fromJson(statusString);
             endpointsByName.clear();
             endpointsByName.putAll((Map<String, Endpoint>)objectMapper.readValue(jp,
@@ -145,7 +149,7 @@ public final class ZkCoordinateData {
          * @param name of the endpoint.
          * @return the endpoint or null if non-existing.
          */
-        public Endpoint getEndpoint(String name) {
+        public Endpoint getEndpoint(final String name) {
             return endpointsByName.get(name);
         }
 
@@ -163,18 +167,19 @@ public final class ZkCoordinateData {
          * A method for getting all endpoints.
          * @param endpoints The endpoints are put in this list.
          */
-        public void appendAllEndpoints(Collection<Endpoint> endpoints) {
+        public void appendAllEndpoints(final Collection<Endpoint> endpoints) {
             endpoints.addAll(endpointsByName.values());
         }
 
         /**
-         * Return a serialized string representing the status and endpoint. It can be de-serialize by the inner class.
+         * Return a serialized string representing the status and endpoint. It can be de-serialize
+         * by the inner class.
          * @return The serialized string.
          * @throws IOException if something goes wrong, should not be a common problem though.
          */
         public String serialize() {
-            StringWriter stringWriter = new StringWriter();
-            JsonGenerator generator;
+            final StringWriter stringWriter = new StringWriter();
+            final JsonGenerator generator;
 
             try {
                 generator = new JsonFactory(new ObjectMapper()).createJsonGenerator(stringWriter);
@@ -183,7 +188,8 @@ public final class ZkCoordinateData {
 
                 generator.flush();
             } catch (IOException e) {
-                throw new RuntimeException("Got IOException while serializing coordinate data." , e);
+                throw new RuntimeException(
+                        "Got IOException while serializing coordinate data." , e);
             }
             return new String(stringWriter.getBuffer());
         }
@@ -202,7 +208,8 @@ public final class ZkCoordinateData {
      * @param watcher for callbacks from ZooKeeper. It is ok to pass null.
      * @throws CloudnameException when problems loading data.
      */
-    static public ZkCoordinateData loadCoordinateData(String statusPath, ZooKeeper zk, Watcher watcher)
+    static public ZkCoordinateData loadCoordinateData(
+            final String statusPath, final ZooKeeper zk, final Watcher watcher)
             throws CloudnameException {
         Stat stat = new Stat();
         try {

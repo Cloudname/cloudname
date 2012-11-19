@@ -28,7 +28,7 @@ public final class Util {
      * with their data element set to null.
      * @throws CloudnameException if problems talking with ZooKeeper.
      */
-    public static void mkdir(ZooKeeper zk, String path, List<ACL> acl)
+    public static void mkdir(final ZooKeeper zk, String path, final List<ACL> acl)
             throws CloudnameException, InterruptedException {
         if (path.startsWith("/")) {
             path = path.substring(1);
@@ -56,8 +56,10 @@ public final class Util {
      * @param path starts from this path
      * @param nodeList put sub-nodes in this list
      */
-    public static void listRecursively(ZooKeeper zk, String path, List<String> nodeList)
+    public static void listRecursively(
+            final ZooKeeper zk, final String path,  final List<String> nodeList)
             throws CloudnameException, InterruptedException {
+
         List<String> children = null;
         try {
             children = zk.getChildren(path, false);
@@ -78,10 +80,11 @@ public final class Util {
      * @return true if the node exists and has children.
      * @throws CoordinateMissingException if the path does not exist in ZooKeeper.
      */
-    public static boolean hasChildren(ZooKeeper zk, String path)
+    public static boolean hasChildren(final ZooKeeper zk, final String path)
             throws CloudnameException, CoordinateMissingException, InterruptedException {
         if (! exist(zk, path)) {
-            throw new CoordinateMissingException("Could not get children due to non-existing path " + path);
+            throw new CoordinateMissingException("Could not get children due to non-existing path "
+                    + path);
         }
         List<String> children = null;
         try {
@@ -97,7 +100,8 @@ public final class Util {
      * @throws CloudnameException if there are problems taking to the ZooKeeper instance.
      * @return true if the path exists.
      */
-    public static boolean exist(ZooKeeper zk, String path) throws CloudnameException, InterruptedException {
+    public static boolean exist(final ZooKeeper zk, final String path)
+            throws CloudnameException, InterruptedException {
         try {
             return zk.exists(path, false) != null;
         } catch (KeeperException e) {
@@ -111,12 +115,14 @@ public final class Util {
      * @param path
      * @return version number 
      */
-    public static int getVersionForDeletion(ZooKeeper zk, String path) throws CloudnameException, InterruptedException {
+    public static int getVersionForDeletion(final ZooKeeper zk, final String path)
+            throws CloudnameException, InterruptedException {
 
         try {
             int version = zk.exists(path, false).getVersion();
             if (version < 0) {
-                throw new CloudnameException(new RuntimeException("Got negative version for path " + path));
+                throw new CloudnameException(
+                        new RuntimeException("Got negative version for path " + path));
             }
             return version;
         } catch (KeeperException e) {
@@ -131,7 +137,8 @@ public final class Util {
      * @param keepMinLevels is the minimum number of levels (depths) to keep in the path.
      * @return the number of deleted levels.
      */
-    public static int deletePathKeepRootLevels(ZooKeeper zk, String path, int keepMinLevels)
+    public static int deletePathKeepRootLevels(
+            final ZooKeeper zk, String path, int keepMinLevels)
             throws CloudnameException, CoordinateMissingException, InterruptedException {
         if (path.startsWith("/")) {
             path = path.substring(1);
@@ -139,8 +146,8 @@ public final class Util {
 
         String[] parts = path.split("/");
 
-        // We are happy if only the first two deletions went through. The other deletions are just cleaning up if
-        // there are no more coordinates on the same rootPath.
+        // We are happy if only the first two deletions went through. The other deletions are just
+        // cleaning up if there are no more coordinates on the same rootPath.
         int deletedNodes = 0;
         List<String> paths = new ArrayList<String>();
         String incrementalPath = "";
