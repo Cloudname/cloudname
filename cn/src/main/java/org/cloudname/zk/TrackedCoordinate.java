@@ -3,6 +3,11 @@ package org.cloudname.zk;
 import org.apache.zookeeper.*;
 import org.cloudname.*;
 
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Logger;
 
 /**
@@ -10,7 +15,9 @@ import java.util.logging.Logger;
  *
  * @author dybdahl
  */
-public class TrackedCoordinate implements Watcher, ZkUserInterface {
+public class TrackedCoordinate implements Watcher, ZkObjectHandler.ConnectionStateChanged {
+
+
     /**
      * The client can implement this to get notified on changes.
      */
@@ -19,65 +26,89 @@ public class TrackedCoordinate implements Watcher, ZkUserInterface {
     }
 
     private ZkCoordinateData.Snapshot coordinateData = null;
-    
-    private static final Logger log = Logger.getLogger(TrackedCoordinate.class.getName());
-    private ZooKeeper zk;
+    private final Object coordinateDataMonitor = new Object();
+
+    private static final Logger LOG = Logger.getLogger(TrackedCoordinate.class.getName());
     private final String path;
     private final ExpressionResolverNotify client;
-    private boolean needToReloadData = false;
+    private final AtomicBoolean isSynchronizedWithZookeeper = new AtomicBoolean(false);
+    private final ZkObjectHandler.Client zkClient;
 
+    private final ScheduledExecutorService scheduler =
+            Executors.newSingleThreadScheduledExecutor();
+
+    private final CountDownLatch firstRound = new CountDownLatch(1);
     /**
-     * Constructor, the ZooKeeper instances is retrieved from implementing the ZkUserInterface so the object
-     * is not ready to be used before the ZooKeeper instance is received.
+     * Constructor, the ZooKeeper instances is retrieved from implementing the ZkUserInterface so
+     * the object is not ready to be used before the ZooKeeper instance is received.
      * @param path is the path of the status of the coordinate.
      */
-    public TrackedCoordinate(ExpressionResolverNotify client, String path) {
+    public TrackedCoordinate(
+            final ExpressionResolverNotify client, final String path,
+            final ZkObjectHandler.Client zkClient) {
         this.path = path;
         this.client = client;
+        this.zkClient = zkClient;
     }
 
-
+    // Implementation of ZkObjectHandler.ConnectionStateChanged.
     @Override
-    public void zooKeeperDown() {
-        log.fine("ClaimedCoordinate: Got event ZooKeeper is down.");
-        synchronized (this) {
-            zk = null;
-            needToReloadData = true;
-
-        }
+    public void connectionUp() {
     }
-    
+
+    // Implementation of ZkObjectHandler.ConnectionStateChanged.
     @Override
-    public void newZooKeeperInstance(ZooKeeper zk) {
-        log.fine("ClaimedCoordinate: Got new ZooKeeper.");
-        synchronized (this) {
-            this.zk = zk;
-        }
-        try {
-            if (refreshCoordinateData()) {
-                client.stateChanged();
-            }
-        } catch (CloudnameException e) {
-            log.info("Got problems reloading data from zookeeper: " + e.getMessage());
-        }
+    public void connectionDown() {
+        isSynchronizedWithZookeeper.set(false);
     }
 
     /**
-     * Everything is watch driven, so we don't need to do any periodic checks.
+     * Signalize that the class should reload its data.
      */
-    @Override
-    public void timeEvent() {
-        synchronized (this) {
-            if (needToReloadData == false) {
-                return;
+    public void refreshAsync() {
+        isSynchronizedWithZookeeper.set(false);
+    }
+
+    public void start() {
+        zkClient.registerListener(this);
+        final  long periodicDelayMs = 2000;
+        scheduler.scheduleWithFixedDelay(new ReloadCoordinateData(), 1 /* initial delay ms */,
+                periodicDelayMs, TimeUnit.MILLISECONDS);
+    }
+
+
+    public void stop() {
+        scheduler.shutdown();
+        zkClient.deregisterListener(this);
+    }
+
+    public void waitForFirstData() throws InterruptedException {
+        firstRound.await();
+    }
+
+
+
+    /**
+     * This class handles reloading new data from zookeeper if we are out of synch.
+     */
+    class ReloadCoordinateData implements Runnable {
+        @Override
+        public void run() {
+            if (! isSynchronizedWithZookeeper.getAndSet(true)) {  return;  }
+            try {
+                refreshCoordinateData();
+            } catch (CloudnameException e) {
+                isSynchronizedWithZookeeper.set(false);
             }
+            firstRound.countDown();
         }
-        newZooKeeperInstance(zk);
     }
 
 
     public ZkCoordinateData.Snapshot getCoordinatedata() {
-        return coordinateData;
+        synchronized (coordinateDataMonitor) {
+            return coordinateData;
+        }
     }
 
 
@@ -86,16 +117,18 @@ public class TrackedCoordinate implements Watcher, ZkUserInterface {
      * @return serialized version of the instance data.
      */
     public String toString() {
-        return coordinateData.toString();
+        synchronized (coordinateDataMonitor) {
+            return coordinateData.toString();
+        }
     }
 
 
     /**
-     * Handles even from ZooKeeper for this coordinate.
-     * @param event
+     * Handles event from ZooKeeper for this coordinate.
+     * @param event Event to handle
      */
     @Override public void process(WatchedEvent event) {
-        log.fine("Got an event from ZooKeeper " + event.toString() + " path: " + path);
+        LOG.fine("Got an event from ZooKeeper " + event.toString() + " path: " + path);
 
         switch (event.getType()) {
             case None:
@@ -106,25 +139,19 @@ public class TrackedCoordinate implements Watcher, ZkUserInterface {
                     case AuthFailed:
                     case Expired:
                     default:
-                        // If we lost connection, we don't attempt to register another watcher as this might
-                        // be blocking forever. Parent might try to reconnect.
+                        // If we lost connection, we don't attempt to register another watcher as
+                        // this might be blocking forever. Parent might try to reconnect.
                         return;
                 }
                 break;
             case NodeDeleted:
-                synchronized (this) {
+                synchronized (coordinateDataMonitor) {
                     coordinateData = new ZkCoordinateData().snapshot();
                 }
                 client.stateChanged();
                 return;
             case NodeDataChanged:
-                try {
-                    if (refreshCoordinateData()) {
-                        client.stateChanged();
-                    }
-                } catch (CloudnameException e) {
-                    log.info("Problems reloading node after change, path; " + path + " " + e.getMessage());
-                }
+                isSynchronizedWithZookeeper.set(false);
                 return;
             case NodeChildrenChanged:
             case NodeCreated:
@@ -133,42 +160,36 @@ public class TrackedCoordinate implements Watcher, ZkUserInterface {
         try {
             registerWatcher();
         } catch (CloudnameException e) {
-            log.info("Got cloudname exception: " + e.getMessage());
-            return;
+            LOG.info("Got cloudname exception: " + e.getMessage());
         } catch (InterruptedException e) {
-            log.info("Got interrupted exception: " + e.getMessage());
-            return;
+            LOG.info("Got interrupted exception: " + e.getMessage());
         }
     }
 
 
     /**
      * Loads the coordinate from ZooKeeper. In case of failure, we keep the old data.
-     *
-     * @return Returns true if data has changed.
+     * Notifies the client if state changes.
      */
-    private boolean refreshCoordinateData() throws CloudnameException {
+    private void refreshCoordinateData() throws CloudnameException {
 
-        synchronized (this) {
-            if (zk == null) {
-                needToReloadData = true;
-                throw new CloudnameException("No connection to storage.");
+        if (! zkClient.isConnected()) {
+            throw new CloudnameException("No connection to storage.");
+        }
+        synchronized (coordinateDataMonitor) {
+            String oldDataSerialized = (null == coordinateData) ? "" : coordinateData.serialize();
+            coordinateData = ZkCoordinateData.loadCoordinateData(
+                    path, zkClient.getZookeeper(), this).snapshot();
+            isSynchronizedWithZookeeper.set(true);
+            if (! oldDataSerialized.equals(coordinateData.toString())) {
+                client.stateChanged();
             }
-            String oldDataSerialized = new String("");
-            if (null != coordinateData) {
-                oldDataSerialized = coordinateData.serialize();
-            }
-            coordinateData = ZkCoordinateData.loadCoordinateData(path, zk, this).snapshot();
-            needToReloadData = false;
-            return (! oldDataSerialized.equals(coordinateData.toString()));
         }
     }
 
     private void registerWatcher() throws CloudnameException, InterruptedException {
         try {
-            synchronized (this) {
-                zk.exists(path, this);
-            }
+            zkClient.getZookeeper().exists(path, this);
         } catch (KeeperException e) {
             throw new CloudnameException(e);
         }

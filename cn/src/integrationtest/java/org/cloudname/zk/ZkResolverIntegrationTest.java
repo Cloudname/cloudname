@@ -43,6 +43,7 @@ public class ZkResolverIntegrationTest {
      */
     @Before
     public void setup() throws Exception {
+
         // Speed up tests waiting for this event to happen.
         DynamicExpression.TIME_BETWEEN_NODE_SCANNING_MS = 200;
 
@@ -69,8 +70,10 @@ public class ZkResolverIntegrationTest {
         ServiceHandle handleRunning = cn.claim(coordinateRunning);
         assertTrue(handleRunning.waitForCoordinateOkSeconds(30));
 
-        handleRunning.putEndpoint(new Endpoint(coordinateRunning, "foo", "localhost", 1234, "http", "data"));
-        handleRunning.putEndpoint(new Endpoint(coordinateRunning, "bar", "localhost", 1235, "http", null));
+        handleRunning.putEndpoint(new Endpoint(
+                coordinateRunning, "foo", "localhost", 1234, "http", "data"));
+        handleRunning.putEndpoint(new Endpoint(
+                coordinateRunning, "bar", "localhost", 1235, "http", null));
         ServiceStatus statusRunning = new ServiceStatus(ServiceState.RUNNING, "Running message");
         handleRunning.setStatus(statusRunning);
 
@@ -78,8 +81,10 @@ public class ZkResolverIntegrationTest {
         cn.createCoordinate(coordinateDraining);
         handleDraining = cn.claim(coordinateDraining);
         assertTrue(handleDraining.waitForCoordinateOkSeconds(10));
-        handleDraining.putEndpoint(new Endpoint(coordinateDraining, "foo", "localhost", 5555, "http", "data"));
-        handleDraining.putEndpoint(new Endpoint(coordinateDraining, "bar", "localhost", 5556, "http", null));
+        handleDraining.putEndpoint(new Endpoint(
+                coordinateDraining, "foo", "localhost", 5555, "http", "data"));
+        handleDraining.putEndpoint(new Endpoint(
+                coordinateDraining, "bar", "localhost", 5556, "http", null));
 
         ServiceStatus statusDraining = new ServiceStatus(ServiceState.DRAINING, "Draining message");
         handleDraining.setStatus(statusDraining);
@@ -103,7 +108,8 @@ public class ZkResolverIntegrationTest {
 
     public void changeEndpoint() throws CoordinateMissingException, CloudnameException {
         handleDraining.removeEndpoint("foo");
-        handleDraining.putEndpoint(new Endpoint(coordinateDraining, "foo", "localhost", 4, "http", "data"));
+        handleDraining.putEndpoint(new Endpoint(
+                coordinateDraining, "foo", "localhost", 4, "http", "data"));
     }
 
     @Test
@@ -229,12 +235,12 @@ public class ZkResolverIntegrationTest {
 
         latchWrapper.latch = new CountDownLatch(1);
 
-        resolver.addResolverListener("foo.all.service.user.cell", new Resolver.ResolverListener() {
+        resolver.addResolverListener(
+                "foo.all.service.user.cell", new Resolver.ResolverListener() {
 
             @Override
             public void endpointEvent(Event event, Endpoint endpoint) {
                 switch (event) {
-
                     case NEW_ENDPOINT:
                         endpointListNew.add(endpoint);
                         latchWrapper.latch.countDown();
@@ -246,17 +252,18 @@ public class ZkResolverIntegrationTest {
                 }
             }
         });
-        assertTrue(latchWrapper.latch.await(5000, TimeUnit.MILLISECONDS));
+        assertTrue(latchWrapper.latch.await(24000, TimeUnit.MILLISECONDS));
         assertEquals(1, endpointListNew.size());
         assertEquals("foo", endpointListNew.get(0).getName());
         assertEquals("1.service.user.cell", endpointListNew.get(0).getCoordinate().toString());
         endpointListNew.clear();
-
         latchWrapper.latch = new CountDownLatch(1);
 
         undrain();
 
-        assertTrue(latchWrapper.latch.await(5000, TimeUnit.MILLISECONDS));
+
+        assertTrue(latchWrapper.latch.await(125000, TimeUnit.MILLISECONDS));
+
         assertEquals(1, endpointListNew.size());
 
         assertEquals("foo", endpointListNew.get(0).getName());
@@ -267,7 +274,7 @@ public class ZkResolverIntegrationTest {
 
         changeEndpoint();
 
-        assertTrue(latchWrapper.latch.await(5000, TimeUnit.MILLISECONDS));
+        assertTrue(latchWrapper.latch.await(26000, TimeUnit.MILLISECONDS));
 
         assertEquals(1, endpointListRemoved.size());
 
@@ -283,7 +290,7 @@ public class ZkResolverIntegrationTest {
 
         drain();
 
-        assertTrue(latchWrapper.latch.await(5000, TimeUnit.MILLISECONDS));
+        assertTrue(latchWrapper.latch.await(27000, TimeUnit.MILLISECONDS));
 
         assertEquals(1, endpointListRemoved.size());
 
@@ -297,7 +304,8 @@ public class ZkResolverIntegrationTest {
 
         final List<Endpoint> endpointListNew = new ArrayList<Endpoint>();
 
-        // This class is needed since the abstract resolver listener class can only access final variables.
+        // This class is needed since the abstract resolver listener class can only access
+        // final variables.
         class LatchWrapper {
             public CountDownLatch latch;
         }
@@ -305,12 +313,12 @@ public class ZkResolverIntegrationTest {
 
         latchWrapper.latch = new CountDownLatch(1);
 
-        resolver.addResolverListener("foo.any.service.user.cell", new Resolver.ResolverListener() {
+        resolver.addResolverListener(
+                "foo.any.service.user.cell", new Resolver.ResolverListener() {
 
             @Override
             public void endpointEvent(Event event, Endpoint endpoint) {
                 switch (event) {
-
                     case NEW_ENDPOINT:
                         endpointListNew.add(endpoint);
                         latchWrapper.latch.countDown();
@@ -331,7 +339,7 @@ public class ZkResolverIntegrationTest {
 
         undrain();
 
-        assertFalse(latchWrapper.latch.await(2000, TimeUnit.MILLISECONDS));
+        assertFalse(latchWrapper.latch.await(3000, TimeUnit.MILLISECONDS));
     }
 
     @Test
@@ -340,7 +348,8 @@ public class ZkResolverIntegrationTest {
 
         final List<Endpoint> endpointListNew = new ArrayList<Endpoint>();
 
-        // This class is needed since the abstract resolver listener class can only access final variables.
+        // This class is needed since the abstract resolver listener class can only access
+        // final variables.
         class LatchWrapper {
             public CountDownLatch latch;
         }

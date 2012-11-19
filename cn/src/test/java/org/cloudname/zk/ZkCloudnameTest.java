@@ -28,7 +28,7 @@ import java.util.logging.Logger;
  * @author borud, dybdahl
  */
 public class ZkCloudnameTest {
-    private static Logger log = Logger.getLogger(ZkCloudnameTest.class.getName());
+    private static final Logger LOG = Logger.getLogger(ZkCloudnameTest.class.getName());
 
     private ZooKeeper zk;
     private int zkport;
@@ -46,7 +46,7 @@ public class ZkCloudnameTest {
         File rootDir = temp.newFolder("zk-test");
         zkport = Net.getFreePort();
 
-        log.info("EmbeddedZooKeeper rootDir=" + rootDir.getCanonicalPath() + ", port=" + zkport
+        LOG.info("EmbeddedZooKeeper rootDir=" + rootDir.getCanonicalPath() + ", port=" + zkport
         );
 
         // Set up and initialize the embedded ZooKeeper
@@ -65,7 +65,7 @@ public class ZkCloudnameTest {
         });
         connectedLatch.await();
 
-        System.out.println("ZooKeeper port is " + zkport);
+        LOG.info("ZooKeeper port is " + zkport);
     }
 
     @After
@@ -131,10 +131,10 @@ public class ZkCloudnameTest {
                 configLatch2.countDown();
             }
         });
-        assertTrue(configLatch1.await(2, TimeUnit.SECONDS));
+        assertTrue(configLatch1.await(5, TimeUnit.SECONDS));
         assertEquals(buffer.toString(), "");
         zk.setData("/cn/cell/user/service/1/config", "hello".getBytes(), -1);
-        assertTrue(configLatch2.await(2, TimeUnit.SECONDS));
+        assertTrue(configLatch2.await(5, TimeUnit.SECONDS));
         assertEquals(buffer.toString(), "hello");
 
         assertTrue(pathExists("/cn/cell/user/service/1/status"));
@@ -213,7 +213,7 @@ public class ZkCloudnameTest {
             future.get(300, TimeUnit.MILLISECONDS);
         } catch (TimeoutException ex) {
             // handle the timeout
-            log.info("Got time out, nice!");
+            LOG.info("Got time out, nice!");
         } catch (InterruptedException e) {
             fail("Interrupted");
         } catch (ExecutionException e) {
@@ -237,24 +237,23 @@ public class ZkCloudnameTest {
             @Override
             public void onCoordinateEvent(Event event, String message) {
                 switch (event) {
-
                     case COORDINATE_OK:
                         okCounter.countDown();
                         break;
-                    case NO_CONNECTION_TO_STORAGE:
+                    case NOT_OWNER:
                         failCounter.countDown();
-                        break;
                     default: //Any other Event is unexpected.
-                        fail("not expected");
+                        assert(false);
                         break;
                 }
             }
         };
-        Cloudname cn = null;
+        final Cloudname cn;
         try {
             cn = makeLocalZkCloudname();
         } catch (CloudnameException e) {
             fail("connecting to localhost failed.");
+            return;
         }
 
         try {
@@ -262,8 +261,14 @@ public class ZkCloudnameTest {
         } catch (CoordinateExistsException e) {
             fail("should not happen.");
         }
-        cn.claim(c).registerCoordinateListener(listener);
-        cn.claim(c).registerCoordinateListener(listener);
+        final ServiceHandle handle1 = cn.claim(c);
+        assert(handle1.waitForCoordinateOkSeconds(4));
+        handle1.registerCoordinateListener(listener);
+        ServiceHandle handle2 = cn.claim(c);
+        assertFalse(handle2.waitForCoordinateOkSeconds(1));
+        handle2.registerCoordinateListener(listener);
+        assert(okCounter.await(4, TimeUnit.SECONDS));
+        assert(failCounter.await(2, TimeUnit.SECONDS));
     }
 
 
