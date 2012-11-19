@@ -154,6 +154,11 @@
 
   <dependencies>
     <dependency>
+      <groupId>org.cloudname</groupId>
+      <artifactId>flags</artifactId>
+    </dependency>
+
+    <dependency>
       <groupId>joda-time</groupId>
       <artifactId>joda-time</artifactId>
     </dependency>

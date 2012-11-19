@@ -12,10 +12,10 @@ import jline.SimpleCompletor;
 import jline.MultiCompletor;
 import jline.NullCompletor;
 
-import org.codehaus.jackson.map.ObjectMapper;
-import org.codehaus.jackson.JsonParseException;
-
 import org.joda.time.DateTime;
+
+import com.fasterxml.jackson.core.JsonParseException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.util.Set;
 import java.util.Map;
