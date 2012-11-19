@@ -39,7 +39,7 @@
     <cn.jsr250-api.version>1.0</cn.jsr250-api.version>
     <cn.jersey.version>1.8</cn.jersey.version>
     <cn.jbcrypt.version>0.3m</cn.jbcrypt.version>
-    <cn.joda-time.version>2.0</cn.joda-time.version>
+    <cn.joda-time.version>2.1</cn.joda-time.version>
 
     <!-- Internal dependency versions -->
     <cn.version>2.11-SNAPSHOT</cn.version>
