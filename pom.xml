@@ -31,7 +31,7 @@
     <!-- Dependency versions -->
     <cn.zookeeper.version>3.3.3</cn.zookeeper.version>
     <cn.jackson.version>2.1.1</cn.jackson.version>
-    <cn.junit.version>4.8.1</cn.junit.version>
+    <cn.junit.version>4.10</cn.junit.version>
     <cn.netty.version>3.2.7.Final</cn.netty.version>
     <cn.protobuf.version>2.3.0</cn.protobuf.version>
     <cn.jline.version>0.9.94</cn.jline.version>
