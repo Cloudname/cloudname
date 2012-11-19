@@ -354,7 +354,8 @@ public final class ZkResolver implements Resolver, ZkObjectHandler.ConnectionSta
                             } catch (NumberFormatException e) {
                                 log.log(
                                     Level.WARNING,
-                                    "Got non-number as instance in cn path. skipping.",
+                                    "Got non-number as instance in cn path: " + instancePath + "/"
+                                        + instance + " skipping.",
                                     e);
                                 continue;
                             }

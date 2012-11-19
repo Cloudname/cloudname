@@ -3,9 +3,9 @@ package org.cloudname;
 import java.util.regex.Pattern;
 import java.util.regex.Matcher;
 
-import org.codehaus.jackson.map.ObjectMapper;
-import org.codehaus.jackson.annotate.JsonCreator;
-import org.codehaus.jackson.annotate.JsonProperty;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 import java.io.IOException;
 
