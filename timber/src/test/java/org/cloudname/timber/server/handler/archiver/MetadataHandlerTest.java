@@ -61,11 +61,7 @@ public class MetadataHandlerTest {
                     .setPayload(ByteString.copyFromUtf8("text")))
             .build();
 
-        final WriteReport wr = new WriteReport();
-        wr.setSlotFile(slotFile);
-        wr.setWriteCount(1);
-        wr.setStartOffset(2);
-        wr.setEndOffset(3);
+        final WriteReport wr = new WriteReport(slotFile, 2, 3, 1);
 
         handler.write(event, wr);
 
@@ -131,11 +127,7 @@ public class MetadataHandlerTest {
                             "myservice",
                             SimpleArchiverTest.class.getName(),
                             "some payload " + j);
-                        final WriteReport wr = new WriteReport();
-                        wr.setWriteCount(j);
-                        wr.setEndOffset(j);
-                        wr.setSlotFile(slotFile);
-                        wr.setStartOffset(j);
+                        final WriteReport wr = new WriteReport(slotFile, j, j, j);
                         handler.write(event, wr);
                         finishLatch.countDown();
                     }

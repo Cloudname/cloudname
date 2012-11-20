@@ -7,33 +7,23 @@ import java.io.File;
  * @author acidmoose
  */
 public class WriteReport {
-    private File slotFile;
-    private long startOffset;
-    private long endOffset;
-    private int writeCount;
+    private final File slotFile;
+    private final long startOffset;
+    private final long endOffset;
+    private final int writeCount;
 
     /**
-     * Set the slot file written to.
-     * @param slotFile written to
+     * Construct a WriteReport
+     * @param slotFile the slot file written to.
+     * @param startOffset the start byte offset for the write operation.
+     * @param endOffset the end byte offset for the write operation.
+     * @param writeCount the current number of elements in the slot file.
      */
-    public void setSlotFile(final File slotFile) {
+    public WriteReport(final File slotFile, final long startOffset, final long endOffset, final int writeCount) {
         this.slotFile = slotFile;
-    }
-
-    /**
-     * Set the start byte offset for the write operation.
-     * @param startOffset start byte offset
-     */
-    public void setStartOffset(final long startOffset) {
         this.startOffset = startOffset;
-    }
-
-    /**
-     * Set the end byte offset for the write operation.
-     * @param endOffset end byte offset
-     */
-    public void setEndOffset(final long endOffset) {
         this.endOffset = endOffset;
+        this.writeCount = writeCount;
     }
 
     /**
@@ -58,14 +48,6 @@ public class WriteReport {
      */
     public long getEndOffset() {
         return endOffset;
-    }
-
-    /**
-     * Set the current number of elements in the slot file.
-     * @param writeCount number of elements in slot file
-     */
-    public void setWriteCount(final int writeCount) {
-        this.writeCount = writeCount;
     }
 
     /**
