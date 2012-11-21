@@ -4,7 +4,7 @@
 
   <groupId>org.cloudname</groupId>
   <artifactId>cloudname-parent</artifactId>
-  <version>2.11-SNAPSHOT</version>
+  <version>2.12-SNAPSHOT</version>
   <packaging>pom</packaging>
 
   <name>Cloudname Parent</name>
@@ -42,7 +42,7 @@
     <cn.joda-time.version>2.1</cn.joda-time.version>
 
     <!-- Internal dependency versions -->
-    <cn.version>2.11-SNAPSHOT</cn.version>
+    <cn.version>2.12-SNAPSHOT</cn.version>
 
     <integrationSourceDirectory>src/integrationtest</integrationSourceDirectory>
     <integrationOutputDirectory>target/integrationtest-classes</integrationOutputDirectory>
