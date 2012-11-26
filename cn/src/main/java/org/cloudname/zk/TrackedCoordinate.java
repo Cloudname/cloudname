@@ -8,6 +8,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
@@ -22,7 +23,7 @@ public class TrackedCoordinate implements Watcher, ZkObjectHandler.ConnectionSta
      * The client can implement this to get notified on changes.
      */
     public interface ExpressionResolverNotify {
-        void stateChanged();
+        void stateChanged(final String statusPath);
     }
 
     private ZkCoordinateData.Snapshot coordinateData = null;
@@ -46,6 +47,7 @@ public class TrackedCoordinate implements Watcher, ZkObjectHandler.ConnectionSta
     public TrackedCoordinate(
             final ExpressionResolverNotify client, final String path,
             final ZkObjectHandler.Client zkClient) {
+        LOG.finest("Tracking coordinate with path " + path);
         this.path = path;
         this.client = client;
         this.zkClient = zkClient;
@@ -98,6 +100,7 @@ public class TrackedCoordinate implements Watcher, ZkObjectHandler.ConnectionSta
             try {
                 refreshCoordinateData();
             } catch (CloudnameException e) {
+                LOG.log(Level.INFO, "exception on reloading coordinate data.", e);
                 isSynchronizedWithZookeeper.set(false);
             }
             firstRound.countDown();
@@ -148,7 +151,7 @@ public class TrackedCoordinate implements Watcher, ZkObjectHandler.ConnectionSta
                 synchronized (coordinateDataMonitor) {
                     coordinateData = new ZkCoordinateData().snapshot();
                 }
-                client.stateChanged();
+                client.stateChanged(path);
                 return;
             case NodeDataChanged:
                 isSynchronizedWithZookeeper.set(false);
@@ -160,9 +163,9 @@ public class TrackedCoordinate implements Watcher, ZkObjectHandler.ConnectionSta
         try {
             registerWatcher();
         } catch (CloudnameException e) {
-            LOG.info("Got cloudname exception: " + e.getMessage());
+            LOG.log(Level.INFO, "Got cloudname exception.", e);
         } catch (InterruptedException e) {
-            LOG.info("Got interrupted exception: " + e.getMessage());
+            LOG.log(Level.INFO, "Got interrupted exception.", e);
         }
     }
 
@@ -182,7 +185,7 @@ public class TrackedCoordinate implements Watcher, ZkObjectHandler.ConnectionSta
                     path, zkClient.getZookeeper(), this).snapshot();
             isSynchronizedWithZookeeper.set(true);
             if (! oldDataSerialized.equals(coordinateData.toString())) {
-                client.stateChanged();
+                client.stateChanged(path);
             }
         }
     }
