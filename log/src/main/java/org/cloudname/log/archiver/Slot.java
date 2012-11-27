@@ -159,12 +159,16 @@ public class Slot {
         numBytesInFile += currentWriter.write(event);
         writeCount++;
 
+        // Make return value here to keep currentFile object (removed in closeIntenal()).
+        final WriteReport ret =
+            new WriteReport(currentFile, startOffset, numBytesInFile, writeCount);
+
         // Check if it is time to finish this file
         if (numBytesInFile > maxSize) {
             closeInternal();
         }
 
-        return new WriteReport(currentFile, startOffset, numBytesInFile, writeCount);
+        return ret;
     }
 
     /**
