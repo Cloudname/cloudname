@@ -7,6 +7,7 @@ import com.google.protobuf.ByteString;
 
 import java.io.File;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.ArrayList;
 
@@ -87,7 +88,7 @@ public class ArchiverTest {
      * a modern iMac.
      */
     @Test (timeout = 1500)
-    public void testFlushSlowdownMeasurement() {
+    public void testFlushSlowdownMeasurement() throws IOException {
         String logPath = temp.newFolder("test-speed").getAbsolutePath();
         Archiver archiver = new Archiver(logPath, MEGABYTE);
         archiver.init();
