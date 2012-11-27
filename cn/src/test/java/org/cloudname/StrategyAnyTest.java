@@ -1,14 +1,13 @@
 package org.cloudname;
 
+import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.lessThan;
 import org.junit.Before;
 import org.junit.Test;
 
 import java.util.ArrayList;
 import java.util.List;
 
-
-import static org.hamcrest.CoreMatchers.is;
-import static org.hamcrest.number.OrderingComparisons.lessThan;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
 
