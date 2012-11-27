@@ -41,12 +41,6 @@ class DynamicExpression implements Watcher, TrackedCoordinate.ExpressionResolver
     private final Resolver.ResolverListener clientCallback;
 
     /**
-     * A path can be scheduled to be read later, i.e. if we think there are changes, we got error
-     * etc.
-     */
-    private final Map<String, Long> scheduledRefreshMsByPath = new HashMap<String, Long>();
-
-    /**
      * This is the expression to dynamically resolved represented as ZkResolver.Parameters.
      */
     private final ZkResolver.Parameters parameters;
@@ -110,10 +104,8 @@ class DynamicExpression implements Watcher, TrackedCoordinate.ExpressionResolver
     }
 
     public void start() {
-        final long periodicDelayMs = 500;
-        scheduler.scheduleWithFixedDelay(new ResolveProblems(), 1 /* initial delay ms */,
-                periodicDelayMs, TimeUnit.MILLISECONDS);
-        scheduler.scheduleWithFixedDelay(new NodeScanner(), 1 /* initial delay ms */,
+
+        scheduler.scheduleWithFixedDelay(new NodeScanner(""), 1 /* initial delay ms */,
                 TIME_BETWEEN_NODE_SCANNING_MS, TimeUnit.MILLISECONDS);
     }
 
@@ -132,47 +124,28 @@ class DynamicExpression implements Watcher, TrackedCoordinate.ExpressionResolver
         }
     }
 
-    private List<String> pullPathsToBeRefreshed() {
-        final List<String> pathsToRefresh = new ArrayList<String>();
-        synchronized (instanceLock) {
-            long nowMillis = System.currentTimeMillis();
-            for (Map.Entry<String, Long> entry : scheduledRefreshMsByPath.entrySet()) {
-                if (nowMillis - entry.getValue()  >  0) {
-                    pathsToRefresh.add(entry.getKey());
-                }
-            }
-            for (String path : pathsToRefresh) {
-                scheduledRefreshMsByPath.remove(path);
-            }
-        }
-        return pathsToRefresh;
+    private void scheduleRefresh(String path, long delayMs) {
+        scheduler.schedule(new NodeScanner(path), delayMs, TimeUnit.MILLISECONDS);
     }
-
-
 
     /**
      * The method will try to resolve the expression and find new nodes.
      */
     private class NodeScanner implements Runnable {
-        @Override
-        public void run() {
-            resolve();
-            notifyClient();
+        final String path;
 
+        public NodeScanner(final String path) {
+            this.path = path;
         }
-    }
 
-    /**
-     * Check if there are paths that are scheduled for refresh.
-     */
-    private class ResolveProblems implements Runnable {
         @Override
         public void run() {
-            // Periodically check every node for changes.
-            List<String>  pathsToRefresh = pullPathsToBeRefreshed();
-            for (String path : pathsToRefresh) {
+            if (path.isEmpty()) {
+                resolve();
+            } else {
                 refreshPathWithWatcher(path);
             }
+            notifyClient();
         }
     }
 
@@ -208,7 +181,6 @@ class DynamicExpression implements Watcher, TrackedCoordinate.ExpressionResolver
                 synchronized (instanceLock) {
                     coordinateByPath.remove(path);
                     notifyClient();
-                    scheduledRefreshMsByPath.remove(path);
                     return;
                 }
             case NodeDataChanged:
@@ -236,11 +208,12 @@ class DynamicExpression implements Watcher, TrackedCoordinate.ExpressionResolver
             return;
         }
 
-        final Set<Endpoint> validEndpoints = new HashSet<Endpoint>();
+        final Set<String> validEndpointsPaths = new HashSet<String>();
 
         for (Endpoint endpoint : endpoints) {
-            validEndpoints.add(endpoint);
+
             final String statusPath = ZkCoordinatePath.getStatusPath(endpoint.getCoordinate());
+            validEndpointsPaths.add(statusPath);
 
             final TrackedCoordinate trackedCoordinate;
 
@@ -251,7 +224,7 @@ class DynamicExpression implements Watcher, TrackedCoordinate.ExpressionResolver
                     continue;
                 }
                 trackedCoordinate = new TrackedCoordinate(this, statusPath, zkClient);
-                coordinateByPath.put(endpoint.toString(), trackedCoordinate);
+                coordinateByPath.put(statusPath, trackedCoordinate);
             }
             // Tracked coordinate has to be in coordinateByPath before start is called, or events
             // gets lost.
@@ -270,9 +243,9 @@ class DynamicExpression implements Watcher, TrackedCoordinate.ExpressionResolver
                          coordinateByPath.entrySet().iterator();
                  it.hasNext(); /* nop */) {
                 Map.Entry<String, TrackedCoordinate> entry = it.next();
-                if (! validEndpoints.contains((entry.getValue().getCoordinatedata()
-                        .getEndpoint(parameters.getEndpointName())))) {
-                    log.fine("Killing endpoint " + entry.getKey() + ": Now longer resolved.");
+
+                if (! validEndpointsPaths.contains(entry.getKey())) {
+                    log.info("Killing endpoint " + entry.getKey() + ": No longer resolved.");
                     entry.getValue().stop();
                     it.remove();
                 }
@@ -315,6 +288,7 @@ class DynamicExpression implements Watcher, TrackedCoordinate.ExpressionResolver
             while (it.hasNext()) {
 
                 final Map.Entry<String, Endpoint> endpointEntry = it.next();
+
                 final String key = endpointEntry.getKey();
                 if (! newEndpointsByName.containsKey(key)) {
                     it.remove();
@@ -341,21 +315,6 @@ class DynamicExpression implements Watcher, TrackedCoordinate.ExpressionResolver
                     }
                 }
             }
-        }
-    }
-
-    private void scheduleRefresh(final String path, long delayMillis) {
-        // Randomize refreshes to avoid network peaks.
-        long delayMillisDistributed = (long) (delayMillis * (0.7 + random.nextDouble() * 0.6));
-        synchronized (instanceLock) {
-            long now = System.currentTimeMillis();
-            if (scheduledRefreshMsByPath.containsKey((path))) {
-                long oldSchedule = scheduledRefreshMsByPath.get(path);
-                if (oldSchedule < delayMillisDistributed + now) {
-                    return;
-                }
-            }
-            scheduledRefreshMsByPath.put(path, delayMillisDistributed + now);
         }
     }
 
