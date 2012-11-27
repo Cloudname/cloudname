@@ -12,8 +12,6 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.logging.Logger;
 
 /**
@@ -258,7 +256,11 @@ public class ClaimedCoordinate implements Watcher, ZkObjectHandler.ConnectionSta
      */
     @Override
     public void connectionDown() {
-        for (CoordinateListener coordinateListener : coordinateListenerList) {
+        List<CoordinateListener> coordinateListenerListCopy = new ArrayList<CoordinateListener>();
+        synchronized (coordinateListenerList) {
+            coordinateListenerListCopy.addAll(coordinateListenerList);
+        }
+        for (CoordinateListener coordinateListener : coordinateListenerListCopy) {
             coordinateListener.onCoordinateEvent(
                     CoordinateListener.Event.NO_CONNECTION_TO_STORAGE, "down");
         }
@@ -305,9 +307,17 @@ public class ClaimedCoordinate implements Watcher, ZkObjectHandler.ConnectionSta
         scheduler.shutdown();
         zkClient.deregisterListener(this);
 
-        for(TrackedConfig conf : trackedConfigList) {
-            conf.stop();
+        while (true) {
+            final TrackedConfig config;
+            synchronized (trackedConfigList) {
+                if (trackedConfigList.isEmpty()) {
+                    break;
+                }
+                config = trackedConfigList.remove(0);
+            }
+            config.stop();
         }
+
         sendEventToCoordinateListener(
                 CoordinateListener.Event.NOT_OWNER, "Released claim of coordinate");
 
@@ -463,7 +473,12 @@ public class ClaimedCoordinate implements Watcher, ZkObjectHandler.ConnectionSta
             final CoordinateListener.Event event, final String message) {
         synchronized (callbacksMonitor) {
             LOG.fine("Event " + event.name() + " " + message);
-            for (CoordinateListener listener : coordinateListenerList) {
+            List<CoordinateListener> coordinateListenerListCopy =
+                    new ArrayList<CoordinateListener>();
+            synchronized (coordinateListenerList) {
+                coordinateListenerListCopy.addAll(coordinateListenerList);
+            }
+            for (CoordinateListener listener : coordinateListenerListCopy) {
                 listener.onCoordinateEvent(event, message);
             }
         }
@@ -499,7 +514,7 @@ public class ClaimedCoordinate implements Watcher, ZkObjectHandler.ConnectionSta
                 Stat stat = zkClient.getZookeeper().setData(path,
                         zkCoordinateData.snapshot().serialize().getBytes(Util.CHARSET_NAME),
                         lastStatusVersion);
-                LOG.info("Updated coordinate, latest version is " + stat.getVersion());
+                LOG.fine("Updated coordinate, latest version is " + stat.getVersion());
                 lastStatusVersion = stat.getVersion();
             } catch (KeeperException.NoNodeException e) {
                 throw new CoordinateMissingException("Coordinate does not exist " + path);
