@@ -2,9 +2,11 @@ package org.cloudname.timber.server.handler.archiver;
 
 import com.google.protobuf.ByteString;
 import junit.framework.Assert;
+import com.telenor.sw.idgen.IdGenerator;
 import org.cloudname.log.LogUtil;
 import org.cloudname.log.archiver.WriteReport;
 import org.cloudname.log.pb.Timber;
+import org.joda.time.DateTime;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -26,9 +28,14 @@ public class MetadataHandlerTest {
     @Rule
     public TemporaryFolder temp = new TemporaryFolder();
 
+    private IdGenerator idGenerator;
+
     @Before
     public void setup() {
-
+        final IdGenerator.Builder builder = new IdGenerator.Builder();
+        idGenerator = builder
+            .setName("metadatahandlertest")
+            .setWorkerId(1L).build();
     }
 
     /**
@@ -106,8 +113,13 @@ public class MetadataHandlerTest {
         final MetadataHandler handler = MetadataHandler.getInstance();
 
         final File mdFolder = temp.newFolder("multipleThreadFolder");
-        final File slotFile = new File(mdFolder.getAbsolutePath() + "slotfile");
+        final File slotFile = new File(mdFolder.getAbsolutePath() + "/slotfile");
         slotFile.createNewFile();
+        final File slotMdFile =
+            new File(slotFile.getAbsolutePath() + MetadataHandler.METADATA_FILE_SUFFIX);
+        slotMdFile.createNewFile();
+
+        final DateTime startDate = new DateTime("2010-12-31T23:50:00.000+01:00");
 
         for (int i = 0; i < numExecutingThreads; i++) {
             final Thread thread = new Thread(){
@@ -123,10 +135,8 @@ public class MetadataHandlerTest {
                     }
 
                     for (int j = 0; j < numWriteRequestsPerThread; j++) {
-                        final Timber.LogEvent event = LogUtil.textEvent(10,
-                            "myservice",
-                            SimpleArchiverTest.class.getName(),
-                            "some payload " + j);
+                        final Timber.LogEvent event =
+                            generateEvent(idGenerator, startDate.toDate().getTime() + j);
                         final WriteReport wr = new WriteReport(slotFile, j, j, j);
                         handler.write(event, wr);
                         finishLatch.countDown();
@@ -167,5 +177,27 @@ public class MetadataHandlerTest {
         Assert.assertEquals("File content is not correct.", "ack,id", reader.readLine());
 
         reader.close();
+    }
+
+    private Timber.LogEvent generateEvent(final IdGenerator idGenerator, final long timestamp) {
+        final Timber.LogEvent.Builder builder = Timber.LogEvent.newBuilder();
+        builder
+            .setTimestamp(timestamp)
+            .setConsistencyLevel(Timber.ConsistencyLevel.SYNC)
+            .setLevel(800)
+            .setHost("host")
+            .setServiceName("servicename")
+            .setSource(MetadataHandlerTest.class.getName())
+            .setPid(0)
+            .setTid((int) Thread.currentThread().getId())
+            .setType("T")
+            .addPayload(
+                Timber.Payload.newBuilder()
+                    .setName("msg")
+                    .setPayload(ByteString.copyFromUtf8("some payload")));
+        if (idGenerator != null) {
+            builder.setId(Long.toString(idGenerator.getNextId()));
+        }
+        return builder.build();
     }
 }

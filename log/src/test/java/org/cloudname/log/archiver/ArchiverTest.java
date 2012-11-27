@@ -9,12 +9,9 @@ import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
 import java.io.File;
-<<<<<<< HEAD
 
 import java.io.IOException;
 import java.util.List;
-=======
->>>>>>> Added finals, organized imports and simplified a few statements.
 import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Logger;

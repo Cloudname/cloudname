@@ -21,10 +21,9 @@ import java.util.logging.Logger;
 public class MetadataHandler {
 
     private static final Logger LOG = Logger.getLogger(MetadataHandler.class.getName());
-    private static final String LINE_SEPARATOR = System.getProperty("line.separator");
 
     public static final String DELIMITER = ",";
-    public static final String METADATA_FILE_SUFFIX = ".md";
+    public static final String METADATA_FILE_SUFFIX = "_md";
 
     public static MetadataHandler instance;
 
@@ -49,6 +48,10 @@ public class MetadataHandler {
      * @param wr the write report from the Archiver
      */
     public void write(final Timber.LogEvent logEvent, final WriteReport wr) {
+        if (logEvent == null || wr == null || !logEvent.hasId()) {
+            // We do not store events without ids.
+            return;
+        }
         synchronized (lock) {
             final File metaDataFile;
             try {
@@ -68,8 +71,8 @@ public class MetadataHandler {
                         + DELIMITER
                         + wr.getStartOffset()
                         + DELIMITER
-                        + wr.getEndOffset()
-                        + LINE_SEPARATOR);
+                        + wr.getEndOffset());
+                writer.newLine();
                 writer.close();
             } catch (IOException e) {
                 LOG.log(Level.WARNING, "Unable to write to metadata file.", e);
@@ -99,6 +102,7 @@ public class MetadataHandler {
             try {
                 writer = new BufferedWriter(new FileWriter(metaDataFile, true));
                 writer.write("ack" + DELIMITER + id);
+                writer.newLine();
                 writer.close();
             } catch (IOException e) {
                 LOG.log(Level.WARNING, "Unable to write to metadata file.", e);
