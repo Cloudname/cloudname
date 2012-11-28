@@ -58,6 +58,11 @@ public class TrackedConfig implements Watcher, ZkObjectHandler.ConnectionStateCh
         isSynchronizedWithZookeeper.set(false);
     }
 
+    @Override
+    public void shutDown() {
+        stop();
+    }
+
     /**
      * Starts tracking the config.
      */

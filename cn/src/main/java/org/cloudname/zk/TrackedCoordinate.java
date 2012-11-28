@@ -64,6 +64,11 @@ public class TrackedCoordinate implements Watcher, ZkObjectHandler.ConnectionSta
         isSynchronizedWithZookeeper.set(false);
     }
 
+    @Override
+    public void shutDown() {
+        stop();
+    }
+
     /**
      * Signalize that the class should reload its data.
      */
@@ -77,7 +82,6 @@ public class TrackedCoordinate implements Watcher, ZkObjectHandler.ConnectionSta
         scheduler.scheduleWithFixedDelay(new ReloadCoordinateData(), 1 /* initial delay ms */,
                 periodicDelayMs, TimeUnit.MILLISECONDS);
     }
-
 
     public void stop() {
         scheduler.shutdown();

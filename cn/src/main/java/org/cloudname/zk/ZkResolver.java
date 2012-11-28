@@ -46,6 +46,11 @@ public final class ZkResolver implements Resolver, ZkObjectHandler.ConnectionSta
         }
     }
 
+    @Override
+    public void shutDown() {
+        // Nothing to shut down here.
+    }
+
     public static class Builder {
 
         final private Map<String, ResolverStrategy> strategies = new HashMap<String, ResolverStrategy>();

@@ -372,7 +372,7 @@ public final class ZkCloudname implements Cloudname, Watcher, Runnable {
      * Close the connection to ZooKeeper.
      */
     public void close() throws InterruptedException {
-        zkObjectHandler.close();
+        zkObjectHandler.shutdown();
         log.fine("ZooKeeper session closed for " + connectString);
         scheduler.shutdown();
     }
