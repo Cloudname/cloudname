@@ -267,6 +267,11 @@ public class ClaimedCoordinate implements Watcher, ZkObjectHandler.ConnectionSta
         isSynchronizedWithZooKeeper.set(false);
     }
 
+    @Override
+    public void shutDown() {
+        scheduler.shutdown();
+    }
+
     /**
      * Updates the ServiceStatus and persists it. Only allowed if we claimed the coordinate.
      * @param status The new value for serviceStatus.

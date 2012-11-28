@@ -35,6 +35,7 @@ public class ZkObjectHandler {
     public interface ConnectionStateChanged {
         void connectionUp();
         void connectionDown();
+        void shutDown();
     }
 
     /**
@@ -129,11 +130,28 @@ public class ZkObjectHandler {
     public void close() {
         synchronized (zooKeeperMonitor) {
             if (zooKeeper == null) { return; }
+
             try {
                 zooKeeper.close();
             } catch (InterruptedException e) {
                 // ignore
             }
+        }
+    }
+
+    /**
+     * Shut down all listeners.
+     */
+    public void shutdown() {
+        synchronized (callbacksMonitor) {
+            for (ConnectionStateChanged connectionStateChanged : registeredCallbacks) {
+                connectionStateChanged.shutDown();
+            }
+        }
+        try {
+            zooKeeper.close();
+        } catch (InterruptedException e) {
+            // ignore
         }
     }
 }
