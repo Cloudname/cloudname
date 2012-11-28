@@ -5,6 +5,19 @@ A minimalistic REST application based on Cloudname/Base and an embedded Jetty.
 
 To be used as a starting point for your REST applications.
 
+TODO
+----
+
+* Upgrade to Base 3.6, use its embedded Jetty (replace WebServer with its com.comoyo.jetty.JettyServer)
+* Move this to a standlone sample repo, e.g. "comoyo-sample-code" together with https://github.com/comoyo/javasamlsp
+* Clarify clean way to shut down Base - see Markus' comment on the Base page (B. 3.5)
+* ...
+
+Bakksjø: I think the original implementors of base just added a shutdown() method so that you can do a clean shutdown of base. This is useful in tests, for instance.
+If your JVM is going down anyway, I don't think it's critical that base.shutdown() is called before exit.
+Also, shutdown hooks are not a good way to do a clean shutdown (IMO). It's sort of like Thread.stop(), which the Java language designers discovered was a bad idea. What you do want instead is to have code that explicitly takes things down controlled, in the right order - typically the opposite of the initialization order. You don't add "initialization hooks", so why should you add shutdown hooks?
+Markus: Calling Base.shutdown() is necessary to ensure that logs are flushed before the application stops.
+
 Structure
 ---------
 
