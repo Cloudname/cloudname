@@ -66,7 +66,7 @@ public class TrackedCoordinate implements Watcher, ZkObjectHandler.ConnectionSta
 
     @Override
     public void shutDown() {
-        stop();
+        scheduler.shutdown();
     }
 
     /**

@@ -27,7 +27,8 @@ import java.util.logging.Logger;
  * ZooKeeper watcher events. For keeping track of new nodes, it does a scan on regular intervals.
  * @author dybdahl
  */
-class DynamicExpression implements Watcher, TrackedCoordinate.ExpressionResolverNotify {
+class DynamicExpression implements Watcher, TrackedCoordinate.ExpressionResolverNotify,
+        ZkObjectHandler.ConnectionStateChanged {
 
     /**
      * Keeps track of what picture (what an expression has resolved to) is sent to the user so that
@@ -104,7 +105,7 @@ class DynamicExpression implements Watcher, TrackedCoordinate.ExpressionResolver
     }
 
     public void start() {
-
+        zkClient.registerListener(this);
         scheduler.scheduleWithFixedDelay(new NodeScanner(""), 1 /* initial delay ms */,
                 TIME_BETWEEN_NODE_SCANNING_MS, TimeUnit.MILLISECONDS);
     }
@@ -126,6 +127,19 @@ class DynamicExpression implements Watcher, TrackedCoordinate.ExpressionResolver
 
     private void scheduleRefresh(String path, long delayMs) {
         scheduler.schedule(new NodeScanner(path), delayMs, TimeUnit.MILLISECONDS);
+    }
+
+    @Override
+    public void connectionUp() {
+    }
+
+    @Override
+    public void connectionDown() {
+    }
+
+    @Override
+    public void shutDown() {
+       scheduler.shutdown();
     }
 
     /**
@@ -220,7 +234,7 @@ class DynamicExpression implements Watcher, TrackedCoordinate.ExpressionResolver
             synchronized (instanceLock) {
 
                 // If already discovered, do nothing.
-                if (coordinateByPath.containsKey(endpoint)) {
+                if (coordinateByPath.containsKey(statusPath)) {
                     continue;
                 }
                 trackedCoordinate = new TrackedCoordinate(this, statusPath, zkClient);
