@@ -155,18 +155,10 @@ public final class ZkTool {
                 }
             } catch (IOException e) {
                 System.err.println("Failed to read coordinate from file. " + e.getMessage());
-                try {
-                    cloudname.close();
-                } catch (InterruptedException e1) {
-                    return;
-                }
+                cloudname.close();
                 return;
             } finally {
-                try {
-                    cloudname.close();
-                } catch (InterruptedException e) {
-                    System.err.println("Failed while trying to close cloudname connection. " + e.getMessage());
-                }
+                cloudname.close();
                 try {
                     br.close();
                 } catch (IOException e) {
@@ -295,11 +287,7 @@ public final class ZkTool {
                 }
                 break;
         }
-        try {
-            cloudname.close();
-        } catch (InterruptedException e) {
-            return;
-        }
+        cloudname.close();
     }
 
     // Should not be instantiated.

@@ -114,7 +114,6 @@ public final class ZkCloudname implements Cloudname, Watcher, Runnable {
      */
     public ZkCloudname connectWithTimeout(long waitTime, TimeUnit waitUnit)
             throws CloudnameException {
-
         boolean connected = false;
         try {
 
@@ -371,7 +370,8 @@ public final class ZkCloudname implements Cloudname, Watcher, Runnable {
     /**
      * Close the connection to ZooKeeper.
      */
-    public void close() throws InterruptedException {
+    @Override
+    public void close() {
         zkObjectHandler.shutdown();
         log.fine("ZooKeeper session closed for " + connectString);
         scheduler.shutdown();
