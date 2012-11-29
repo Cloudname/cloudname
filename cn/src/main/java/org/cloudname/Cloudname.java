@@ -76,4 +76,9 @@ public interface Cloudname {
      */
     public String getConfig(final Coordinate coordinate)
             throws CoordinateMissingException, CloudnameException;
+
+    /**
+     * Close down connection to storage.
+     */
+    public void close();
 }
