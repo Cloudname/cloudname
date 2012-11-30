@@ -39,7 +39,7 @@ import static org.junit.Assert.assertEquals;
  * Contains mostly heavy tests containing sleep calls not fit as a unit test.
  */
 public class ZkCloudnameIntegrationTest {
-    private static final Logger LOG = Logger.getLogger(ZkCloudnameTest.class.getName());
+    private static final Logger LOG = Logger.getLogger(ZkCloudnameIntegrationTest.class.getName());
 
     private EmbeddedZooKeeper ezk;
     private ZooKeeper zk;
