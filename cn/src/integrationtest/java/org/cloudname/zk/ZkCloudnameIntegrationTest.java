@@ -92,41 +92,60 @@ public class ZkCloudnameIntegrationTest {
      * A coordinate listener that stores events and calls a latch.
      */
     class TestCoordinateListener implements CoordinateListener {
-        final public List<Event> events = new CopyOnWriteArrayList<Event>();
-
+        private final List<Event> events = new CopyOnWriteArrayList<Event>();
 
         private final Set<CountDownLatch> listenerLatches;
 
-        TestCoordinateListener(final Set<CountDownLatch> listenerLatches) {
+        private final List<Event> waitForEvent = new ArrayList<Event>();
+        private final Object eventMonitor = new Object();
+        private final List<CountDownLatch> waitForLatch = new ArrayList<CountDownLatch>();
+
+        public boolean failOnWrongEvent = false;
+        private CountDownLatch latestLatch = null;
+
+        void waitForExpected() throws InterruptedException {
+            synchronized (eventMonitor) {
+                if (waitForEvent.size() > 0) {
+                    LOG.info("Waiting for event " + waitForEvent.get(waitForEvent.size() - 1));
+                }
+            }
+            assert(latestLatch.await(25, TimeUnit.SECONDS));
+            LOG.info("Event happened.");
+        }
+
+        public TestCoordinateListener(final Set<CountDownLatch> listenerLatches) {
             this.listenerLatches = listenerLatches;
         }
 
-        void expectEvent(final Event event) {
-            waitForEvent.add(event);
-            latestLatch = new CountDownLatch(1);
-            waitForLatch.add(latestLatch);
-        }
-        List<Event> waitForEvent = new ArrayList<Event>();
-        List<CountDownLatch> waitForLatch = new ArrayList<CountDownLatch>();
-
-        public boolean failOnWrongEvent = false;
-        CountDownLatch latestLatch = null;
-
-        void waitForExpected() throws InterruptedException {
-            assert(latestLatch.await(25, TimeUnit.SECONDS));
+        public void expectEvent(final Event event) {
+            LOG.info("Expecting event " + event.name());
+            synchronized (eventMonitor) {
+                waitForEvent.add(event);
+                latestLatch = new CountDownLatch(1);
+                waitForLatch.add(latestLatch);
+            }
         }
 
         @Override
         public void onCoordinateEvent(Event event, String message) {
-            events.add(event);
-            for (CountDownLatch countDownLatch :listenerLatches) {
-                countDownLatch.countDown();
+            LOG.info("I got event ..." + event.name() + " " + message);
+            if (waitForEvent.size() > 0) {
+                LOG.info("Waiting for event " + waitForEvent.get(0));
+            }   else {
+                LOG.info("not expecting any specific events");
             }
-            if (waitForEvent.size() > 0 && waitForEvent.get(0) == event) {
-                waitForLatch.remove(0).countDown();
-                waitForEvent.remove(0);
-            } else {
-               assertFalse(failOnWrongEvent);
+            synchronized (eventMonitor) {
+                events.add(event);
+
+                for (CountDownLatch countDownLatch :listenerLatches) {
+                    countDownLatch.countDown();
+                }
+                if (waitForEvent.size() > 0 && waitForEvent.get(0) == event) {
+                    waitForLatch.remove(0).countDown();
+                    waitForEvent.remove(0);
+                } else {
+                    assertFalse(failOnWrongEvent);
+                }
             }
         }
     }
@@ -290,18 +309,20 @@ public class ZkCloudnameIntegrationTest {
         forwarder.terminate();
 
         LOG.info("Connection down.");
-
-        // 3400 is a magic number for getting zookeeper and local client in a specific state.
-        Thread.sleep(3400);
-        LOG.info("Recreating connection soon" + forwarderPort + "->" + zkport);
+        listener.waitForExpected();
 
         // Client sees problem, server not.
         listener.expectEvent(CoordinateListener.Event.NOT_OWNER);
         listener.expectEvent(CoordinateListener.Event.COORDINATE_OK);
 
-        forwarder = new PortForwarder(forwarderPort, "127.0.0.1", zkport);
+        // 3400 is a magic number for getting zookeeper and local client in a specific state.
+        Thread.sleep(3400);
+        LOG.info("Recreating connection soon" + forwarderPort + "->" + zkport);
 
-        listener.waitForExpected();
+
+        forwarder = new PortForwarder(forwarderPort, "127.0.0.1", zkport);
+        listener.waitForExpected();   // NOT_OWNER
+        listener.waitForExpected();   // COORDINATE_OK
 
         forwarder.terminate();
     }
@@ -342,15 +363,18 @@ public class ZkCloudnameIntegrationTest {
         final TestCoordinateListener listener = setUpListenerEnvironment(connectedLatch1);
         assertTrue(connectedLatch1.await(20, TimeUnit.SECONDS));
 
+
+        listener.expectEvent(CoordinateListener.Event.NO_CONNECTION_TO_STORAGE);
         forwarder.terminate();
+        listener.waitForExpected();
 
         ezk.shutdown();
         ezk.del();
         ezk.init();
 
-        forwarder = new PortForwarder(forwarderPort, "127.0.0.1", zkport);
-
         listener.expectEvent(CoordinateListener.Event.NOT_OWNER);
+
+        forwarder = new PortForwarder(forwarderPort, "127.0.0.1", zkport);
         listener.waitForExpected();
 
         Coordinate c = Coordinate.parse("1.service.user.cell");
