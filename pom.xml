@@ -4,7 +4,7 @@
 
   <groupId>org.cloudname</groupId>
   <artifactId>cloudname-parent</artifactId>
-  <version>2.12-SNAPSHOT</version>
+  <version>2.13-SNAPSHOT</version>
   <packaging>pom</packaging>
 
   <name>Cloudname Parent</name>
@@ -24,6 +24,12 @@
     </developer>
   </developers>
 
+  <scm>
+    <connection>scm:git:git://github.com/Cloudname/cloudname.git</connection>
+    <developerConnection>scm:git:ssh://git@github.com/Cloudname/cloudname.git</developerConnection>
+    <url>https://github.com/Cloudname/cloudname</url>
+  </scm>
+
   <properties>
     <!-- Sheer optimism -->
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -42,7 +48,7 @@
     <cn.joda-time.version>2.1</cn.joda-time.version>
 
     <!-- Internal dependency versions -->
-    <cn.version>2.12-SNAPSHOT</cn.version>
+    <cn.version>2.13-SNAPSHOT</cn.version>
 
     <integrationSourceDirectory>src/integrationtest</integrationSourceDirectory>
     <integrationOutputDirectory>target/integrationtest-classes</integrationOutputDirectory>
