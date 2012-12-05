@@ -24,6 +24,12 @@
     </developer>
   </developers>
 
+  <scm>
+    <connection>scm:git:git://github.com/Cloudname/cloudname.git</connection>
+    <developerConnection>scm:git:ssh://git@github.com/Cloudname/cloudname.git</developerConnection>
+    <url>https://github.com/Cloudname/cloudname</url>
+  </scm>
+
   <properties>
     <!-- Sheer optimism -->
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
