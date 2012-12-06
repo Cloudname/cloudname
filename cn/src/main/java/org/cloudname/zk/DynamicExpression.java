@@ -208,6 +208,22 @@ class DynamicExpression implements Watcher, TrackedCoordinate.ExpressionResolver
      * Implements interface TrackedCoordinate.ExpressionResolverNotify
      */
     @Override
+    public void nodeDead(final String path) {
+        synchronized (instanceLock) {
+            TrackedCoordinate trackedCoordinate = coordinateByPath.remove(path);
+            if (trackedCoordinate == null) {
+                return;
+            }
+            trackedCoordinate.stop();
+            // Triggers a new scan, and potential client updates.
+            scheduleRefresh("" /** scan for all nodes */, 50 /* ms*/);
+        }
+    }
+
+    /**
+     * Implements interface TrackedCoordinate.ExpressionResolverNotify
+     */
+    @Override
     public void stateChanged(final String path) {
         // Something happened to a path, schedule a refetch.
         scheduleRefresh(path, 50);
