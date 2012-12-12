@@ -23,7 +23,17 @@ public class TrackedCoordinate implements Watcher, ZkObjectHandler.ConnectionSta
      * The client can implement this to get notified on changes.
      */
     public interface ExpressionResolverNotify {
+        /**
+         * This is called when the state has changed, it might have become unavailable.
+         * @param statusPath path of the coordinate in zookeeper.
+         */
         void stateChanged(final String statusPath);
+
+        /**
+         * This is called when node is deleted, or it can not be read.
+         * @param statusPath path of the coordinate in zookeeper.
+         */
+        void nodeDead(final String statusPath);
     }
 
     private ZkCoordinateData.Snapshot coordinateData = null;
@@ -155,7 +165,7 @@ public class TrackedCoordinate implements Watcher, ZkObjectHandler.ConnectionSta
                 synchronized (coordinateDataMonitor) {
                     coordinateData = new ZkCoordinateData().snapshot();
                 }
-                client.stateChanged(path);
+                client.nodeDead(path);
                 return;
             case NodeDataChanged:
                 isSynchronizedWithZookeeper.set(false);
@@ -185,8 +195,14 @@ public class TrackedCoordinate implements Watcher, ZkObjectHandler.ConnectionSta
         }
         synchronized (coordinateDataMonitor) {
             String oldDataSerialized = (null == coordinateData) ? "" : coordinateData.serialize();
-            coordinateData = ZkCoordinateData.loadCoordinateData(
-                    path, zkClient.getZookeeper(), this).snapshot();
+            try {
+                coordinateData = ZkCoordinateData.loadCoordinateData(
+                        path, zkClient.getZookeeper(), this).snapshot();
+            } catch (CloudnameException e) {
+                client.nodeDead(path);
+                LOG.log(Level.FINER, "Exception while reading path " + path, e);
+                return;
+            }
             isSynchronizedWithZookeeper.set(true);
             if (! oldDataSerialized.equals(coordinateData.toString())) {
                 client.stateChanged(path);
