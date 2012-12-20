@@ -1,21 +1,20 @@
 package org.cloudname.log.archiver;
 
-import org.cloudname.log.pb.Timber;
 import org.cloudname.log.LogUtil;
-
-import com.google.protobuf.ByteString;
+import org.cloudname.log.pb.Timber;
+import org.hamcrest.core.Is;
+import org.junit.Assert;
+import org.junit.Rule;
+import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
 
 import java.io.File;
 
 import java.io.IOException;
 import java.util.List;
 import java.util.ArrayList;
-
+import java.util.List;
 import java.util.logging.Logger;
-
-import org.junit.*;
-import static org.junit.Assert.*;
-import org.junit.rules.TemporaryFolder;
 
 /**
  * Unit test for Archiver.
@@ -35,8 +34,8 @@ public class ArchiverTest {
      */
     @Test
     public void testInitialization() throws Exception {
-        String logPath = temp.newFolder("test1").getAbsolutePath();
-        Archiver archiver = new Archiver(logPath, MEGABYTE);
+        final String logPath = temp.newFolder("test1").getAbsolutePath();
+        final Archiver archiver = new Archiver(logPath, MEGABYTE);
         archiver.init();
     }
 
@@ -45,10 +44,10 @@ public class ArchiverTest {
      */
     @Test
     public void testInitializationUnexist() throws Exception {
-        String logPath = temp.newFolder("test2").getAbsolutePath()
+        final String logPath = temp.newFolder("test2").getAbsolutePath()
             + File.separator
             + "unexist";
-        Archiver archiver = new Archiver(logPath, MEGABYTE);
+        final Archiver archiver = new Archiver(logPath, MEGABYTE);
         archiver.init();
     }
 
@@ -57,13 +56,13 @@ public class ArchiverTest {
      */
     @Test
     public void testWithMessages() throws Exception {
-        String logPath = temp.newFolder("test3").getAbsolutePath();
-        Archiver archiver = new Archiver(logPath, MEGABYTE);
+        final String logPath = temp.newFolder("test3").getAbsolutePath();
+        final Archiver archiver = new Archiver(logPath, MEGABYTE);
         archiver.init();
 
         final int count = 1000;
 
-        List<Timber.LogEvent> events = new ArrayList<Timber.LogEvent>(count);
+        final List<Timber.LogEvent> events = new ArrayList<Timber.LogEvent>(count);
 
         for (int i = 0; i < count; i++) {
             events.add(LogUtil.textEvent(10,
@@ -72,8 +71,14 @@ public class ArchiverTest {
                                          "some payload " + i));
         }
 
-        for (Timber.LogEvent ev : events) {
-            archiver.handle(ev);
+        long offset = 0L;
+        int counter = 1;
+        for (final Timber.LogEvent ev : events) {
+            final WriteReport wr = archiver.handle(ev);
+            Assert.assertThat(wr.getWriteCount(), Is.is(counter));
+            counter++;
+            Assert.assertThat(wr.getStartOffset(), Is.is(offset));
+            offset = wr.getEndOffset();
         }
     }
 
@@ -87,14 +92,14 @@ public class ArchiverTest {
      * something slows down by more than 5 times what you will see on
      * a modern iMac.
      */
-    @Test (timeout = 1500)
+    @Test (timeout = 2500)
     public void testFlushSlowdownMeasurement() throws IOException {
-        String logPath = temp.newFolder("test-speed").getAbsolutePath();
-        Archiver archiver = new Archiver(logPath, MEGABYTE);
+        final String logPath = temp.newFolder("test-speed").getAbsolutePath();
+        final Archiver archiver = new Archiver(logPath, MEGABYTE);
         archiver.init();
 
         // Create a test message
-        Timber.LogEvent logEvent = LogUtil.textEvent(
+        final Timber.LogEvent logEvent = LogUtil.textEvent(
             10,
             "myservice",
             ArchiverTest.class.getName(),
@@ -111,7 +116,7 @@ public class ArchiverTest {
         );
 
         // Number of log messages to write
-        int numIterations = 10000;
+        final int numIterations = 10000;
 
         // Warmup run.  In order for everything to be properly
         // initialized we should log some log messages first.
@@ -124,7 +129,7 @@ public class ArchiverTest {
         // Time without flush
         long withoutFlush = 0;
         {
-            long start = System.currentTimeMillis();
+            final long start = System.currentTimeMillis();
             for (int i = 0; i < numIterations; ++i) {
                 archiver.handle(logEvent);
             }
@@ -134,7 +139,7 @@ public class ArchiverTest {
         // Time with flush
         long withFlush = 0;
         {
-            long start = System.currentTimeMillis();
+            final long start = System.currentTimeMillis();
             for (int i = 0; i < numIterations; ++i) {
                 archiver.handle(logEvent);
                 archiver.flush();
@@ -152,7 +157,7 @@ public class ArchiverTest {
             return;
         }
 
-        double slowdown = ((withFlush - withoutFlush) * 100) / withoutFlush;
+        final double slowdown = ((withFlush - withoutFlush) * 100) / withoutFlush;
         log.info("Slowdown for sync: " + slowdown + "%"
                  + ", withoutFlush = " + withoutFlush + "ms"
                  + ", withFlush = " + withFlush + "ms");

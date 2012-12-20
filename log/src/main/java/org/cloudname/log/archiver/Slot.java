@@ -3,12 +3,10 @@ package org.cloudname.log.archiver;
 import org.cloudname.log.pb.Timber;
 import org.cloudname.log.recordstore.RecordWriter;
 
-
+import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
-import java.io.BufferedOutputStream;
 import java.io.IOException;
-import java.util.logging.Logger;
 
 /**
  * This class takes care of writing log messages to a "slot".  A slot
@@ -62,7 +60,7 @@ public class Slot {
      * @param prefix the prefix for the slot file
      * @param maxSize the maximum allowed file size in bytes for individual slot files
      */
-    public Slot(String prefix, long maxSize) {
+    public Slot(final String prefix, final long maxSize) {
         this.prefix = prefix;
         this.maxSize = maxSize;
 
@@ -72,7 +70,7 @@ public class Slot {
     /**
      * @return the slot file path for a given sequence number.
      */
-    private String nameForSequenceNo(int slotSequence) {
+    private String nameForSequenceNo(final int slotSequence) {
         return prefix + "_" + slotSequence;
     }
 
@@ -85,13 +83,10 @@ public class Slot {
      * @return {@code true} if a compressed file of this slot exists,
      *   {@code false} otherwise.
      */
-    private static boolean compressedSlotExists(String filename) {
-        if (new File(filename + ".gz").exists()
-            || new File(filename + ".bz2").exists()) {
-            return true;
-        }
+    private static boolean compressedSlotExists(final String filename) {
+        return new File(filename + ".gz").exists()
+            || new File(filename + ".bz2").exists();
 
-        return false;
     }
 
     /**
@@ -105,9 +100,9 @@ public class Slot {
                 throw new IllegalStateException("Slot count wrapped around to negative");
             }
 
-            String name = nameForSequenceNo(slotSequenceCount++);
-            File f = new File(name);
-            File parentDir = f.getParentFile();
+            final String name = nameForSequenceNo(slotSequenceCount++);
+            final File f = new File(name);
+            final File parentDir = f.getParentFile();
 
             // Make sure directory exists
             if (! parentDir.exists()) {
@@ -136,7 +131,7 @@ public class Slot {
     /**
      * Write LogEvent to slot file.
      */
-    public void write(Timber.LogEvent event) throws IOException {
+    public WriteReport write(final Timber.LogEvent event) throws IOException {
         // Ensure that we have a RecordWriter
         if (null == currentWriter) {
 
@@ -158,14 +153,22 @@ public class Slot {
             writeCount = 0;
         }
 
+        final long startOffset = numBytesInFile;
+
         // Invariant: we have a currentWriter
         numBytesInFile += currentWriter.write(event);
         writeCount++;
+
+        // Make return value here to keep currentFile object (removed in closeIntenal()).
+        final WriteReport ret =
+            new WriteReport(currentFile, startOffset, numBytesInFile, writeCount);
 
         // Check if it is time to finish this file
         if (numBytesInFile > maxSize) {
             closeInternal();
         }
+
+        return ret;
     }
 
     /**

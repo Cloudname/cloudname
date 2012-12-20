@@ -26,16 +26,15 @@ public class Archiver {
     private final SlotMapper slotMapper = new SlotMapper();
     private final SlotLruCache<String,Slot> slotLruCache = new SlotLruCache<String,Slot>(MAX_FILES_OPEN);
 
-    private String logPath;
-    private File logDir;
-    private long maxFileSize;
+    private final String logPath;
+    private final long maxFileSize;
 
     private boolean closed = false;
 
     /**
      * The directory
      */
-    public Archiver(String logPath, long maxFileSize) {
+    public Archiver(final String logPath, final long maxFileSize) {
         this.logPath = logPath;
         this.maxFileSize = maxFileSize;
     }
@@ -45,7 +44,7 @@ public class Archiver {
      * the constructor does not exist it will be created.
      */
     public void init() {
-        logDir = new File(logPath);
+        final File logDir = new File(logPath);
 
         // Make the root log directory if it does not exist
         if (! logDir.exists()) {
@@ -62,14 +61,15 @@ public class Archiver {
      * @throws ArchiverException if an io error occurred when trying
      *   to write a log event.  The original IO exception causing the
      *   problem will be chained.
+     * @return WriteReport containing information about the write operation.
      */
-    public void handle(Timber.LogEvent logEvent) {
+    public WriteReport handle(final Timber.LogEvent logEvent) {
         if (closed) {
             throw new IllegalStateException("Archiver was closed");
         }
 
         try {
-            getSlot(logEvent).write(logEvent);
+            return getSlot(logEvent).write(logEvent);
         } catch (IOException e) {
             throw new ArchiverException("Got IOException while handling logEvent", e);
         }
@@ -85,7 +85,7 @@ public class Archiver {
      *
      */
     public void flush() {
-        for (Slot slot : slotLruCache.values()) {
+        for (final Slot slot : slotLruCache.values()) {
             try {
                 slot.flush();
             } catch (IOException e) {
@@ -105,7 +105,7 @@ public class Archiver {
      *   the problem will be chained.
      */
     public void close() {
-        for (Slot slot : slotLruCache.values()) {
+        for (final Slot slot : slotLruCache.values()) {
             try {
                 slot.close();
             } catch (IOException e) {
@@ -118,8 +118,8 @@ public class Archiver {
     /**
      * @return the slot a Timber.LogEvent belongs in.
      */
-    private Slot getSlot(Timber.LogEvent event) {
-        String slotPathPrefix = logPath + File.separator + slotMapper.map(event.getTimestamp());
+    private Slot getSlot(final Timber.LogEvent event) {
+        final String slotPathPrefix = logPath + File.separator + slotMapper.map(event.getTimestamp());
         Slot slot = slotLruCache.get(slotPathPrefix);
         if (null != slot) {
             return slot;
