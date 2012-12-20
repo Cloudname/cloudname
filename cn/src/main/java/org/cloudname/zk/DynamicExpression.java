@@ -15,6 +15,7 @@ import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.Executors;
+import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
@@ -126,7 +127,14 @@ class DynamicExpression implements Watcher, TrackedCoordinate.ExpressionResolver
     }
 
     private void scheduleRefresh(String path, long delayMs) {
-        scheduler.schedule(new NodeScanner(path), delayMs, TimeUnit.MILLISECONDS);
+        try {
+            scheduler.schedule(new NodeScanner(path), delayMs, TimeUnit.MILLISECONDS);
+        } catch (RejectedExecutionException e) {
+            if (scheduler.isShutdown()) {
+                return;
+            }
+            log.log(Level.SEVERE, "Got exception while scheduling new refresh", e);
+        }
     }
 
     @Override
