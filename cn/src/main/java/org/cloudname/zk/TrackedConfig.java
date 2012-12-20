@@ -60,7 +60,7 @@ public class TrackedConfig implements Watcher, ZkObjectHandler.ConnectionStateCh
 
     @Override
     public void shutDown() {
-        stop();
+        scheduler.shutdown();
     }
 
     /**
