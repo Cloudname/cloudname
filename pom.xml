@@ -38,12 +38,12 @@
     <cn.zookeeper.version>3.3.3</cn.zookeeper.version>
     <cn.jackson.version>2.1.1</cn.jackson.version>
     <cn.junit.version>4.11</cn.junit.version>
-    <cn.netty.version>3.2.7.Final</cn.netty.version>
+    <cn.netty.version>3.2.8.Final</cn.netty.version>
     <cn.protobuf.version>2.3.0</cn.protobuf.version>
     <cn.jline.version>0.9.94</cn.jline.version>
     <cn.jmxri.version>1.2.1</cn.jmxri.version>
     <cn.jsr250-api.version>1.0</cn.jsr250-api.version>
-    <cn.jersey.version>1.15</cn.jersey.version>
+    <cn.jersey.version>1.16</cn.jersey.version>
     <cn.jbcrypt.version>0.3m</cn.jbcrypt.version>
     <cn.joda-time.version>2.1</cn.joda-time.version>
 
