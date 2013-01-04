@@ -47,9 +47,6 @@
     <cn.jbcrypt.version>0.3m</cn.jbcrypt.version>
     <cn.joda-time.version>2.1</cn.joda-time.version>
 
-    <!-- Internal dependency versions -->
-    <cn.version>2.12.1</cn.version>
-
     <integrationSourceDirectory>src/integrationtest</integrationSourceDirectory>
     <integrationOutputDirectory>target/integrationtest-classes</integrationOutputDirectory>
   </properties>
@@ -113,25 +110,25 @@
       <dependency>
         <groupId>org.cloudname</groupId>
         <artifactId>cn</artifactId>
-        <version>${cn.version}</version>
+        <version>${project.version}</version>
       </dependency>
 
       <dependency>
         <groupId>org.cloudname</groupId>
         <artifactId>testtools</artifactId>
-        <version>${cn.version}</version>
+        <version>${project.version}</version>
       </dependency>
 
       <dependency>
         <groupId>org.cloudname</groupId>
         <artifactId>log</artifactId>
-        <version>${cn.version}</version>
+        <version>${project.version}</version>
       </dependency>
 
       <dependency>
         <groupId>org.cloudname</groupId>
         <artifactId>flags</artifactId>
-        <version>${cn.version}</version>
+        <version>${project.version}</version>
       </dependency>
 
       <!-- Netty -->
