@@ -93,11 +93,31 @@ public class MetadataHandler {
         }
     }
 
+    /**
+     * Flushes all metadata writers.
+     * @throws IOException
+     */
     public void flush() throws IOException {
         currentWriter.flush();
         for (final BufferedWriter writer : writerLruCache.values()) {
             try {
                 writer.flush();
+            } catch (IOException e) {
+                throw new ArchiverException("Got IOException while flushing " + writer.toString(), e);
+            }
+        }
+    }
+
+    /**
+     * Closes all metadata writers.
+     * @throws IOException
+     */
+    public void close() throws IOException {
+        flush();
+        currentWriter.close();
+        for (final BufferedWriter writer : writerLruCache.values()) {
+            try {
+                writer.close();
             } catch (IOException e) {
                 throw new ArchiverException("Got IOException while flushing " + writer.toString(), e);
             }
