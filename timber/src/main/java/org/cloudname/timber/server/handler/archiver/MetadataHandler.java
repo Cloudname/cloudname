@@ -1,12 +1,9 @@
 package org.cloudname.timber.server.handler.archiver;
 
-import org.cloudname.log.archiver.WriteReport;
+import org.cloudname.log.archiver.*;
 import org.cloudname.log.pb.Timber;
 
-import java.io.BufferedWriter;
-import java.io.File;
-import java.io.FileWriter;
-import java.io.IOException;
+import java.io.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -19,6 +16,7 @@ import java.util.logging.Logger;
  * @author acidmoose
  */
 public class MetadataHandler {
+    private static final int MAX_FILES_OPEN = 5;
 
     private static final Logger LOG = Logger.getLogger(MetadataHandler.class.getName());
 
@@ -28,6 +26,11 @@ public class MetadataHandler {
     public static MetadataHandler instance;
 
     private final Object lock = new Object();
+
+    private File currentSlotFile;
+    private BufferedWriter currentWriter;
+    private final SlotLruCache<String,BufferedWriter> writerLruCache
+        = new SlotLruCache<String,BufferedWriter>(MAX_FILES_OPEN);
 
     private MetadataHandler() {}
 
@@ -53,30 +56,20 @@ public class MetadataHandler {
             return;
         }
         synchronized (lock) {
-            final File metaDataFile;
             try {
-                metaDataFile = getMetadataFile(wr.getSlotFile());
-            } catch (IOException e) {
-                LOG.log(Level.WARNING, "Unable to get metadata file.", e);
-                return;
-            }
-
-            final BufferedWriter writer;
-            try {
-                writer = new BufferedWriter(new FileWriter(metaDataFile, true));
-                writer.write(
-                    logEvent.getId()
-                        + DELIMITER
-                        + wr.getWriteCount()
-                        + DELIMITER
-                        + wr.getStartOffset()
-                        + DELIMITER
-                        + wr.getEndOffset());
+                final BufferedWriter writer = getWriter(wr.getSlotFile());
+                final StringBuilder sb = new StringBuilder();
+                sb.append(logEvent.getId())
+                    .append(DELIMITER)
+                    .append(wr.getWriteCount())
+                    .append(DELIMITER)
+                    .append(wr.getStartOffset())
+                    .append(DELIMITER)
+                    .append(wr.getEndOffset());
+                writer.write(sb.toString());
                 writer.newLine();
-                writer.close();
             } catch (IOException e) {
-                LOG.log(Level.WARNING, "Unable to write to metadata file.", e);
-                return;
+                LOG.log(Level.WARNING, "Unable to write metadata entry.", e);
             }
         }
     }
@@ -90,32 +83,41 @@ public class MetadataHandler {
      */
     public void writeAck(final File slotFile, final String id) {
         synchronized (lock) {
-            final File metaDataFile;
             try {
-                metaDataFile = getMetadataFile(slotFile);
-            } catch (IOException e) {
-                LOG.log(Level.WARNING, "Unable to get metadata file.", e);
-                return;
-            }
-
-            final BufferedWriter writer;
-            try {
-                writer = new BufferedWriter(new FileWriter(metaDataFile, true));
+                final BufferedWriter writer = getWriter(slotFile);
                 writer.write("ack" + DELIMITER + id);
                 writer.newLine();
-                writer.close();
             } catch (IOException e) {
-                LOG.log(Level.WARNING, "Unable to write to metadata file.", e);
-                return;
+                LOG.log(Level.WARNING, "Unable to write metadata ack entry.", e);
             }
         }
     }
 
-    private File getMetadataFile(final File slotFile) throws IOException {
-        final File mdFile = new File(slotFile.getAbsolutePath() + METADATA_FILE_SUFFIX);
-        if (!mdFile.exists()) {
-            mdFile.createNewFile();
+    public void flush() throws IOException {
+        currentWriter.flush();
+        for (final BufferedWriter writer : writerLruCache.values()) {
+            try {
+                writer.flush();
+            } catch (IOException e) {
+                throw new ArchiverException("Got IOException while flushing " + writer.toString(), e);
+            }
         }
-        return mdFile;
+    }
+
+    private BufferedWriter getWriter(final File slotFile) throws IOException {
+        if (currentSlotFile == null || !currentSlotFile.equals(slotFile)) {
+            final BufferedWriter writer = writerLruCache.get(slotFile.getAbsolutePath() + METADATA_FILE_SUFFIX);
+            if (writer != null) {
+                return writer;
+            }
+            final File mdFile = new File(slotFile.getAbsolutePath() + METADATA_FILE_SUFFIX);
+            if (!mdFile.exists()) {
+                mdFile.createNewFile();
+            }
+            currentSlotFile = slotFile;
+            currentWriter = new BufferedWriter(new FileWriter(mdFile));
+            writerLruCache.put(mdFile.getAbsolutePath(), currentWriter);
+        }
+        return currentWriter;
     }
 }

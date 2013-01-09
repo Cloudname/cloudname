@@ -7,15 +7,14 @@ import org.cloudname.log.LogUtil;
 import org.cloudname.log.archiver.WriteReport;
 import org.cloudname.log.pb.Timber;
 import org.joda.time.DateTime;
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
+import org.junit.*;
 import org.junit.rules.TemporaryFolder;
 
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
+import java.util.*;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
@@ -45,7 +44,7 @@ public class MetadataHandlerTest {
     @Test
     public void testSimpleWrite() throws IOException {
         final File mdFolder = temp.newFolder("simpleWriteFolder");
-        final File slotFile = new File(mdFolder.getAbsolutePath() + "slotfile");
+        final File slotFile = new File(mdFolder.getAbsolutePath() + "/slotfile");
         slotFile.createNewFile();
 
         final String id = "id";
@@ -71,6 +70,7 @@ public class MetadataHandlerTest {
         final WriteReport wr = new WriteReport(slotFile, 2, 3, 1);
 
         handler.write(event, wr);
+        handler.flush();
 
         final File mdFile = new File(
             slotFile.getAbsolutePath() + MetadataHandler.METADATA_FILE_SUFFIX);
@@ -148,6 +148,8 @@ public class MetadataHandlerTest {
 
         Assert.assertEquals("", true, finishLatch.await(endTimeout, TimeUnit.MILLISECONDS));
 
+        handler.flush();
+
         final BufferedReader reader = new BufferedReader(
             new FileReader(slotFile.getAbsolutePath() + MetadataHandler.METADATA_FILE_SUFFIX));
         int counter = 0;
@@ -177,6 +179,65 @@ public class MetadataHandlerTest {
         Assert.assertEquals("File content is not correct.", "ack,id", reader.readLine());
 
         reader.close();
+    }
+
+    @Test
+    @Ignore
+    public void benchmarkBestCase() throws IOException {
+
+        final File slotFile = temp.newFile();
+
+        final MetadataHandler handler = MetadataHandler.getInstance();
+        final int numEntries = 100000;
+
+        final List<Timber.LogEvent> events = new ArrayList<Timber.LogEvent>();
+        for (int i = 0; i < numEntries; i++) {
+            events.add(i, generateEvent(idGenerator, i));
+        }
+
+        final List<WriteReport> writeReports = new ArrayList<WriteReport>();
+        for (int i = 0; i < numEntries; i++) {
+            writeReports.add(i, new WriteReport(slotFile, 0L, 0L, i));
+        }
+
+        final long start = System.currentTimeMillis();
+        for (int i = 0; i < numEntries; i++) {
+            handler.write(events.get(i), writeReports.get(i));
+        }
+        handler.flush();
+        final long end = System.currentTimeMillis();
+
+        System.out.println(numEntries + " entries written in " + (end-start) + " ms.");
+    }
+
+    @Test
+    @Ignore
+    public void benchmarkWorstCase() throws IOException {
+
+        final File slotFile = temp.newFile();
+        final File slotFile2 = temp.newFile();
+
+        final MetadataHandler handler = MetadataHandler.getInstance();
+        final int numEntries = 100000;
+
+        final List<Timber.LogEvent> events = new ArrayList<Timber.LogEvent>();
+        for (int i = 0; i < numEntries; i++) {
+            events.add(i, generateEvent(idGenerator, i));
+        }
+
+        final List<WriteReport> writeReports = new ArrayList<WriteReport>();
+        for (int i = 0; i < numEntries; i++) {
+            writeReports.add(i, new WriteReport(((i % 2) == 0) ? slotFile : slotFile2, 0L, 0L, i));
+        }
+
+        final long start = System.currentTimeMillis();
+        for (int i = 0; i < numEntries; i++) {
+            handler.write(events.get(i), writeReports.get(i));
+        }
+        handler.flush();
+        final long end = System.currentTimeMillis();
+
+        System.out.println(numEntries + " entries written in " + (end-start) + " ms.");
     }
 
     private Timber.LogEvent generateEvent(final IdGenerator idGenerator, final long timestamp) {
