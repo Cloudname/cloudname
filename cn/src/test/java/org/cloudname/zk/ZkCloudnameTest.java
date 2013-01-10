@@ -302,7 +302,8 @@ public class ZkCloudnameTest {
         final Coordinate c = Coordinate.parse("1.service.user.cell");
         final Cloudname cn = makeLocalZkCloudname();
         cn.createCoordinate(c);
-        cn.claim(c);
+        ServiceHandle handle = cn.claim(c);
+        handle.waitForCoordinateOkSeconds(1);
         try {
             cn.destroyCoordinate(c);
             fail("Expected exception to happen");
