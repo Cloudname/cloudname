@@ -119,7 +119,7 @@ public final class ZkCloudname implements Cloudname, Watcher, Runnable {
 
             zkObjectHandler = new ZkObjectHandler(
                     new ZooKeeper(connectString, SESSION_TIMEOUT, this));
-                          
+
             if (! connectedSignal.await(waitTime, waitUnit)) {
                 throw new CloudnameException("Connecting to ZooKeeper timed out.");
             }
@@ -130,7 +130,7 @@ public final class ZkCloudname implements Cloudname, Watcher, Runnable {
         } catch (InterruptedException e) {
             throw new CloudnameException(e);
         } finally {
-            if (!connected) {
+            if (!connected && zkObjectHandler != null) {
                 zkObjectHandler.close();
             }
         }
@@ -160,7 +160,7 @@ public final class ZkCloudname implements Cloudname, Watcher, Runnable {
                 || event.getState() == Event.KeeperState.Expired) {
             zkObjectHandler.connectionDown();
         }
-        
+
         // Initial connection to ZooKeeper is completed.
         if (event.getState() == Event.KeeperState.SyncConnected) {
             zkObjectHandler.connectionUp();
@@ -291,7 +291,7 @@ public final class ZkCloudname implements Cloudname, Watcher, Runnable {
         statusAndEndpoints.start();
         return handle;
     }
-    
+
     @Override
     public Resolver getResolver() {
 
@@ -366,7 +366,7 @@ public final class ZkCloudname implements Cloudname, Watcher, Runnable {
             throw new CloudnameException(e);
         }
     }
-    
+
     /**
      * Close the connection to ZooKeeper.
      */
