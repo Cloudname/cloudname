@@ -5,6 +5,8 @@ import org.apache.log4j.BasicConfigurator;
 import org.apache.log4j.ConsoleAppender;
 import org.apache.log4j.PatternLayout;
 import org.cloudname.*;
+import org.cloudname.Resolver.ResolverListener;
+import org.cloudname.Resolver.ResolverListener.Event;
 import org.cloudname.flags.Flag;
 import org.cloudname.flags.Flags;
 import org.omg.CORBA.SystemException;
@@ -13,6 +15,7 @@ import java.io.BufferedReader;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.io.Writer;
 import java.util.ArrayList;
 import java.util.List;
@@ -45,7 +48,11 @@ public final class ZkTool {
     @Flag(name = "config",
         description = "New config if setting new config.")
     private static String configFlag = "";
-    
+
+    @Flag(name = "resolver-expression",
+        description = "The resolver expression to listen to events for.")
+    private static String resolverExpression = null;
+
     /**
      *   The possible operations to do on a coordinate.
      */
@@ -107,7 +114,7 @@ public final class ZkTool {
             public void close() throws IOException { }
         });
         BasicConfigurator.configure(consoleAppender);
-        
+
         // Parse the flags.
         Flags flags = new Flags()
                 .loadOpts(ZkTool.class)
@@ -168,124 +175,149 @@ public final class ZkTool {
             return;
         }
 
-        switch (operationFlag) {
-            case CREATE:
-                try {
-                    cloudname.createCoordinate(Coordinate.parse(coordinateFlag));
-                } catch (CloudnameException e) {
-                    System.err.println("Got error: " + e.getMessage());
+        if (coordinateFlag != null) {
+            switch (operationFlag) {
+                case CREATE:
+                    try {
+                        cloudname.createCoordinate(Coordinate.parse(coordinateFlag));
+                    } catch (CloudnameException e) {
+                        System.err.println("Got error: " + e.getMessage());
+                        break;
+                    } catch (CoordinateExistsException e) {
+                        e.printStackTrace();
+                        break;
+                    }
+                    System.err.println("Created coordinate.");
                     break;
-                } catch (CoordinateExistsException e) {
+                case DELETE:
+                    try {
+                        cloudname.destroyCoordinate(Coordinate.parse(coordinateFlag));
+                    } catch (CoordinateDeletionException e) {
+                        System.err.println("Got error: " + e.getMessage());
+                        return;
+                    } catch (CoordinateMissingException e) {
+                        System.err.println("Got error: " + e.getMessage());
+                        break;
+                    } catch (CloudnameException e) {
+                        System.err.println("Got error: " + e.getMessage());
+                        break;
+                    }
+                    System.err.println("Deleted coordinate.");
+                    break;
+                case STATUS: {
+                    Coordinate c = Coordinate.parse(coordinateFlag);
+                    ServiceStatus status;
+                    try {
+                        status = cloudname.getStatus(c);
+                    } catch (CloudnameException e) {
+                        System.err.println("Problems loading status, is service running? Error:\n" + e.getMessage());
+                        break;
+                    }
+                    System.err.println("Status:\n" + status.getState().toString() + " " + status.getMessage());
+                    List<Endpoint> endpoints = null;
+                    try {
+                        endpoints = resolver.resolve("all." + c.getService()
+                                + "." + c.getUser() + "." + c.getCell());
+                    } catch (CloudnameException e) {
+                        System.err.println("Got error: " + e.getMessage());
+                        break;
+                    }
+                    System.err.println("Endpoints:");
+                    for (Endpoint endpoint : endpoints) {
+                        if (endpoint.getCoordinate().getInstance() == c.getInstance()) {
+                            System.err.println(endpoint.getName() + "-->" + endpoint.getHost() + ":" + endpoint.getPort()
+                                    + " protocol:" + endpoint.getProtocol());
+                        }
+                    }
+                }
+                break;
+                case HOST: {
+                    Coordinate c = Coordinate.parse(coordinateFlag);
+                    List<Endpoint> endpoints = null;
+                    try {
+                        endpoints = resolver.resolve(c.asString());
+                    } catch (CloudnameException e) {
+                        System.err.println("Could not resolve " + c.asString() + " Error:\n" + e.getMessage());
+                        break;
+                    }
+                    for (Endpoint endpoint : endpoints) {
+                        System.out.println("Host: " + endpoint.getHost());
+                    }
+                }
+                break;
+                case LIST:
+                    List<String> nodeList = new ArrayList<String>();
+                    try {
+                        cloudname.listRecursively(nodeList);
+                    } catch (CloudnameException e) {
+                        System.err.println("Got error: " + e.getMessage());
+                        break;
+                    } catch (InterruptedException e) {
+                        System.err.println("Got error: " + e.getMessage());
+                        break;
+                    }
+                    for (String node : nodeList) {
+                        Matcher m = instanceConfigPattern.matcher(node);
+
+                        // We only parse config paths, and we convert these to Cloudname coordinates to not confuse
+                        // the user.
+                        if (m.matches()) {
+                            System.out.println(String.format("%s.%s.%s.%s", m.group(4), m.group(3), m.group(2), m.group(1)));
+                        }
+                    }
+                    break;
+                default:
+                    System.out.println("Unknown command " + operationFlag);
+                case SET_CONFIG:
+                    Coordinate c = Coordinate.parse(coordinateFlag);
+                    try {
+                        cloudname.setConfig(c, configFlag, null);
+                    } catch (CloudnameException e) {
+                        System.err.println("Got error: " + e.getMessage());
+                        break;
+
+                    } catch (CoordinateMissingException e) {
+                        System.err.println("Non-existing coordinate.");
+                    }
+                    System.err.println("Config updated.");
+                    break;
+
+                case READ_CONFIG:
+                    try {
+                        System.out.println("Config is:" + cloudname.getConfig(Coordinate.parse(coordinateFlag)));
+                    } catch (CoordinateMissingException e) {
+                        System.err.println("Non-existing coordinate.");
+                    } catch (CloudnameException e) {
+                        System.err.println("Problem with cloudname: " + e.getMessage());
+                    }
+                    break;
+            }
+        } else if (resolverExpression != null) {
+            try {
+                System.out.println("Added a resolver listener for expression: " + resolverExpression + ". Will print out all events for the given expression.");
+                resolver.addResolverListener(resolverExpression, new ResolverListener() {
+                    public void endpointEvent(Event event, Endpoint endpoint) {
+                        System.out.println("Received event: " + event + " for endpoint: " + endpoint);
+                    }
+                });
+            } catch (CloudnameException e) {
+                System.err.println("Problem with cloudname: " + e.getMessage());
+            }
+            BufferedReader br= new BufferedReader(new InputStreamReader(System.in));
+            while(true) {
+                System.out.println("Press enter to exit");
+                String s = null;
+                try {
+                    s = br.readLine();
+                } catch (IOException e) {
                     e.printStackTrace();
-                    break;
                 }
-                System.err.println("Created coordinate.");
-                break;
-            case DELETE:
-                try {
-                    cloudname.destroyCoordinate(Coordinate.parse(coordinateFlag));
-                } catch (CoordinateDeletionException e) {
-                    System.err.println("Got error: " + e.getMessage());
-                    return;
-                } catch (CoordinateMissingException e) {
-                    System.err.println("Got error: " + e.getMessage());
-                    break;
-                } catch (CloudnameException e) {
-                    System.err.println("Got error: " + e.getMessage());
-                    break;
-                }
-                System.err.println("Deleted coordinate.");
-                break;
-            case STATUS: {
-                Coordinate c = Coordinate.parse(coordinateFlag);
-                ServiceStatus status;
-
-                try {
-                    status = cloudname.getStatus(c);
-                } catch (CloudnameException e) {
-                    System.err.println("Problems loading status, is service running? Error:\n" + e.getMessage());
-                    break;
-                }
-
-                System.err.println("Status:\n" + status.getState().toString() + " " + status.getMessage());
-                List<Endpoint> endpoints = null;
-                try {
-                    endpoints = resolver.resolve("all." + c.getService()
-                            + "." + c.getUser() + "." + c.getCell());
-                } catch (CloudnameException e) {
-                    System.err.println("Got error: " + e.getMessage());
-                    break;
-                }
-                System.err.println("Endpoints:");
-                for (Endpoint endpoint : endpoints) {
-                    if (endpoint.getCoordinate().getInstance() == c.getInstance()) {
-                        System.err.println(endpoint.getName() + "-->" + endpoint.getHost() + ":" + endpoint.getPort()
-                                + " protocol:" + endpoint.getProtocol());
-                    }
+                if (s.length() == 0) {
+                    System.out.println("Exiting");
+                    System.exit(0);
                 }
             }
-            break;
-            case HOST: {
-                Coordinate c = Coordinate.parse(coordinateFlag);
-                List<Endpoint> endpoints = null;
-                try {
-                    endpoints = resolver.resolve(c.asString());
-                } catch (CloudnameException e) {
-                    System.err.println("Could not resolve " + c.asString() + " Error:\n" + e.getMessage());
-                    break;
-                }
-                for (Endpoint endpoint : endpoints) {
-                    System.out.println("Host: " + endpoint.getHost());
-                }
 
-            }
-            break;
-            case LIST:
-                List<String> nodeList = new ArrayList<String>();
-                try {
-                    cloudname.listRecursively(nodeList);
-                } catch (CloudnameException e) {
-                    System.err.println("Got error: " + e.getMessage());
-                    break;
-                } catch (InterruptedException e) {
-                    System.err.println("Got error: " + e.getMessage());
-                    break;
-                }
-                for (String node : nodeList) {
-                    Matcher m = instanceConfigPattern.matcher(node);
-
-                    // We only parse config paths, and we convert these to Cloudname coordinates to not confuse
-                    // the user.
-                    if (m.matches()) {
-                        System.out.println(String.format("%s.%s.%s.%s", m.group(4), m.group(3), m.group(2), m.group(1)));
-                    }
-                }
-                break;
-            default:
-                System.out.println("Unknown command " + operationFlag);
-            case SET_CONFIG:
-                Coordinate c = Coordinate.parse(coordinateFlag);
-                try {
-                    cloudname.setConfig(c, configFlag, null);
-                } catch (CloudnameException e) {
-                    System.err.println("Got error: " + e.getMessage());
-                    break;
-
-                } catch (CoordinateMissingException e) {
-                    System.err.println("Non-existing coordinate.");
-                }
-                System.err.println("Config updated.");
-                break;
-
-            case READ_CONFIG:
-                try {
-                    System.out.println("Config is:" + cloudname.getConfig(Coordinate.parse(coordinateFlag)));
-                } catch (CoordinateMissingException e) {
-                    System.err.println("Non-existing coordinate.");
-                } catch (CloudnameException e) {
-                    System.err.println("Problem with cloudname: " + e.getMessage());
-                }
-                break;
         }
         cloudname.close();
     }
