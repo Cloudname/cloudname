@@ -25,7 +25,7 @@ public class SimpleArchiverTest {
      */
     @Test public void testInitialization() throws Exception {
         final String logPath = temp.newFolder("test1").getAbsolutePath();
-        final SimpleArchiver archiver = new SimpleArchiver(logPath, MEGABYTE);
+        final SimpleArchiver archiver = new SimpleArchiver(logPath, "", MEGABYTE);
         archiver.init();
     }
 
@@ -36,7 +36,7 @@ public class SimpleArchiverTest {
         final String logPath = temp.newFolder("test2").getAbsolutePath()
             + File.separator
             + "unexist";
-        final SimpleArchiver archiver = new SimpleArchiver(logPath, MEGABYTE);
+        final SimpleArchiver archiver = new SimpleArchiver(logPath, "", MEGABYTE);
         archiver.init();
     }
 
@@ -45,7 +45,7 @@ public class SimpleArchiverTest {
      */
     @Test public void testWithMessages() throws Exception {
         final String logPath = temp.newFolder("test3").getAbsolutePath();
-        final SimpleArchiver archiver = new SimpleArchiver(logPath, MEGABYTE);
+        final SimpleArchiver archiver = new SimpleArchiver(logPath, "", MEGABYTE);
         archiver.init();
 
         final int count = 1000;

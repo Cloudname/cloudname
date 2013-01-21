@@ -51,9 +51,10 @@ public class SlotMapper {
      *
      * @param time milliseconds since epoch as returned by
      *   System.currentTimeMillis().
+     * @param service name of the service. Will be appended to file name.
      * @return the path of the slot we wish to map to
      */
-    public String map(long time)
+    public String map(long time, String service)
     {
         // I am going out on a limb here assuming that if we come across
         // log messages that come from before 1970 you won't be too upset
@@ -76,7 +77,7 @@ public class SlotMapper {
                 slotCache.clear();
             }
 
-            slot = mapToPath(time);
+            slot = mapToPath(time, service);
             slotCache.put(slotnum, slot);
         }
 
@@ -91,9 +92,10 @@ public class SlotMapper {
      * filesystems as well.
      *
      * @param time the time as returned by System.currentTimeMillis().
+     * @param service name of the service. Will be appended to file name.
      * @return the path of the slot.
      */
-    public static String mapToPath(long time)
+    public static String mapToPath(long time, String service)
     {
         GregorianCalendar calendar = new GregorianCalendar(TZ);
         calendar.setTimeInMillis(time);
@@ -114,6 +116,9 @@ public class SlotMapper {
             .append(File.separator)
             .append(dayStr)
             .append(File.separator)
+
+            // Append the name of the service in filename
+            .append(service).append("_")
 
             // Repeat ISO date in filename
             .append(year).append("-").append(monthStr).append("-").append(dayStr)
