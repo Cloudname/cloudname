@@ -7,6 +7,7 @@ import org.cloudname.log.format.FullFormatter;
 import org.cloudname.log.format.LogEventFormatter;
 
 import java.io.FileInputStream;
+import java.io.IOException;
 import java.util.List;
 
 /**
@@ -72,7 +73,11 @@ public class Main {
         }
         else {
             for (final String filename : files) {
-                cat.catStream(new FileInputStream(filename));
+                try {
+                    cat.catStream(new FileInputStream(filename));
+                } catch (Exception e) {
+                    throw new Exception("Error while attempting to read from " + filename, e);
+                }
             }
         }
     }
