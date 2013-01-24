@@ -85,8 +85,10 @@ public class MetadataHandler {
         synchronized (lock) {
             try {
                 final BufferedWriter writer = getWriter(slotFile);
+                assert(writer != null);
                 writer.write("ack" + DELIMITER + id);
                 writer.newLine();
+                writer.flush();
             } catch (IOException e) {
                 LOG.log(Level.WARNING, "Unable to write metadata ack entry.", e);
             }

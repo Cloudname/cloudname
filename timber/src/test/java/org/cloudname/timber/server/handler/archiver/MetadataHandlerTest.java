@@ -172,11 +172,11 @@ public class MetadataHandlerTest {
         final File file = temp.newFile("ackfile");
 
         handler.writeAck(file, "id");
-
+        Assert.assertTrue(file.exists());
         final BufferedReader reader = new BufferedReader(
             new FileReader(file.getAbsolutePath() + MetadataHandler.METADATA_FILE_SUFFIX));
-
-        Assert.assertEquals("File content is not correct.", "ack,id", reader.readLine());
+        String line = reader.readLine();
+        Assert.assertEquals("File content is not correct.", "ack,id", line);
 
         reader.close();
     }
