@@ -66,9 +66,9 @@
 	    <phase>generate-sources</phase>
 	    <configuration>
 	      <tasks>
-		<mkdir dir="${project.build.directory}/generated-sources"/>
+		<mkdir dir="${project.build.directory}/generated-sources/proto"/>
 		<exec executable="${basedir}/${protoc.executable}">
-		  <arg value="--java_out=${project.build.directory}/generated-sources"/>
+		  <arg value="--java_out=${project.build.directory}/generated-sources/proto"/>
 		  <arg value="--proto_path=${basedir}/src/main/protobuf"/>
           <arg value="${basedir}/src/main/protobuf/timber.proto"/>
         </exec>
@@ -151,7 +151,6 @@
         </plugins>
     </pluginManagement>
   </build>
-
   <dependencies>
     <dependency>
       <groupId>org.cloudname</groupId>

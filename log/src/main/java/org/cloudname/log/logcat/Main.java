@@ -1,11 +1,13 @@
 package org.cloudname.log.logcat;
 
-import org.cloudname.log.format.CompactFormatter;
 import org.cloudname.flags.Flag;
 import org.cloudname.flags.Flags;
+import org.cloudname.log.format.CompactFormatter;
 import org.cloudname.log.format.FullFormatter;
+import org.cloudname.log.format.LogEventFormatter;
 
 import java.io.FileInputStream;
+import java.io.IOException;
 import java.util.List;
 
 /**
@@ -19,6 +21,7 @@ public class Main {
     public enum LogFormatter {
         COMPACT,
         FULL,
+        PLUGIN,
         NONE
     }
 
@@ -27,6 +30,10 @@ public class Main {
 
     @Flag(name = "format", description = "The type of formatting to use (compact/full).")
     private static String formatType = "compact";
+
+    @Flag(name = "formatter-plugin-class", description = "Formatter class to load. Attempt to load this class from" +
+        "classpath as a LogEventFormatter.")
+    private static String pluginClass = "org.cloudname.MyFormatter";
 
     public static void main(final String[] args) throws Exception {
         final Flags flags = new Flags()
@@ -49,6 +56,10 @@ public class Main {
             case FULL:
                 cat = new LogCat(new FullFormatter());
                 break;
+            case PLUGIN:
+                LogEventFormatter pluginFormatter = (LogEventFormatter) Class.forName(pluginClass).newInstance();
+                cat = new LogCat(pluginFormatter);
+                break;
             default:
                 System.out.println("Unknown log formatter. Exiting...");
                 return;
@@ -62,7 +73,11 @@ public class Main {
         }
         else {
             for (final String filename : files) {
-                cat.catStream(new FileInputStream(filename));
+                try {
+                    cat.catStream(new FileInputStream(filename));
+                } catch (Exception e) {
+                    throw new Exception("Error while attempting to read from " + filename, e);
+                }
             }
         }
     }

@@ -20,9 +20,9 @@ import java.util.logging.Level;
  * @author borud
  */
 public class SimpleArchiver implements LogEventHandler {
-    private Archiver archiver;
+    private final Archiver archiver;
 
-    public SimpleArchiver(String logPath, long maxFileSize) {
+    public SimpleArchiver(final String logPath, final long maxFileSize) {
         archiver = new Archiver(logPath, maxFileSize);
     }
 
@@ -34,7 +34,7 @@ public class SimpleArchiver implements LogEventHandler {
     }
 
     @Override
-    public void handle(Timber.LogEvent logEvent) {
+    public void handle(final Timber.LogEvent logEvent) {
         archiver.handle(logEvent);
     }
 
