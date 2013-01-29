@@ -58,6 +58,13 @@ public class Flags {
     private final static OptionSpec<Void> HELP = optionParser
             .accepts("help", "Show this help");
 
+    // Version option
+    private final static OptionSpec<Void> VERSION = optionParser
+        .accepts("version", "Show version");
+
+    // Version text
+    private String versionString = "NA";
+
     // Helper list for loaded options.
     private final Map<String, OptionHolder> options = new HashMap<String, OptionHolder>();
 
@@ -191,6 +198,14 @@ public class Flags {
             }
         }
         return this;
+    }
+
+    /**
+     * Set the string to show when "--version" is used.
+     * @param versionString
+     */
+    public void setVersionString(final String versionString) {
+        this.versionString = versionString;
     }
 
     /**
@@ -381,10 +396,29 @@ public class Flags {
     }
 
     /**
+     * Prints the version to the specified output stream.
+     *
+     * @param out the OutputStream we wish to print the version output to.
+     */
+    public void printVersion(final OutputStream out) {
+        final PrintWriter w = new PrintWriter(out);
+        w.println(versionString);
+        w.flush();
+        w.close();
+    }
+
+    /**
      * @return {@code true} if a "--help" flag was passed on the command line.
      */
     public boolean helpFlagged() {
         return optionSet.has(HELP);
+    }
+
+    /**
+     * @return {@code true} if a "--version" flag was passed on the command line.
+     */
+    public boolean versionFlagged() {
+        return optionSet.has(VERSION);
     }
 
     /**
