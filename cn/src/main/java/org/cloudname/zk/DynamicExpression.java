@@ -342,16 +342,25 @@ class DynamicExpression implements Watcher, TrackedCoordinate.ExpressionResolver
                     clientCallback.endpointEvent(
                             Resolver.ResolverListener.Event.NEW_ENDPOINT, endpoint);
                     clientPicture.put(key, endpoint);
-                } else {
-                    if (! clientPicture.get(key).equals(endpoint)) {
-                        clientCallback.endpointEvent(
-                                Resolver.ResolverListener.Event.REMOVED_ENDPOINT,
-                                clientPicture.get(key));
-                        clientCallback.endpointEvent(
-                                Resolver.ResolverListener.Event.NEW_ENDPOINT, endpoint);
-                        clientPicture.put(key, endpoint);
-                    }
+                    continue;
                 }
+                final Endpoint clientEndpoint = clientPicture.get(key);
+                if (endpoint.equals(clientEndpoint)) { continue; }
+                if (endpoint.getHost().equals(clientEndpoint.getHost()) &&
+                        endpoint.getName().equals(clientEndpoint.getName()) &&
+                        endpoint.getPort() == clientEndpoint.getPort() &&
+                        endpoint.getProtocol().equals(clientEndpoint.getProtocol())) {
+                    clientCallback.endpointEvent(
+                            Resolver.ResolverListener.Event.MODIFIED_ENDPOINT_DATA, endpoint);
+                    clientPicture.put(key, endpoint);
+                    continue;
+                }
+                clientCallback.endpointEvent(
+                        Resolver.ResolverListener.Event.REMOVED_ENDPOINT,
+                        clientPicture.get(key));
+                clientCallback.endpointEvent(
+                        Resolver.ResolverListener.Event.NEW_ENDPOINT, endpoint);
+                clientPicture.put(key, endpoint);
             }
         }
     }

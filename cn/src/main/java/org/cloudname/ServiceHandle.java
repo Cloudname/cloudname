@@ -30,9 +30,7 @@ public interface ServiceHandle {
     public void setStatus(ServiceStatus status) throws CoordinateMissingException, CloudnameException;
 
     /**
-     * Publish a named endpoint.  If the endpoint already exists an
-     * exception will be thrown.  If you want to republish a named
-     * endpoint you first have to remove it.
+     * Publish a named endpoint.  It is legal to push an endpoint with updated data.
      *
      * @param endpoint the endpoint data.
      * @throws CoordinateMissingException if coordinate does not exist.

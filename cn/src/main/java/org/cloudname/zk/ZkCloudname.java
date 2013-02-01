@@ -71,12 +71,9 @@ public final class ZkCloudname implements Cloudname, Watcher, Runnable {
         final ZooKeeper.States state = zkObjectHandler.getClient().getZookeeper().getState();
 
         if (state == ZooKeeper.States.CONNECTED) {
-            zkObjectHandler.connectionUp();
             connectingCounter = 0;
             return;
         }
-
-        zkObjectHandler.connectionDown();
 
         if (state == ZooKeeper.States.CONNECTING) {
             connectingCounter++;
