@@ -38,6 +38,10 @@ public interface Resolver {
              */
             REMOVED_ENDPOINT,
             /**
+             * Endpoint data has been modified.
+             */
+            MODIFIED_ENDPOINT_DATA,
+            /**
              * Lost connection to storage. The list of endpoints will get stale. The system will reconnect
              * automatically.
              */

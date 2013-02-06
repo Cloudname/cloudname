@@ -238,6 +238,7 @@ public final class ZkTool {
                     if (endpoint.getCoordinate().getInstance() == coordinate.getInstance()) {
                         System.err.println(endpoint.getName() + "-->" + endpoint.getHost() + ":" + endpoint.getPort()
                                 + " protocol:" + endpoint.getProtocol());
+                        System.err.println("Endpoint data:\n" + endpoint.getEndpointData());
                     }
                 }
                 break;

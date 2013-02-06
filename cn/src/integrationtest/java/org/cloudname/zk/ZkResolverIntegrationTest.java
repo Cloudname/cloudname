@@ -106,10 +106,14 @@ public class ZkResolverIntegrationTest {
         handleDraining.setStatus(statusDraining);
     }
 
-    public void changeEndpoint() throws CoordinateMissingException, CloudnameException {
-        handleDraining.removeEndpoint("foo");
+    public void changeEndpointData() throws CoordinateMissingException, CloudnameException {
         handleDraining.putEndpoint(new Endpoint(
-                coordinateDraining, "foo", "localhost", 4, "http", "data"));
+                coordinateDraining, "foo", "localhost", 5555, "http", "dataChanged"));
+    }
+
+    public void changeEndpointPort() throws CoordinateMissingException, CloudnameException {
+        handleDraining.putEndpoint(new Endpoint(
+                coordinateDraining, "foo", "localhost", 5551, "http", "dataChanged"));
     }
 
     @Test
@@ -226,6 +230,7 @@ public class ZkResolverIntegrationTest {
 
         final List<Endpoint> endpointListNew = new ArrayList<Endpoint>();
         final List<Endpoint> endpointListRemoved = new ArrayList<Endpoint>();
+        final List<Endpoint> endpointListModified = new ArrayList<Endpoint>();
 
         // This class is needed since the abstract resolver listener class can only access final variables.
         class LatchWrapper {
@@ -249,6 +254,10 @@ public class ZkResolverIntegrationTest {
                         endpointListRemoved.add(endpoint);
                         latchWrapper.latch.countDown();
                         break;
+                    case MODIFIED_ENDPOINT_DATA:
+                        endpointListModified.add(endpoint);
+                        latchWrapper.latch.countDown();
+                        break;
                 }
             }
         });
@@ -269,23 +278,35 @@ public class ZkResolverIntegrationTest {
         assertEquals("foo", endpointListNew.get(0).getName());
         assertEquals("0.service.user.cell", endpointListNew.get(0).getCoordinate().toString());
 
-        latchWrapper.latch = new CountDownLatch(2);
+        latchWrapper.latch = new CountDownLatch(1);
         endpointListNew.clear();
 
-        changeEndpoint();
+        changeEndpointData();
 
         assertTrue(latchWrapper.latch.await(26000, TimeUnit.MILLISECONDS));
 
-        assertEquals(1, endpointListRemoved.size());
+        assertEquals(1, endpointListModified.size());
 
-        assertEquals("0.service.user.cell", endpointListRemoved.get(0).getCoordinate().toString());
-        assertEquals("foo", endpointListRemoved.get(0).getName());
-        assertEquals("foo", endpointListNew.get(0).getName());
-        assertEquals("0.service.user.cell", endpointListNew.get(0).getCoordinate().toString());
-        assertEquals(4, endpointListNew.get(0).getPort());
+        assertEquals("0.service.user.cell", endpointListModified.get(0).getCoordinate().toString());
+        assertEquals("foo", endpointListModified.get(0).getName());
+        assertEquals("dataChanged", endpointListModified.get(0).getEndpointData());
+
+        endpointListModified.clear();
+
+        latchWrapper.latch = new CountDownLatch(2);
+
+        changeEndpointPort();
+
+        assertTrue(latchWrapper.latch.await(27000, TimeUnit.MILLISECONDS));
+
+        assertEquals(1, endpointListNew.size());
+        assertEquals(1, endpointListRemoved.size());
 
         endpointListNew.clear();
         endpointListRemoved.clear();
+
+
+
         latchWrapper.latch = new CountDownLatch(1);
 
         drain();
