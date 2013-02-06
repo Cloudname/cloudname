@@ -68,18 +68,13 @@ public final class ZkCoordinateData {
     }
 
     /**
-     * Adds new endpoints to the builder. It is not legal to add a new endpoint with an endpoint
+     * Adds new endpoints to the builder. It is legal to add a new endpoint with an endpoint
      * that already exists.
      */
     public ZkCoordinateData putEndpoints(final List<Endpoint> newEndpoints) {
         synchronized (localVariablesMonitor) {
             for (Endpoint endpoint : newEndpoints) {
-                Endpoint previousEndpoint = endpointsByName.put(endpoint.getName(), endpoint);
-                // Calling put on an existing endpoint is not allowed.
-                if (null != previousEndpoint) {
-                    throw new IllegalArgumentException("endpoint already exists: "
-                            +  endpoint.getName());
-                }
+                endpointsByName.put(endpoint.getName(), endpoint);
             }
         }
         return this;
