@@ -29,8 +29,8 @@ public class MetadataHandler {
 
     private File currentSlotFile;
     private BufferedWriter currentWriter;
-    private final SlotLruCache<String,BufferedWriter> writerLruCache
-        = new SlotLruCache<String,BufferedWriter>(MAX_FILES_OPEN);
+    private final MetadataWriterLruCache<String, BufferedWriter> writerLruCache
+        = new MetadataWriterLruCache<String, BufferedWriter>(MAX_FILES_OPEN);
 
     private MetadataHandler() {}
 
@@ -101,7 +101,9 @@ public class MetadataHandler {
      * @throws IOException
      */
     public void flush() throws IOException {
-        currentWriter.flush();
+        if (currentWriter != null) {
+            currentWriter.flush();
+        }
         for (final BufferedWriter writer : writerLruCache.values()) {
             try {
                 writer.flush();
@@ -117,7 +119,9 @@ public class MetadataHandler {
      */
     public void close() throws IOException {
         flush();
-        currentWriter.close();
+        if (currentWriter != null) {
+            currentWriter.close();
+        }
         for (final BufferedWriter writer : writerLruCache.values()) {
             try {
                 writer.close();
