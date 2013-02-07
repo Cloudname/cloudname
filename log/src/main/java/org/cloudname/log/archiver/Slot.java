@@ -42,10 +42,8 @@ public class Slot {
     private final long resumeLimit;
     private final int outputBufferSize = DEFAULT_OUTPUT_BUFFER_SIZE;
 
-    private int slotSequenceCount = 0;
     private File currentFile = null;
     private RecordWriter currentWriter = null;
-    private int writeCountdown;
     private boolean closed = false;
 
     // Write count for current slot file
@@ -68,24 +66,24 @@ public class Slot {
     }
 
     /**
-     * @return the slot file path for a given sequence number.
+     * @return the slot file path for a given timestamp.
      */
-    private String nameForSequenceNo(final int slotSequence) {
-        return prefix + "_" + slotSequence;
+    private String nameForTimestamp(final long timestamp) {
+        return prefix + "_" + timestamp;
     }
 
     /**
      * Check if the prospective filename exists with a suffix
      * indicating it has been compressed.
      *
-     * @param filename the name for which we want to check if there is
+     * @param file the file for which we want to check if there is
      *   a compressed version.
      * @return {@code true} if a compressed file of this slot exists,
      *   {@code false} otherwise.
      */
-    private static boolean compressedSlotExists(final String filename) {
-        return new File(filename + ".gz").exists()
-            || new File(filename + ".bz2").exists();
+    private static boolean compressedSlotExists(final File file) {
+        return new File(file.getAbsolutePath() + ".gz").exists()
+            || new File(file.getAbsolutePath() + ".bz2").exists();
 
     }
 
@@ -95,37 +93,63 @@ public class Slot {
      * @return a File instance that points to the next slot file
      */
     private File findNextSlotFile() throws IOException {
-        while (true) {
-            if (slotSequenceCount < 0) {
-                throw new IllegalStateException("Slot count wrapped around to negative");
-            }
+        final File file = new File(nameForTimestamp(System.currentTimeMillis()));
+        final File parentDir = file.getParentFile();
 
-            final String name = nameForSequenceNo(slotSequenceCount++);
-            final File f = new File(name);
-            final File parentDir = f.getParentFile();
+        // Make sure directory exists
+        if (!parentDir.exists()) {
+            parentDir.mkdirs();
+        }
 
-            // Make sure directory exists
-            if (! parentDir.exists()) {
-                parentDir.mkdirs();
-            }
+        File foundFile = null;
+        long highestTimestamp = 0L;
 
-            // If compressed version of slot file exists, skip that sequence number
-            if (compressedSlotExists(name)) {
+        // Iterate over existing files to find a file to resume writing to.
+        for (final File f : parentDir.listFiles()) {
+
+            // Make sure it is a proper slot file
+            if (! f.getAbsolutePath().contains(prefix)) {
                 continue;
             }
 
-            // If file does not exist we have a winner
-            if (! f.exists()) {
-                return f;
+            final String[] split = f.getName().split("_");
+            final String lastSplit = split[split.length - 1];
+
+            final long timestamp;
+            try{
+                timestamp = Long.parseLong(lastSplit);
+            } catch (NumberFormatException e) {
+                // File does not end in a number. Skip it.
+                continue;
             }
 
-            // File exists.  Check if we are under the resume limit
-            if (f.length() < resumeLimit) {
-                return f;
+            // Check if we have already found a newer file.
+            if (timestamp < highestTimestamp) {
+                continue;
             }
 
-            // File exists but is over resume limit.  Go around again.
+            // Check if compressed version exists.
+            if (compressedSlotExists(f)) {
+                continue;
+            }
+
+            // Check if we are allowed to resume writing to the file?
+            if (f.length() > resumeLimit) {
+                continue;
+            }
+
+            // Found new slot file with higher timestamp.
+            highestTimestamp = timestamp;
+            foundFile = f;
         }
+
+        // No files with timestamp found. Return new slot file.
+        if (foundFile == null) {
+            return file;
+        }
+
+        // Resumable file found. Return it.
+        return foundFile;
     }
 
     /**
@@ -231,7 +255,6 @@ public class Slot {
             + ", maxSize=" + maxSize
             + ", resumeLimit=" + resumeLimit
             + ", outputBufferSize=" + outputBufferSize
-            + ", slotSequenceCount=" + slotSequenceCount
             + ", currentFile=" + ((null == currentFile) ? "none" : currentFile.getAbsolutePath())
             + ", writeCount=" + writeCount
             + ", numBytesInFile=" + numBytesInFile

@@ -19,6 +19,7 @@ import static org.junit.Assert.*;
 public class SlotMapperTest {
     private static final Logger log = Logger.getLogger(SlotMapperTest.class.getName());
     private static final long t1 = 1295872085000L;
+    private static final String SERVICENAME = "testservice";
 
     /**
      * Very simple test to make sure we get expected output.
@@ -31,9 +32,9 @@ public class SlotMapperTest {
         String expected = "2011"
             + File.separator + "01"
             + File.separator + "24"
-            + File.separator + "2011-01-24_12";
+            + File.separator + SERVICENAME + "_2011-01-24_12";
 
-        assertEquals(expected, mapper.map(t1));
+        assertEquals(expected, mapper.map(t1, SERVICENAME));
     }
 
     /**
@@ -55,7 +56,7 @@ public class SlotMapperTest {
             // The multiplication factor of 5000 is there to space the
             // timestamps out a bit so that we exercise the slotCache
             // purging code path.
-            assertNotNull(mapper.map(t1 + (i * 5000)));
+            assertNotNull(mapper.map(t1 + (i * 5000), SERVICENAME));
         }
 
         long duration = System.currentTimeMillis() - start;
@@ -76,7 +77,7 @@ public class SlotMapperTest {
         }
 
         SlotMapper mapper = new SlotMapper();
-        assertEquals("1970/01/01/1970-01-01_00", mapper.map(0L));
+        assertEquals("1970/01/01/"+SERVICENAME+"_1970-01-01_00", mapper.map(0L, SERVICENAME));
     }
 
     /**
@@ -85,7 +86,7 @@ public class SlotMapperTest {
     @Test (expected = IllegalArgumentException.class)
     public void testNegative() throws Exception {
         SlotMapper mapper = new SlotMapper();
-        mapper.map(-1L);
+        mapper.map(-1L, SERVICENAME);
     }
 
     /**
@@ -112,8 +113,8 @@ public class SlotMapperTest {
         ensureDifferent(mapper, c1, c2);
         ensureConsistentMapping(mapper, c1);
         ensureConsistentMapping(mapper, c2);
-        assertEquals("2011/01/20/2011-01-20_01", mapper.map(c1.getTimeInMillis()));
-        assertEquals("2011/01/20/2011-01-20_02", mapper.map(c2.getTimeInMillis()));
+        assertEquals("2011/01/20/"+SERVICENAME+"_2011-01-20_01", mapper.map(c1.getTimeInMillis(), SERVICENAME));
+        assertEquals("2011/01/20/"+SERVICENAME+"_2011-01-20_02", mapper.map(c2.getTimeInMillis(), SERVICENAME));
 
         // Test day rollover
         c1 = new GregorianCalendar(2011,0,20,23,59,59);
@@ -121,8 +122,8 @@ public class SlotMapperTest {
         ensureDifferent(mapper, c1, c2);
         ensureConsistentMapping(mapper, c1);
         ensureConsistentMapping(mapper, c2);
-        assertEquals("2011/01/20/2011-01-20_23", mapper.map(c1.getTimeInMillis()));
-        assertEquals("2011/01/21/2011-01-21_00", mapper.map(c2.getTimeInMillis()));
+        assertEquals("2011/01/20/"+SERVICENAME+"_2011-01-20_23", mapper.map(c1.getTimeInMillis(), SERVICENAME));
+        assertEquals("2011/01/21/"+SERVICENAME+"_2011-01-21_00", mapper.map(c2.getTimeInMillis(), SERVICENAME));
 
 
         // Test month rollover
@@ -131,8 +132,8 @@ public class SlotMapperTest {
         ensureDifferent(mapper, c1, c2);
         ensureConsistentMapping(mapper, c1);
         ensureConsistentMapping(mapper, c2);
-        assertEquals("2011/01/31/2011-01-31_23", mapper.map(c1.getTimeInMillis()));
-        assertEquals("2011/02/01/2011-02-01_00", mapper.map(c2.getTimeInMillis()));
+        assertEquals("2011/01/31/"+SERVICENAME+"_2011-01-31_23", mapper.map(c1.getTimeInMillis(), SERVICENAME));
+        assertEquals("2011/02/01/"+SERVICENAME+"_2011-02-01_00", mapper.map(c2.getTimeInMillis(), SERVICENAME));
 
         // Test month rollover, february, non-leap year
         c1 = new GregorianCalendar(2011,1,28,23,59,59);
@@ -140,8 +141,8 @@ public class SlotMapperTest {
         ensureDifferent(mapper, c1, c2);
         ensureConsistentMapping(mapper, c1);
         ensureConsistentMapping(mapper, c2);
-        assertEquals("2011/02/28/2011-02-28_23", mapper.map(c1.getTimeInMillis()));
-        assertEquals("2011/03/01/2011-03-01_00", mapper.map(c2.getTimeInMillis()));
+        assertEquals("2011/02/28/"+SERVICENAME+"_2011-02-28_23", mapper.map(c1.getTimeInMillis(), SERVICENAME));
+        assertEquals("2011/03/01/"+SERVICENAME+"_2011-03-01_00", mapper.map(c2.getTimeInMillis(), SERVICENAME));
 
         // Test month rollover, february, leap year
         c1 = new GregorianCalendar(2012,1,29,23,59,59);
@@ -149,8 +150,8 @@ public class SlotMapperTest {
         ensureDifferent(mapper, c1, c2);
         ensureConsistentMapping(mapper, c1);
         ensureConsistentMapping(mapper, c2);
-        assertEquals("2012/02/29/2012-02-29_23", mapper.map(c1.getTimeInMillis()));
-        assertEquals("2012/03/01/2012-03-01_00", mapper.map(c2.getTimeInMillis()));
+        assertEquals("2012/02/29/"+SERVICENAME+"_2012-02-29_23", mapper.map(c1.getTimeInMillis(), SERVICENAME));
+        assertEquals("2012/03/01/"+SERVICENAME+"_2012-03-01_00", mapper.map(c2.getTimeInMillis(), SERVICENAME));
 
         // Test year rollover
         c1 = new GregorianCalendar(2011,11,31,23,59,59);
@@ -158,8 +159,8 @@ public class SlotMapperTest {
         ensureDifferent(mapper, c1, c2);
         ensureConsistentMapping(mapper, c1);
         ensureConsistentMapping(mapper, c2);
-        assertEquals("2011/12/31/2011-12-31_23", mapper.map(c1.getTimeInMillis()));
-        assertEquals("2012/01/01/2012-01-01_00", mapper.map(c2.getTimeInMillis()));
+        assertEquals("2011/12/31/"+SERVICENAME+"_2011-12-31_23", mapper.map(c1.getTimeInMillis(), SERVICENAME));
+        assertEquals("2012/01/01/"+SERVICENAME+"_2012-01-01_00", mapper.map(c2.getTimeInMillis(), SERVICENAME));
     }
 
     /**
@@ -175,8 +176,8 @@ public class SlotMapperTest {
         long t1 = cal1.getTimeInMillis();
         long t2 = cal2.getTimeInMillis();
 
-        assertNotSame(mapper.map(t1),
-                      mapper.map(t2));
+        assertNotSame(mapper.map(t1, SERVICENAME),
+                      mapper.map(t2, SERVICENAME));
     }
 
     /**
@@ -185,7 +186,7 @@ public class SlotMapperTest {
      */
     private void ensureConsistentMapping(SlotMapper mapper, GregorianCalendar cal)
     {
-        assertEquals(SlotMapper.mapToPath(cal.getTimeInMillis()),
-                     mapper.map(cal.getTimeInMillis()));
+        assertEquals(SlotMapper.mapToPath(cal.getTimeInMillis(), SERVICENAME),
+                     mapper.map(cal.getTimeInMillis(), SERVICENAME));
     }
 }

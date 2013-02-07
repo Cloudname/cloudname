@@ -23,6 +23,8 @@ import java.io.IOException;
 public class Archiver {
     private static final int MAX_FILES_OPEN = 5;
 
+    private String service = "";
+
     private final SlotMapper slotMapper = new SlotMapper();
     private final SlotLruCache<String,Slot> slotLruCache = new SlotLruCache<String,Slot>(MAX_FILES_OPEN);
 
@@ -33,9 +35,13 @@ public class Archiver {
 
     /**
      * The directory
+     * @param logPath folder to store logs
+     * @param service name of the service storing logs
+     * @param maxFileSize maximum file size in bytes
      */
-    public Archiver(final String logPath, final long maxFileSize) {
+    public Archiver(String logPath, String service, long maxFileSize) {
         this.logPath = logPath;
+        this.service = service;
         this.maxFileSize = maxFileSize;
     }
 
@@ -118,8 +124,8 @@ public class Archiver {
     /**
      * @return the slot a Timber.LogEvent belongs in.
      */
-    private Slot getSlot(final Timber.LogEvent event) {
-        final String slotPathPrefix = logPath + File.separator + slotMapper.map(event.getTimestamp());
+    private Slot getSlot(Timber.LogEvent event) {
+        String slotPathPrefix = logPath + File.separator + slotMapper.map(event.getTimestamp(), service);
         Slot slot = slotLruCache.get(slotPathPrefix);
         if (null != slot) {
             return slot;

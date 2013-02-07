@@ -47,7 +47,7 @@ public class Main {
         // Figure out what built-in handlers to populate it with
         // Do we have options for the Archiver plugin?
         if (enableArchiver) {
-            SimpleArchiver simpleArchiver = new SimpleArchiver(logdir, maxSlotSize);
+            SimpleArchiver simpleArchiver = new SimpleArchiver(logdir, "timberserver", maxSlotSize);
             simpleArchiver.init();
             server.addHandler(simpleArchiver);
         }
