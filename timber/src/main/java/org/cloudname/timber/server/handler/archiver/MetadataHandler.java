@@ -68,6 +68,7 @@ public class MetadataHandler {
                     .append(wr.getEndOffset());
                 writer.write(sb.toString());
                 writer.newLine();
+                writer.flush();
             } catch (IOException e) {
                 LOG.log(Level.WARNING, "Unable to write metadata entry.", e);
             }
