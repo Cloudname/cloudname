@@ -69,6 +69,55 @@ public class FlagsTest {
     }
 
     /**
+     * Test all supported field types with an instanced flagged class.
+     */
+    @Test
+    public void testInstanceConfiguration() {
+        final FlagsInstanced flaggedClass = new FlagsInstanced();
+        Flags flags = new Flags()
+            .loadOpts(flaggedClass)
+            .parse(new String[]{});
+
+        assertEquals(false, flaggedClass.bool);
+        assertEquals(new Boolean(false), flaggedClass.bool2);
+        assertEquals("NA", flaggedClass.string);
+        assertEquals(1, flaggedClass.getValueForPrivateInteger());
+        assertEquals(new Integer(1), flaggedClass.integer2);
+        assertEquals(1, flaggedClass.longNum);
+        assertEquals(1, flaggedClass.longNum2);
+        assertEquals(FlagsInstanced.SimpleEnum.OPTION1, flaggedClass.option);
+
+        flags.parse(new String[]{"--boolean", "true",
+            "--Boolean", "true",
+            "--string", "stringtest",
+            "--int", "10",
+            "--Integer", "20",
+            "--long", "30",
+            "--Long", "40",
+            "--option", "OPTION2"});
+
+        assertEquals(true, flaggedClass.bool);
+        assertEquals(new Boolean(true), flaggedClass.bool2);
+        assertEquals("stringtest", flaggedClass.string);
+        assertEquals(10, flaggedClass.getValueForPrivateInteger());
+        assertEquals(new Integer(20), flaggedClass.integer2);
+        assertEquals(30, flaggedClass.longNum);
+        assertEquals(40, flaggedClass.longNum2);
+        assertEquals(FlagsInstanced.SimpleEnum.OPTION2, flaggedClass.option);
+
+        // Check that a new config class does not inherent parses from the first.
+        final FlagsInstanced flaggedClass2 = new FlagsInstanced();
+        assertEquals(false, flaggedClass2.bool);
+        assertEquals(new Boolean(false), flaggedClass2.bool2);
+        assertEquals("NA", flaggedClass2.string);
+        assertEquals(1, flaggedClass2.getValueForPrivateInteger());
+        assertEquals(new Integer(1), flaggedClass2.integer2);
+        assertEquals(1, flaggedClass2.longNum);
+        assertEquals(1, flaggedClass2.longNum2);
+        assertEquals(FlagsInstanced.SimpleEnum.OPTION1, flaggedClass2.option);
+    }
+
+    /**
      * Boolean flags should be set to true if no parameter is set, or parameter is set to true.
      * False otherwise.
      */
