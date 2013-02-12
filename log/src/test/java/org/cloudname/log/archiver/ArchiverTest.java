@@ -25,6 +25,7 @@ public class ArchiverTest {
     private static final Logger log = Logger.getLogger(ArchiverTest.class.getName());
 
     private static final long MEGABYTE = 1024 * 1024;
+    private static final String SERVICENAME = "testservice";
 
     @Rule
     public TemporaryFolder temp = new TemporaryFolder();
@@ -35,7 +36,7 @@ public class ArchiverTest {
     @Test
     public void testInitialization() throws Exception {
         final String logPath = temp.newFolder("test1").getAbsolutePath();
-        final Archiver archiver = new Archiver(logPath, MEGABYTE);
+        final Archiver archiver = new Archiver(logPath, SERVICENAME, MEGABYTE);
         archiver.init();
     }
 
@@ -47,7 +48,7 @@ public class ArchiverTest {
         final String logPath = temp.newFolder("test2").getAbsolutePath()
             + File.separator
             + "unexist";
-        final Archiver archiver = new Archiver(logPath, MEGABYTE);
+        final Archiver archiver = new Archiver(logPath, SERVICENAME, MEGABYTE);
         archiver.init();
     }
 
@@ -57,7 +58,7 @@ public class ArchiverTest {
     @Test
     public void testWithMessages() throws Exception {
         final String logPath = temp.newFolder("test3").getAbsolutePath();
-        final Archiver archiver = new Archiver(logPath, MEGABYTE);
+        final Archiver archiver = new Archiver(logPath, SERVICENAME, MEGABYTE);
         archiver.init();
 
         final int count = 1000;
@@ -95,7 +96,7 @@ public class ArchiverTest {
     @Test (timeout = 2500)
     public void testFlushSlowdownMeasurement() throws IOException {
         final String logPath = temp.newFolder("test-speed").getAbsolutePath();
-        final Archiver archiver = new Archiver(logPath, MEGABYTE);
+        final Archiver archiver = new Archiver(logPath, SERVICENAME, MEGABYTE);
         archiver.init();
 
         // Create a test message

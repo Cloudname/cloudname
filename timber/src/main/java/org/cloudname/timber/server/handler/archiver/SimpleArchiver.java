@@ -22,8 +22,8 @@ import java.util.logging.Level;
 public class SimpleArchiver implements LogEventHandler {
     private final Archiver archiver;
 
-    public SimpleArchiver(final String logPath, final long maxFileSize) {
-        archiver = new Archiver(logPath, maxFileSize);
+    public SimpleArchiver(String logPath, String service, long maxFileSize) {
+        archiver = new Archiver(logPath, service, maxFileSize);
     }
 
     /**
