@@ -114,10 +114,10 @@ public class Flags {
                 continue;
             }
 
-            // Make sure the field is static.  If the field is
-            // nonstatic it makes no sense to use it for flags.
+            // Flag fields must be static if you are initializing the flags through a Class instance.
             if ( ! instanced && ! Modifier.isStatic(field.getModifiers())) {
-                throw new IllegalArgumentException("Field "+field.toGenericString()+" is not static. Flag fields must be static");
+                throw new IllegalArgumentException("Field "+field.toGenericString()+" is not static. Flag fields " +
+                    "must be static when initializing through a Class instance.");
             }
 
             String name = flag.name();
@@ -465,9 +465,9 @@ public class Flags {
                 String s;
                 try {
                     s = "  --" + holder.getFlag().name() + " <" + holder.getType() + "> default: "
-                            + (holder.isInstanced() ?
-                                holder.getField().get(holder.getObjectSource()) :
-                                holder.getField().get(holder.getObjectSource()));
+                            + (holder.isInstanced()
+                                ? holder.getField().get(holder.getObjectSource())
+                                : holder.getField().get(holder.getClassSource()));
                 } catch (IllegalAccessException e) {
                     throw new RuntimeException(e);
                 }
@@ -526,9 +526,9 @@ public class Flags {
             for (OptionHolder holder : options.values()) {
                 System.out.println("Field: "+holder.getField().toGenericString()+"\nFlag: name:"+holder.getFlag().name()
                         +", description:"+holder.getFlag().description()+", type:"+holder.getType()
-                        +", default:"+(holder.isInstanced() ?
-                    holder.getField().get(holder.getObjectSource()) :
-                    holder.getField().get(holder.getObjectSource())));
+                        +", default:"+(holder.isInstanced()
+                            ? holder.getField().get(holder.getObjectSource())
+                            : holder.getField().get(holder.getClassSource())));
             }
         } catch (IllegalAccessException e) {
             throw new RuntimeException(e);

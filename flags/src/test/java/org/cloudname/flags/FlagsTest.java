@@ -118,6 +118,30 @@ public class FlagsTest {
     }
 
     /**
+     * Test all supported field types with an instanced flagged class.
+     */
+    @Test
+    public void testInstanceAndClassConfiguration() {
+        final InstancedFlags instancedFlags = new InstancedFlags();
+        Flags flags = new Flags()
+            .loadOpts(instancedFlags)
+            .loadOpts(ClassFlags.class)
+            .parse(new String[]{});
+
+        assertEquals("NA", instancedFlags.string);
+        assertEquals("NA", ClassFlags.string);
+
+        flags.parse(new String[]{"--classString", "A",
+            "--instanceString", "A"});
+
+        assertEquals("A", instancedFlags.string);
+        assertEquals("A", ClassFlags.string);
+
+        // Check that printHelp does not crash.
+        flags.printHelp(System.out);
+    }
+
+    /**
      * Boolean flags should be set to true if no parameter is set, or parameter is set to true.
      * False otherwise.
      */
