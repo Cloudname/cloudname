@@ -52,14 +52,14 @@ public class Flags {
     private enum FieldType {ENUM, STRING, INTEGER, LONG, BOOLEAN, UNKNOWN}
 
     //The option set builder.
-    private final static OptionParser optionParser = new OptionParser();
+    private final OptionParser optionParser = new OptionParser();
 
     // Help option
-    private final static OptionSpec<Void> HELP = optionParser
+    private final OptionSpec<Void> HELP = optionParser
             .accepts("help", "Show this help");
 
     // Version option
-    private final static OptionSpec<Void> VERSION = optionParser
+    private final OptionSpec<Void> VERSION = optionParser
         .accepts("version", "Show version");
 
     // Version text
@@ -76,6 +76,7 @@ public class Flags {
     // Helper map to store enum options.
     private final Map<Class<? extends Enum<?>>, List<String>> enumOptions = new HashMap<Class<? extends Enum<?>>, List<String>>();
 
+
     /**
      * Load a class that contains Flag annotations.
      *
@@ -83,17 +84,40 @@ public class Flags {
      * @return this
      */
     public Flags loadOpts(Class<?> c) {
-        for (Field field : c.getDeclaredFields()) {
+        return loadOpts(c, false);
+    }
+
+    /**
+     * Load an instanced class that contains Flag annotations.
+     *
+     * @param o - the class to load options from.
+     * @return this
+     */
+    public Flags loadOpts(final Object o) {
+        return loadOpts(o, true);
+    }
+
+    private Flags loadOpts(Object o, boolean instanced) {
+        final Field[] declaredFields;
+        Class<?> c = null;
+        if (instanced) {
+            declaredFields = o.getClass().getDeclaredFields();
+        } else {
+            c = ((Class<?>)o);
+            declaredFields = c.getDeclaredFields();
+        }
+
+        for (Field field : declaredFields) {
             Flag flag = field.getAnnotation(Flag.class);
             // Check if we found a flag annotation for this field.
             if (null == flag) {
                 continue;
             }
 
-            // Make sure the field is static.  If the field is
-            // nonstatic it makes no sense to use it for flags.
-            if (! Modifier.isStatic(field.getModifiers())) {
-                throw new IllegalArgumentException("Field "+field.toGenericString()+" is not static. Flag fields must be static");
+            // Flag fields must be static if you are initializing the flags through a Class instance.
+            if ( ! instanced && ! Modifier.isStatic(field.getModifiers())) {
+                throw new IllegalArgumentException("Field "+field.toGenericString()+" is not static. Flag fields " +
+                    "must be static when initializing through a Class instance.");
             }
 
             String name = flag.name();
@@ -117,7 +141,11 @@ public class Flags {
                             .withOptionalArg()
                             .ofType(Integer.class);
                 }
-                addOption(type, flag, field, intOption, c);
+                if (instanced) {
+                    addInstancedOption(type, flag, field, intOption, o);
+                } else {
+                    addOption(type, flag, field, intOption, c);
+                }
                 break;
 
             case STRING:
@@ -133,7 +161,11 @@ public class Flags {
                             .withOptionalArg()
                             .ofType(String.class);
                 }
-                addOption(type, flag, field, stringOption, c);
+                if (instanced) {
+                    addInstancedOption(type, flag, field, stringOption, o);
+                } else {
+                    addOption(type, flag, field, stringOption, c);
+                }
                 break;
 
             case BOOLEAN:
@@ -149,7 +181,11 @@ public class Flags {
                             .withOptionalArg()
                             .ofType(Boolean.class);
                 }
-                addOption(type, flag, field, booleanOption, c);
+                if (instanced) {
+                    addInstancedOption(type, flag, field, booleanOption, o);
+                } else {
+                    addOption(type, flag, field, booleanOption, c);
+                }
                 break;
 
             case LONG:
@@ -165,7 +201,11 @@ public class Flags {
                             .withOptionalArg()
                             .ofType(Long.class);
                 }
-                addOption(type, flag, field, longOption, c);
+                if (instanced) {
+                    addInstancedOption(type, flag, field, longOption, o);
+                } else {
+                    addOption(type, flag, field, longOption, c);
+                }
                 break;
 
             case ENUM:
@@ -189,7 +229,11 @@ public class Flags {
                             .withOptionalArg()
                             .ofType(enumClass);
                 }
-                addOption(type, flag, field, enumOption, c);
+                if (instanced) {
+                    addInstancedOption(type, flag, field, enumOption, o);
+                } else {
+                    addOption(type, flag, field, enumOption, c);
+                }
                 break;
 
             case UNKNOWN:
@@ -251,6 +295,25 @@ public class Flags {
     }
 
     /**
+     * Private helper method to add an instanced option. Will check that an option
+     * with the same name has not previously been added.
+     *
+     * @param type
+     * @param flag
+     * @param field
+     * @param option
+     * @param c
+     * @throws IllegalArgumentException
+     */
+    private void addInstancedOption(FieldType type, Flag flag, Field field, OptionSpec<?> option, Object c)
+        throws IllegalArgumentException {
+        if (options.containsKey(flag.name())) {
+            throw new IllegalArgumentException("Flag named "+flag.name()+" is defined more than once.");
+        }
+        options.put(flag.name(), new OptionHolder(type, flag, field, option, c));
+    }
+
+    /**
      * Try to set the arguments from main method on the fields loaded by loadOpts(Class<?> c).
      *
      * @param args - Arguments passed from main method.
@@ -278,28 +341,53 @@ public class Flags {
                 if (optionSet.has(optionSpec)) {
                     switch(holder.getType()) {
                     case INTEGER:
-                        holder.getField().set(holder.getField().getClass(), optionSet.valueOf(optionSpec));
+                        if (holder.isInstanced()) {
+                            holder.getField().set(holder.getObjectSource(), optionSet.valueOf(optionSpec));
+                        } else {
+                            holder.getField().set(holder.getField().getClass(), optionSet.valueOf(optionSpec));
+                        }
                         break;
 
                     case LONG:
-                        holder.getField().set(holder.getField().getClass(), optionSet.valueOf(optionSpec));
+                        if (holder.isInstanced()) {
+                            holder.getField().set(holder.getObjectSource(), optionSet.valueOf(optionSpec));
+                        } else {
+                            holder.getField().set(holder.getField().getClass(), optionSet.valueOf(optionSpec));
+                        }
                         break;
 
                     case STRING:
-                        holder.getField().set(holder.getField().getClass(), optionSet.valueOf(optionSpec));
+                        if (holder.isInstanced()) {
+                            holder.getField().set(holder.getObjectSource(), optionSet.valueOf(optionSpec));
+                        } else {
+                            holder.getField().set(holder.getField().getClass(), optionSet.valueOf(optionSpec));
+                        }
                         break;
 
                     case BOOLEAN:
-                            Object value = optionSet.valueOf(optionSpec);
+                        Object value = optionSet.valueOf(optionSpec);
+                        if (holder.isInstanced()) {
+                            holder.getField().set(holder.getObjectSource(),
+                                (value == null) ? true : value);
+                        } else {
                             holder.getField().set(holder.getField().getClass(),
                                 (value == null) ? true : value);
+                        }
                         break;
 
                     case ENUM:
-                        try {
-                            holder.getField().set(holder.getField().getClass(), optionSet.valueOf(optionSpec));
-                        } catch (Exception e) {
-                            throw new IllegalArgumentException("Option given is not a valid option. Valid options are: "+enumOptions.get(holder.flag.options()).toString()+".");
+                        if (holder.isInstanced()) {
+                            try {
+                                holder.getField().set(holder.getObjectSource(), optionSet.valueOf(optionSpec));
+                            } catch (Exception e) {
+                                throw new IllegalArgumentException("Option given is not a valid option. Valid options are: "+enumOptions.get(holder.flag.options()).toString()+".");
+                            }
+                        } else {
+                            try {
+                                holder.getField().set(holder.getField().getClass(), optionSet.valueOf(optionSpec));
+                            } catch (Exception e) {
+                                throw new IllegalArgumentException("Option given is not a valid option. Valid options are: "+enumOptions.get(holder.flag.options()).toString()+".");
+                            }
                         }
                         break;
                     }
@@ -332,7 +420,12 @@ public class Flags {
         // Iterate over all the options we have gathered and stash them by class.
         for (OptionHolder holder : options.values()) {
             // Fetch list corresponding to source class name
-            String className = holder.getSource().getName();
+            final String className;
+            if (holder.isInstanced()) {
+                className = holder.getObjectSource().getClass().getName();
+            } else {
+                className = holder.getClassSource().getName();
+            }
             List<OptionHolder> holderList = holdersByClass.get(className);
             if (null == holderList) {
                 // The list did not exist.  Create it.
@@ -372,7 +465,9 @@ public class Flags {
                 String s;
                 try {
                     s = "  --" + holder.getFlag().name() + " <" + holder.getType() + "> default: "
-                            +holder.getField().get(holder.getSource());
+                            + (holder.isInstanced()
+                                ? holder.getField().get(holder.getObjectSource())
+                                : holder.getField().get(holder.getClassSource()));
                 } catch (IllegalAccessException e) {
                     throw new RuntimeException(e);
                 }
@@ -431,7 +526,9 @@ public class Flags {
             for (OptionHolder holder : options.values()) {
                 System.out.println("Field: "+holder.getField().toGenericString()+"\nFlag: name:"+holder.getFlag().name()
                         +", description:"+holder.getFlag().description()+", type:"+holder.getType()
-                        +", default:"+holder.getField().get(holder.getSource()));
+                        +", default:"+(holder.isInstanced()
+                            ? holder.getField().get(holder.getObjectSource())
+                            : holder.getField().get(holder.getClassSource())));
             }
         } catch (IllegalAccessException e) {
             throw new RuntimeException(e);
@@ -495,14 +592,29 @@ public class Flags {
         private final Field field;
         private final OptionSpec<?> optionSpec;
         private final FieldType type;
-        private final Class<?> source;
+        private final Class<?> classSource;
+        private final Object objectSource;
 
-        public OptionHolder(FieldType type, Flag flag, Field field, OptionSpec<?> optionSpec, Class<?> source) {
+        public OptionHolder(FieldType type, Flag flag, Field field, OptionSpec<?> optionSpec, Class<?> classSource) {
             this.type = type;
             this.flag = flag;
             this.field = field;
             this.optionSpec = optionSpec;
-            this.source = source;
+            this.classSource = classSource;
+            objectSource = null;
+        }
+
+        public OptionHolder(FieldType type, Flag flag, Field field, OptionSpec<?> optionSpec, Object objectSource) {
+            this.type = type;
+            this.flag = flag;
+            this.field = field;
+            this.optionSpec = optionSpec;
+            this.objectSource = objectSource;
+            classSource = null;
+        }
+
+        public boolean isInstanced() {
+            return objectSource != null;
         }
 
         public Flag getFlag() {
@@ -525,8 +637,12 @@ public class Flags {
             return type;
         }
 
-        public Class<?> getSource() {
-            return source;
+        public Class<?> getClassSource() {
+            return classSource;
+        }
+
+        public Object getObjectSource() {
+            return objectSource;
         }
     }
 
