@@ -51,7 +51,7 @@ public class SlotMapper {
      *
      * @param time milliseconds since epoch as returned by
      *   System.currentTimeMillis().
-     * @param service name of the service. Will be appended to file name.
+     * @param service name of the service. Will be prepended to file name.
      * @return the path of the slot we wish to map to
      */
     public String map(long time, String service)
