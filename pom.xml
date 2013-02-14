@@ -4,7 +4,7 @@
 
   <groupId>org.cloudname</groupId>
   <artifactId>cloudname-parent</artifactId>
-  <version>2.14-SNAPSHOT</version>
+  <version>2.13.0</version>
   <packaging>pom</packaging>
 
   <name>Cloudname Parent</name>
