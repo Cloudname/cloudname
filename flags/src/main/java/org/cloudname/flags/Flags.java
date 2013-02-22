@@ -4,6 +4,9 @@ import joptsimple.OptionParser;
 import joptsimple.OptionSet;
 import joptsimple.OptionSpec;
 
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.io.OutputStream;
 import java.io.PrintWriter;
 import java.lang.reflect.Field;
@@ -11,10 +14,12 @@ import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 import java.util.TreeMap;
 
 
@@ -61,6 +66,9 @@ public class Flags {
     // Version option
     private final OptionSpec<Void> VERSION = optionParser
         .accepts("version", "Show version");
+
+    private final OptionSpec<String> PROPERTIES_FILE = optionParser.accepts("properties-file",
+        "Load properties from a given file").withRequiredArg().ofType(String.class);
 
     // Version text
     private String versionString = "NA";
@@ -332,6 +340,32 @@ public class Flags {
         if (helpFlagged()) {
             return this;
         }
+        if (propertiesFlagged()) {
+            String filename = optionSet.valueOf(PROPERTIES_FILE);
+            final Properties props = new Properties();
+            ArrayList<String> newArgs = new ArrayList<String>();
+            try {
+                final FileInputStream stream = new FileInputStream(filename);
+                props.load(stream);
+                for (Enumeration<?> keys = props.propertyNames(); keys.hasMoreElements();) {
+                    String name = (String) keys.nextElement();
+                    String flagName = name.replace(".", "-");
+                    if (!options.containsKey(flagName) || optionSet.hasArgument(flagName)) {
+                        //Properties contains something not in options or is already set by commandline argument
+                        //Command line argument takes precedence over properties file
+                        continue;
+                    }
+                    newArgs.add("--" + flagName);
+                    newArgs.add(props.getProperty(name));
+                }
+
+                stream.close();
+            } catch (IOException e) {
+
+            }
+            Collections.addAll(newArgs, args);
+            optionSet = optionParser.parse(newArgs.toArray(new String[newArgs.size()]));
+        }
 
         for (OptionHolder holder : options.values()) {
             try {
@@ -514,6 +548,14 @@ public class Flags {
      */
     public boolean versionFlagged() {
         return optionSet.has(VERSION);
+    }
+
+    /**
+     *
+     * @return {@code true} if a "--properties-file" flag was passed on the command line.
+     */
+    public boolean propertiesFlagged() {
+        return optionSet.hasArgument(PROPERTIES_FILE);
     }
 
     /**
