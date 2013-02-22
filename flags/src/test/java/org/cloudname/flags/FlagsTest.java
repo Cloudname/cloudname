@@ -5,6 +5,8 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.FileOutputStream;
 
 import junit.framework.Assert;
 
@@ -263,6 +265,30 @@ public class FlagsTest {
         .parse(new String[] {});
 
         Assert.assertNull(FlagsArgumentNPE.argWithoutDefault);
+    }
+
+    /**
+     * Test that --properties-file loads flags from a file
+     */
+    @Test
+    public void testLoadingFromPropertiesFile() throws Exception {
+        File propertiesFile = File.createTempFile("test", "properties");
+        propertiesFile.setWritable(true);
+        FileOutputStream fio = new FileOutputStream(propertiesFile);
+        String properties = "integer=1\n\n" + "#comments=not included\n" +
+            "not-in-options=abc\n" + "name=myName\n" +
+            "help\n" + "version\n";
+        fio.write(properties.getBytes());
+        fio.close();
+        Flags flags = new Flags()
+            .loadOpts(FlagsPropertiesFile.class)
+            .parse(new String[]{"--properties-file", propertiesFile.getAbsolutePath()});
+        assertFalse("Help seems to have been called. It should not have been.", flags.helpFlagged());
+        assertFalse("Version seems to have been called. It should not have been.", flags.versionFlagged());
+        assertEquals("myName", FlagsPropertiesFile.name);
+        assertEquals(1, FlagsPropertiesFile.integer);
+        Assert.assertNull(FlagsPropertiesFile.comments);
+
     }
 
 }
