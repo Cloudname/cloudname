@@ -68,7 +68,7 @@ public class Flags {
         .accepts("version", "Show version");
 
     private final OptionSpec<String> PROPERTIES_FILE = optionParser.accepts("properties-file",
-        "Load properties from a given file").withRequiredArg().ofType(String.class);
+        "Load properties from a given file").withRequiredArg().ofType(String.class).withValuesSeparatedBy(';');
 
     // Version text
     private String versionString = "NA";
@@ -341,27 +341,28 @@ public class Flags {
             return this;
         }
         if (propertiesFlagged()) {
-            String filename = optionSet.valueOf(PROPERTIES_FILE);
-            final Properties props = new Properties();
+            List<String> files = optionSet.valuesOf(PROPERTIES_FILE);
             ArrayList<String> newArgs = new ArrayList<String>();
-            try {
-                final FileInputStream stream = new FileInputStream(filename);
-                props.load(stream);
-                for (Enumeration<?> keys = props.propertyNames(); keys.hasMoreElements();) {
-                    String name = (String) keys.nextElement();
-                    String flagName = name.replace(".", "-");
-                    if (!options.containsKey(flagName) || optionSet.hasArgument(flagName)) {
-                        //Properties contains something not in options or is already set by commandline argument
-                        //Command line argument takes precedence over properties file
-                        continue;
+            for (String filename : files) {
+                final Properties props = new Properties();
+                try {
+                    final FileInputStream stream = new FileInputStream(filename);
+                    props.load(stream);
+                    for (Enumeration<?> keys = props.propertyNames(); keys.hasMoreElements();) {
+                        String flagName = (String) keys.nextElement();
+                        if (!options.containsKey(flagName) || optionSet.hasArgument(flagName)) {
+                            //Properties contains something not in options or is already set by commandline argument
+                            //Command line argument takes precedence over properties file
+                            continue;
+                        }
+                        newArgs.add("--" + flagName);
+                        newArgs.add(props.getProperty(flagName));
                     }
-                    newArgs.add("--" + flagName);
-                    newArgs.add(props.getProperty(name));
+
+                    stream.close();
+                } catch (IOException e) {
+                    throw new RuntimeException("Could not parse property-file", e);
                 }
-
-                stream.close();
-            } catch (IOException e) {
-
             }
             Collections.addAll(newArgs, args);
             optionSet = optionParser.parse(newArgs.toArray(new String[newArgs.size()]));
