@@ -180,6 +180,7 @@ public class Dispatcher {
         Timber.LogEvent event = entry.getLogEvent();
         for (LogEventHandler handler : handlers) {
             try {
+                //TODO(acidmoose): If (sync message from log shipment) return;
                 handler.handle(event);
 
                 // Anything other than consistency level BESTEFFORT

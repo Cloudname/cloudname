@@ -139,6 +139,9 @@ public class MetadataHandler {
             }
             final File mdFile = new File(slotFile.getAbsolutePath() + METADATA_FILE_SUFFIX);
             if (!mdFile.exists()) {
+                if (! mdFile.getParentFile().exists()) {
+                    mdFile.getParentFile().mkdirs();
+                }
                 mdFile.createNewFile();
             }
             currentSlotFile = slotFile;

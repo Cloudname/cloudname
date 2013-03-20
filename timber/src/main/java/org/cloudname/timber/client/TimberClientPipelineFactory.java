@@ -20,6 +20,9 @@ public class TimberClientPipelineFactory  implements ChannelPipelineFactory {
     private TimberClient client;
     private ClientBootstrap bootstrap;
 
+    // Use common ReconnectDelayManager across all TimberClientHandler instances.
+    private final ReconnectDelayManager reconnectDelayManager = new ReconnectDelayManager();
+
     /**
      * Create a pipeline for the timber client.
      *
@@ -39,7 +42,7 @@ public class TimberClientPipelineFactory  implements ChannelPipelineFactory {
 
         p.addLast("frameEncoder", new ProtobufVarint32LengthFieldPrepender());
         p.addLast("protobufEncoder", new ProtobufEncoder());
-        p.addLast("handler", new TimberClientHandler(client, bootstrap));
+        p.addLast("handler", new TimberClientHandler(client, bootstrap, reconnectDelayManager));
         return p;
     }
 }

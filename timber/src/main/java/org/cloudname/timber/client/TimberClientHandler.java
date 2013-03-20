@@ -21,11 +21,9 @@ import java.util.logging.Logger;
 public class TimberClientHandler extends SimpleChannelUpstreamHandler {
     private static final Logger log = Logger.getLogger(TimberClientHandler.class.getName());
 
-    // Use common ReconnectDelayManager across all TimberClientHandler instances.
-    private static final ReconnectDelayManager reconnectDelayManager  = new ReconnectDelayManager();
-
     private final TimberClient client;
     private final ClientBootstrap bootstrap;
+    private final ReconnectDelayManager reconnectDelayManager;
     private final Timer timer;
 
     /**
@@ -33,9 +31,10 @@ public class TimberClientHandler extends SimpleChannelUpstreamHandler {
      *
      * @param client the timber client.
      */
-    public TimberClientHandler(TimberClient client, ClientBootstrap bootstrap) {
+    public TimberClientHandler(TimberClient client, ClientBootstrap bootstrap, ReconnectDelayManager reconnectDelayManager) {
         this.client = client;
         this.bootstrap = bootstrap;
+        this.reconnectDelayManager = reconnectDelayManager;
         timer = new HashedWheelTimer();
     }
 
