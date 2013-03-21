@@ -36,45 +36,56 @@ public class PortForwarder {
      * @param myPort client port
      * @param hostName name of host to forward to.
      * @param hostPort port of host to forward to.
+     * @throws IOException if unable to open server socket
      */
-    public PortForwarder(final int myPort, final String hostName, final int hostPort) {
+    public PortForwarder(final int myPort, final String hostName, final int hostPort) throws IOException {
         this.myPort = myPort;
         log.info("Starting port forwarder " + myPort + " -> " + hostPort);
 
+        openServerSocket();
         Runnable myRunnable = new Runnable() {
             @Override
             public void run()  {
-
-                try {
-                    serverSocket = new ServerSocket();
-                    serverSocket.setReuseAddress(true);
-
-                    serverSocket.bind(new InetSocketAddress("localhost", myPort));
-                    while (isAlive.get()) {
-                        if (pause.get()) {
-                            serverSocket.close();
-                            continue;
-                        }
+                log.info("Forwarder running");
+                while (isAlive.get()) {
+                    if (pause.get()) {
+                        continue;
+                    }
+                    try {
                         final Socket clientSocket = serverSocket.accept();
                         synchronized (threadMonitor) {
-                            clientThreadList.add(new ClientThread(clientSocket, hostName, hostPort));
+                            if (isAlive.get() && !pause.get()) {
+                                clientThreadList.add(new ClientThread(clientSocket, hostName, hostPort));
+                            }
+                        }
+                    } catch (IOException e) {
+                        if (pause.get()) {
+                            // Keep quiet, IOExceptions are to be expected if paused during accept()
+                        } else {
+                            log.log(Level.SEVERE, "Got exception in forwarder", e);
+                            // Keep going, maybe later connections will succeed.
                         }
                     }
-                } catch (IOException e) {
-                    log.log(Level.SEVERE, "Got exception in forwarder", e);
-                    return;
+
                 }
-                log.info("Forwarder running");
             }
+
         };
         portThread = new Thread(myRunnable);
         portThread.start();
     }
 
+    private void openServerSocket() throws IOException {
+        serverSocket = new ServerSocket();
+        serverSocket.setReuseAddress(true);
+        serverSocket.bind(new InetSocketAddress("localhost", myPort));
+    }
+
     /**
      * Forces client to loose connection and refuses to create new (closing attempts to connect).
+     * @throws IOException
      */
-    public void pause() {
+    public void pause() throws IOException {
         synchronized (threadMonitor) {
             pause.set(true);
             for (ClientThread clientThread: clientThreadList) {
@@ -82,14 +93,19 @@ public class PortForwarder {
 
             }
             clientThreadList.clear();
+            serverSocket.close();
         }
     }
 
     /**
      * Lets client start connecting again.
+     * @throws IOException
      */
-    public void unpause() {
-        pause.set(false);
+    public void unpause() throws IOException {
+        synchronized (threadMonitor) {
+            pause.set(false);
+            openServerSocket();
+        }
     }
 
     /**
@@ -97,10 +113,9 @@ public class PortForwarder {
      */
     public void close() {
         isAlive.set(false);
-        pause();
         try {
-            serverSocket.close();
-        } catch (IOException e) {
+            pause();
+        } catch (final IOException e) {
             // Ignore this
             log.severe("Could not close server socket.");
         }
