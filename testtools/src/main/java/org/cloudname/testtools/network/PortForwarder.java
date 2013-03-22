@@ -25,11 +25,14 @@ public class PortForwarder {
     private final AtomicBoolean isAlive = new AtomicBoolean(true);
     private ServerSocket serverSocket = null;
 
-    private final Thread portThread;
+    private Thread portThread;
     private final Object threadMonitor = new Object();
 
     private final List<ClientThread> clientThreadList = new ArrayList<ClientThread>();
     private final AtomicBoolean pause = new AtomicBoolean(false);
+
+    private final String hostName;
+    private final int hostPort;
 
     /**
      * Constructor for port-forwarder. Does stat the forwarder.
@@ -40,38 +43,40 @@ public class PortForwarder {
      */
     public PortForwarder(final int myPort, final String hostName, final int hostPort) throws IOException {
         this.myPort = myPort;
+        this.hostName = hostName;
+        this.hostPort = hostPort;
         log.info("Starting port forwarder " + myPort + " -> " + hostPort);
+        startServerSocketThread();
+    }
 
+    private void startServerSocketThread()
+            throws IOException {
         openServerSocket();
         Runnable myRunnable = new Runnable() {
             @Override
             public void run()  {
                 log.info("Forwarder running");
-                while (isAlive.get()) {
-                    if (pause.get()) {
-                        continue;
-                    }
+                while (isAlive.get() && !pause.get()) {
                     try {
                         final Socket clientSocket = serverSocket.accept();
                         synchronized (threadMonitor) {
                             if (isAlive.get() && !pause.get()) {
                                 clientThreadList.add(new ClientThread(clientSocket, hostName, hostPort));
+                            } else {
+                                clientSocket.close();
                             }
                         }
                     } catch (IOException e) {
-                        if (pause.get()) {
-                            // Keep quiet, IOExceptions are to be expected if paused during accept()
-                        } else {
-                            log.log(Level.SEVERE, "Got exception in forwarder", e);
-                            // Keep going, maybe later connections will succeed.
-                        }
+                        log.log(Level.SEVERE, "Got exception in forwarder", e);
+                        // Keep going, maybe later connections will succeed.
                     }
-
                 }
+                log.info("Forwarder stopped");
             }
-
         };
         portThread = new Thread(myRunnable);
+        // Make this a daemon thread, so it won't keep the VM running at shutdown.
+        portThread.setDaemon(true);
         portThread.start();
     }
 
@@ -84,17 +89,27 @@ public class PortForwarder {
     /**
      * Forces client to loose connection and refuses to create new (closing attempts to connect).
      * @throws IOException
+     * @throws InterruptedException
      */
-    public void pause() throws IOException {
+    public void pause() throws IOException, InterruptedException {
+        final Thread currentServerThread;
         synchronized (threadMonitor) {
-            pause.set(true);
+            if (!pause.compareAndSet(false, true)) {
+                return;
+            }
             for (ClientThread clientThread: clientThreadList) {
                 clientThread.close();
 
             }
             clientThreadList.clear();
             serverSocket.close();
+            /*
+             * Make a copy of the server socket thread, so we can wait for it
+             * to complete outside any monitor.
+             */
+            currentServerThread = portThread;
         }
+        currentServerThread.join();
     }
 
     /**
@@ -103,8 +118,9 @@ public class PortForwarder {
      */
     public void unpause() throws IOException {
         synchronized (threadMonitor) {
-            pause.set(false);
-            openServerSocket();
+            if (pause.compareAndSet(true, false)) {
+                startServerSocketThread();
+            }
         }
     }
 
@@ -118,6 +134,10 @@ public class PortForwarder {
         } catch (final IOException e) {
             // Ignore this
             log.severe("Could not close server socket.");
+        } catch (InterruptedException e) {
+            log.severe("Interrupted while waiting for server thread to finish.");
+            // Reassert interrupt.
+            Thread.currentThread().interrupt();
         }
     }
 }
