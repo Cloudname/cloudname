@@ -32,7 +32,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
 
 import static org.junit.Assert.*;
-import static org.junit.Assert.assertEquals;
 
 /**
  * Integration tests for testing ZkCloudname.
@@ -72,6 +71,7 @@ public class ZkCloudnameIntegrationTest {
         final CountDownLatch connectedLatch = new CountDownLatch(1);
 
         zk = new ZooKeeper("localhost:" + zkport, 1000, new Watcher() {
+            @Override
             public void process(WatchedEvent event) {
                 if (event.getState() == Event.KeeperState.SyncConnected) {
                     connectedLatch.countDown();
@@ -107,12 +107,16 @@ public class ZkCloudnameIntegrationTest {
         private CountDownLatch latestLatch = null;
 
         void waitForExpected() throws InterruptedException {
+            final CountDownLatch latch;
             synchronized (eventMonitor) {
                 if (waitForEvent.size() > 0) {
                     LOG.info("Waiting for event " + waitForEvent.get(waitForEvent.size() - 1));
+                    latch = latestLatch;
+                } else {
+                    return;
                 }
             }
-            assert(latestLatch.await(25, TimeUnit.SECONDS));
+            assert(latch.await(25, TimeUnit.SECONDS));
             LOG.info("Event happened.");
         }
 
@@ -132,12 +136,12 @@ public class ZkCloudnameIntegrationTest {
         @Override
         public void onCoordinateEvent(Event event, String message) {
             LOG.info("I got event ..." + event.name() + " " + message);
-            if (waitForEvent.size() > 0) {
-                LOG.info("Waiting for event " + waitForEvent.get(0));
-            }   else {
-                LOG.info("not expecting any specific events");
-            }
             synchronized (eventMonitor) {
+                if (waitForEvent.size() > 0) {
+                    LOG.info("Waiting for event " + waitForEvent.get(0));
+                }   else {
+                    LOG.info("not expecting any specific events");
+                }
                 events.add(event);
                 for (CountDownLatch countDownLatch :listenerLatches) {
                     countDownLatch.countDown();
