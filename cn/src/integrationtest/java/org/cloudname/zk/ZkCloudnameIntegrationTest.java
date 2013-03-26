@@ -8,6 +8,7 @@ import org.cloudname.Cloudname;
 import org.cloudname.CloudnameException;
 import org.cloudname.Coordinate;
 import org.cloudname.CoordinateException;
+import org.cloudname.CoordinateExistsException;
 import org.cloudname.CoordinateListener;
 import org.cloudname.ServiceHandle;
 import org.cloudname.ServiceState;
@@ -89,6 +90,7 @@ public class ZkCloudnameIntegrationTest {
         if (forwarder != null) {
             forwarder.close();
         }
+        ezk.shutdown();
     }
 
     /**
@@ -388,11 +390,34 @@ public class ZkCloudnameIntegrationTest {
         forwarder.unpause();
         listener.waitForExpected();
 
-        Coordinate c = Coordinate.parse("1.service.user.cell");
-        cn.createCoordinate(c);
+        createCoordinateWithRetries();
 
         listener.expectEvent(CoordinateListener.Event.COORDINATE_OK);
         listener.waitForExpected();
+    }
+
+    private void createCoordinateWithRetries() throws CoordinateExistsException,
+            InterruptedException, CloudnameException {
+        Coordinate c = Coordinate.parse("1.service.user.cell");
+        int retries = 10;
+        for (;;) {
+            try {
+                cn.createCoordinate(c);
+                break;
+            } catch (CloudnameException e) {
+                /*
+                 * CloudnameException indicates that the connection with
+                 * ZooKeeper isn't back up yet. Retry a few times.
+                 */
+                if (retries-- > 0) {
+                    LOG.info("Failed to create coordinate: " + e
+                            + ", retrying in 1 second");
+                    Thread.sleep(1000);
+                } else {
+                    throw e;
+                }
+            }
+        }
     }
 
     /**
