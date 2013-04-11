@@ -46,39 +46,7 @@ public class MetadataHandler {
     }
 
     /**
-     * Write a metadata entry for a LogEvent.
-     * @param logEvent the logevent to create a metadata entry for
-     * @param wr the write report from the Archiver
-     */
-    public void write(final Timber.LogEvent logEvent, final WriteReport wr) {
-        if (logEvent == null || wr == null || !logEvent.hasId()) {
-            // We do not store events without ids.
-            return;
-        }
-        synchronized (lock) {
-            try {
-                final BufferedWriter writer = getWriter(wr.getSlotFile());
-                final StringBuilder sb = new StringBuilder();
-                sb.append(logEvent.getId())
-                    .append(DELIMITER)
-                    .append(wr.getWriteCount())
-                    .append(DELIMITER)
-                    .append(wr.getStartOffset())
-                    .append(DELIMITER)
-                    .append(wr.getEndOffset());
-                writer.write(sb.toString());
-                writer.newLine();
-                writer.flush();
-            } catch (IOException e) {
-                LOG.log(Level.WARNING, "Unable to write metadata entry.", e);
-            }
-        }
-    }
-
-    /**
-     * Writes an acked event id to the metadata file. Line of text looks like this (for event
-     * with id "1"):
-     * "ack,1"
+     * Writes an acked event id to the metadata file.
      * @param slotFile the Slot file for the acked event.
      * @param id the id of the event acked.
      */
@@ -87,7 +55,7 @@ public class MetadataHandler {
             try {
                 final BufferedWriter writer = getWriter(slotFile);
                 assert(writer != null);
-                writer.write("ack" + DELIMITER + id);
+                writer.write(id);
                 writer.newLine();
                 writer.flush();
             } catch (IOException e) {
