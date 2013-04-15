@@ -5,6 +5,8 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.FileOutputStream;
 
 import junit.framework.Assert;
 
@@ -263,6 +265,91 @@ public class FlagsTest {
         .parse(new String[] {});
 
         Assert.assertNull(FlagsArgumentNPE.argWithoutDefault);
+    }
+
+    /**
+     * Test that --properties-file loads flags from a file
+     */
+    @Test
+    public void testLoadingFromPropertiesFile() throws Exception {
+        File propertiesFile = File.createTempFile("test", "properties");
+        propertiesFile.setWritable(true);
+        FileOutputStream fio = new FileOutputStream(propertiesFile);
+        String properties = "integer=1\n\n" + "#comments=not included\n" +
+            "not-in-options=abc\n" + "name=myName\n" +
+            "help\n" + "version\n";
+        fio.write(properties.getBytes());
+        fio.close();
+        Flags flags = new Flags()
+            .loadOpts(FlagsPropertiesFile.class)
+            .parse(new String[]{"--properties-file", propertiesFile.getAbsolutePath()});
+        assertFalse("Help seems to have been called. It should not have been.", flags.helpFlagged());
+        assertFalse("Version seems to have been called. It should not have been.", flags.versionFlagged());
+        assertEquals("myName", FlagsPropertiesFile.name);
+        assertEquals(1, FlagsPropertiesFile.integer);
+        Assert.assertNull(FlagsPropertiesFile.comments);
+    }
+
+    /**
+     * Test that properties are loaded from two files using two --properties-files options
+     */
+    @Test
+    public void testLoadingFromMultiplePropertyFiles() throws Exception {
+        File propertiesFile1 = File.createTempFile("test1", "properties");
+        propertiesFile1.setWritable(true);
+        FileOutputStream fio1 = new FileOutputStream(propertiesFile1);
+        String properties1 = "integer=1\n\n" +
+            "help\n" + "version\n";
+        fio1.write(properties1.getBytes());
+        fio1.close();
+        File propertiesFile2 = File.createTempFile("test2", "properties");
+        propertiesFile2.setWritable(true);
+        FileOutputStream fio2 = new FileOutputStream(propertiesFile2);
+        String properties2 = "name=myName\n\n" +
+            "help\n" + "version\n";
+        fio2.write(properties2.getBytes());
+        fio2.close();
+        Flags flags = new Flags()
+            .loadOpts(FlagsPropertiesFile.class)
+            .parse(new String[]{"--properties-file", propertiesFile1.getAbsolutePath(),
+                                "--properties-file", propertiesFile2.getAbsolutePath()
+            });
+        assertFalse("Help seems to have been called. It should not have been.", flags.helpFlagged());
+        assertFalse("Version seems to have been called. It should not have been.", flags.versionFlagged());
+        assertEquals("myName", FlagsPropertiesFile.name);
+        assertEquals(1, FlagsPropertiesFile.integer);
+        Assert.assertNull(FlagsPropertiesFile.comments);
+    }
+
+    /**
+     * Test that properties are loaded from two files seperated by ';'
+     */
+    @Test
+    public void testLoadingFromMultiplePropertyFiles2() throws Exception {
+        File propertiesFile1 = File.createTempFile("test1", "properties");
+        propertiesFile1.setWritable(true);
+        FileOutputStream fio1 = new FileOutputStream(propertiesFile1);
+        String properties1 = "integer=1\n\n" +
+            "help\n" + "version\n";
+        fio1.write(properties1.getBytes());
+        fio1.close();
+        File propertiesFile2 = File.createTempFile("test2", "properties");
+        propertiesFile2.setWritable(true);
+        FileOutputStream fio2 = new FileOutputStream(propertiesFile2);
+        String properties2 = "name=myName\n\n" +
+            "help\n" + "version\n";
+        fio2.write(properties2.getBytes());
+        fio2.close();
+        Flags flags = new Flags()
+            .loadOpts(FlagsPropertiesFile.class)
+            .parse(new String[]{"--properties-file", propertiesFile1.getAbsolutePath() + ';'
+                +propertiesFile2.getAbsolutePath()
+            });
+        assertFalse("Help seems to have been called. It should not have been.", flags.helpFlagged());
+        assertFalse("Version seems to have been called. It should not have been.", flags.versionFlagged());
+        assertEquals("myName", FlagsPropertiesFile.name);
+        assertEquals(1, FlagsPropertiesFile.integer);
+        Assert.assertNull(FlagsPropertiesFile.comments);
     }
 
 }
