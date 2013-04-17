@@ -2,8 +2,7 @@ package org.cloudname.timber.server.handler.archiver;
 
 import com.google.protobuf.ByteString;
 import junit.framework.Assert;
-import com.telenor.sw.idgen.IdGenerator;
-import org.cloudname.log.LogUtil;
+import org.cloudname.idgen.IdGenerator;
 import org.cloudname.log.archiver.WriteReport;
 import org.cloudname.log.pb.Timber;
 import org.joda.time.DateTime;
@@ -31,10 +30,7 @@ public class MetadataHandlerTest {
 
     @Before
     public void setup() {
-        final IdGenerator.Builder builder = new IdGenerator.Builder();
-        idGenerator = builder
-            .setName("metadatahandlertest")
-            .setWorkerId(1L).build();
+        idGenerator = new IdGenerator(1L);
     }
 
     /**
