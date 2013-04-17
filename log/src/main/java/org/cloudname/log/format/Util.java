@@ -102,6 +102,12 @@ public class Util {
         for (int i = 0; i < s.length(); i++) {
             char c = s.charAt(i);
             switch(c) {
+                case '\r':
+                    // If not followed by '\n', convert to '\n', else strip.
+                    if (i == s.length() - 1 || s.charAt(i + 1) != '\n') {
+                        buff.append("\\n");
+                    }
+                    break;
                 case '\n':
                     buff.append("\\n");
                     break;

@@ -8,6 +8,7 @@ import org.cloudname.Cloudname;
 import org.cloudname.CloudnameException;
 import org.cloudname.Coordinate;
 import org.cloudname.CoordinateException;
+import org.cloudname.CoordinateExistsException;
 import org.cloudname.CoordinateListener;
 import org.cloudname.ServiceHandle;
 import org.cloudname.ServiceState;
@@ -32,7 +33,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
 
 import static org.junit.Assert.*;
-import static org.junit.Assert.assertEquals;
 
 /**
  * Integration tests for testing ZkCloudname.
@@ -72,6 +72,7 @@ public class ZkCloudnameIntegrationTest {
         final CountDownLatch connectedLatch = new CountDownLatch(1);
 
         zk = new ZooKeeper("localhost:" + zkport, 1000, new Watcher() {
+            @Override
             public void process(WatchedEvent event) {
                 if (event.getState() == Event.KeeperState.SyncConnected) {
                     connectedLatch.countDown();
@@ -89,6 +90,7 @@ public class ZkCloudnameIntegrationTest {
         if (forwarder != null) {
             forwarder.close();
         }
+        ezk.shutdown();
     }
 
     /**
@@ -107,12 +109,16 @@ public class ZkCloudnameIntegrationTest {
         private CountDownLatch latestLatch = null;
 
         void waitForExpected() throws InterruptedException {
+            final CountDownLatch latch;
             synchronized (eventMonitor) {
                 if (waitForEvent.size() > 0) {
                     LOG.info("Waiting for event " + waitForEvent.get(waitForEvent.size() - 1));
+                    latch = latestLatch;
+                } else {
+                    return;
                 }
             }
-            assert(latestLatch.await(25, TimeUnit.SECONDS));
+            assert(latch.await(25, TimeUnit.SECONDS));
             LOG.info("Event happened.");
         }
 
@@ -132,12 +138,12 @@ public class ZkCloudnameIntegrationTest {
         @Override
         public void onCoordinateEvent(Event event, String message) {
             LOG.info("I got event ..." + event.name() + " " + message);
-            if (waitForEvent.size() > 0) {
-                LOG.info("Waiting for event " + waitForEvent.get(0));
-            }   else {
-                LOG.info("not expecting any specific events");
-            }
             synchronized (eventMonitor) {
+                if (waitForEvent.size() > 0) {
+                    LOG.info("Waiting for event " + waitForEvent.get(0));
+                }   else {
+                    LOG.info("not expecting any specific events");
+                }
                 events.add(event);
                 for (CountDownLatch countDownLatch :listenerLatches) {
                     countDownLatch.countDown();
@@ -384,11 +390,34 @@ public class ZkCloudnameIntegrationTest {
         forwarder.unpause();
         listener.waitForExpected();
 
-        Coordinate c = Coordinate.parse("1.service.user.cell");
-        cn.createCoordinate(c);
+        createCoordinateWithRetries();
 
         listener.expectEvent(CoordinateListener.Event.COORDINATE_OK);
         listener.waitForExpected();
+    }
+
+    private void createCoordinateWithRetries() throws CoordinateExistsException,
+            InterruptedException, CloudnameException {
+        Coordinate c = Coordinate.parse("1.service.user.cell");
+        int retries = 10;
+        for (;;) {
+            try {
+                cn.createCoordinate(c);
+                break;
+            } catch (CloudnameException e) {
+                /*
+                 * CloudnameException indicates that the connection with
+                 * ZooKeeper isn't back up yet. Retry a few times.
+                 */
+                if (retries-- > 0) {
+                    LOG.info("Failed to create coordinate: " + e
+                            + ", retrying in 1 second");
+                    Thread.sleep(1000);
+                } else {
+                    throw e;
+                }
+            }
+        }
     }
 
     /**
