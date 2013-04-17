@@ -131,6 +131,12 @@
         <version>${project.version}</version>
       </dependency>
 
+      <dependency>
+	<groupId>org.cloudname</groupId>
+	<artifactId>idgen</artifactId>
+	<version>${project.version}</version>
+      </dependency>
+
       <!-- Netty -->
       <dependency>
         <groupId>org.jboss.netty</groupId>
