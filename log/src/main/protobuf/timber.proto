@@ -51,6 +51,9 @@ message LogEvent {
   required string source = 6;
 
   // The type of log event.
+  // "T" == Text message (regular java log messages).
+  // "E" == Events.
+  // "C" == Control messages.
   required string type = 7;
 
   // Zero or more payloads associated with this log event.

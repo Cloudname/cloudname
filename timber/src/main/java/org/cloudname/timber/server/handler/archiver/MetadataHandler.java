@@ -113,7 +113,7 @@ public class MetadataHandler {
                 mdFile.createNewFile();
             }
             currentSlotFile = slotFile;
-            currentWriter = new BufferedWriter(new FileWriter(mdFile));
+            currentWriter = new BufferedWriter(new FileWriter(mdFile, true));
             writerLruCache.put(mdFile.getAbsolutePath(), currentWriter);
         }
         return currentWriter;
