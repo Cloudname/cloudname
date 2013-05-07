@@ -178,18 +178,31 @@ public class Dispatcher {
     private void processEvent(LogEventQueueEntry entry) {
         // Loop through the registered handlers and offer the event to them.
         Timber.LogEvent event = entry.getLogEvent();
-        for (LogEventHandler handler : handlers) {
-            try {
-                handler.handle(event);
 
-                // Anything other than consistency level BESTEFFORT
-                // means we are at a higher consistency level so we
-                // have to flush.
-                if (event.getConsistencyLevel() != Timber.ConsistencyLevel.BESTEFFORT) {
-                    handler.flush();
+        // If the message is a sync message from log shipment we do not
+        // need to handle it, but we still need to ACK it. See TimberClientHandler
+        // in Base for more information.
+        boolean shouldHandle = true;
+        if (event.hasId() &&
+            event.getType().equals("C") &&
+            event.getId().equals("sync")) {
+            shouldHandle = false;
+        }
+
+        if (shouldHandle) {
+            for (LogEventHandler handler : handlers) {
+                try {
+                    handler.handle(event);
+
+                    // Anything other than consistency level BESTEFFORT
+                    // means we are at a higher consistency level so we
+                    // have to flush.
+                    if (event.getConsistencyLevel() != Timber.ConsistencyLevel.BESTEFFORT) {
+                        handler.flush();
+                    }
+                } catch (Exception e) {
+                    log.log(Level.WARNING, "Got exception while dispatching to " + handler.getName(), e);
                 }
-            } catch (Exception e) {
-                log.log(Level.WARNING, "Got exception while dispatching to " + handler.getName(), e);
             }
         }
 

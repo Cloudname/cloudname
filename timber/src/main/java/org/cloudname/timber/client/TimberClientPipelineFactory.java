@@ -19,6 +19,10 @@ import org.jboss.netty.bootstrap.ClientBootstrap;
 public class TimberClientPipelineFactory  implements ChannelPipelineFactory {
     private TimberClient client;
     private ClientBootstrap bootstrap;
+    private final TimberClientHandler handler;
+
+    // Use common ReconnectDelayManager across all TimberClientHandler instances.
+    private final ReconnectDelayManager reconnectDelayManager = new ReconnectDelayManager();
 
     /**
      * Create a pipeline for the timber client.
@@ -28,6 +32,7 @@ public class TimberClientPipelineFactory  implements ChannelPipelineFactory {
     public TimberClientPipelineFactory(TimberClient client, ClientBootstrap bootstrap) {
         this.client = client;
         this.bootstrap = bootstrap;
+        handler = new TimberClientHandler(client, bootstrap, reconnectDelayManager);
     }
 
     @Override
@@ -39,7 +44,7 @@ public class TimberClientPipelineFactory  implements ChannelPipelineFactory {
 
         p.addLast("frameEncoder", new ProtobufVarint32LengthFieldPrepender());
         p.addLast("protobufEncoder", new ProtobufEncoder());
-        p.addLast("handler", new TimberClientHandler(client, bootstrap));
+        p.addLast("handler", handler);
         return p;
     }
 }
