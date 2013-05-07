@@ -54,7 +54,6 @@ public class TimberClientTest {
         client.addAckEventListener(new TimberClient.AckEventListener() {
                 @Override
                 public void ackEventReceived(Timber.AckEvent ackEvent) {
-                    System.out.println(ackEvent.toString());
                     ackLatch.countDown();
                     assertEquals("baluba", ackEvent.getId(0));
                 }
