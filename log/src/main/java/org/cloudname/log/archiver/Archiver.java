@@ -21,7 +21,7 @@ import java.io.IOException;
  * @author borud
  */
 public class Archiver {
-    private static final int MAX_FILES_OPEN = 5;
+    private static final int MAX_FILES_OPEN = 2;
 
     private String service = "";
 
