@@ -46,6 +46,7 @@ public class ZkCloudnameLock implements CloudnameLock {
     private String lockPath;
 
     private static final Logger log = Logger.getLogger(ZkCloudnameLock.class.getName());
+    private static final int EPHEMERAL_NODE_NUMBER_LENGTH = 10;
 
     /**
      * Prepare a CloudnameLock object.
@@ -206,7 +207,7 @@ public class ZkCloudnameLock implements CloudnameLock {
         String nodeToWatch = "";
         int nodeNumberToWatch = -1;
         for (final String child : children) {
-            if (!child.startsWith(this.lockName)) {
+            if (!getNodeName(child).equals(lockName)) {
                 continue;
             }
             final int childNumber = getNodeNumber(child);
@@ -301,6 +302,14 @@ public class ZkCloudnameLock implements CloudnameLock {
     private int getNodeNumber(String node) {
         //TODO (acidmoose): Consider replacing with regex
         return Integer.parseInt(node.substring(node.indexOf(lockName) + lockName.length(), node.length()));
+    }
+
+    /**
+     * Get the name of a sequential ephemeral node. Node path looks like
+     * this "/cn/pathToLock/lockname000000001", and this method returns "lockname" in this case.
+     */
+    private String getNodeName(String node) {
+        return node.substring(0, node.length() - EPHEMERAL_NODE_NUMBER_LENGTH);
     }
 
     private String createAndGetLockPath() throws InterruptedException, KeeperException {

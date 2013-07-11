@@ -288,6 +288,27 @@ public class ZkCloudnameLockTest {
     }
 
     /**
+     * Check that a lock with a partial name match to another lock behaves correctly.
+     * @throws Exception
+     */
+    @Test
+    public void testNamePrefix () throws Exception {
+        cn = new ZkCloudname.Builder().setConnectString("localhost:" + zkport).build().connect();
+        final Coordinate coordinate = Coordinate.parse("1.service.user.cell");
+        cn.createCoordinate(coordinate);
+        final ServiceHandle serviceHandle = cn.claim(coordinate);
+        final CloudnameLock.Scope scope = CloudnameLock.Scope.SERVICE;
+        CloudnameLock lock1 = serviceHandle.getCloudnameLock(scope, "aaa");
+        CloudnameLock lock2 = serviceHandle.getCloudnameLock(scope, "aaabbb");
+
+        assertTrue("Did not get lock.", lock2.tryLock());
+        assertTrue("Did not get lock.", lock1.tryLock());
+
+        lock1.release();
+        lock2.release();
+    }
+
+    /**
      * Class simulates a shared resource that can not be used by more than one at a time.
      */
     private class Work {
