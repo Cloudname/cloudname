@@ -19,8 +19,6 @@ import java.util.logging.Logger;
  * @author borud
  */
 public class TimberClientHandler extends SimpleChannelUpstreamHandler {
-    private static final Logger log = Logger.getLogger(TimberClientHandler.class.getName());
-
     private final TimberClient client;
     private final ClientBootstrap bootstrap;
     private final ReconnectDelayManager reconnectDelayManager;
@@ -45,7 +43,7 @@ public class TimberClientHandler extends SimpleChannelUpstreamHandler {
     @Override
     public void handleUpstream(ChannelHandlerContext ctx, ChannelEvent event) throws Exception {
         if (event instanceof ChannelStateEvent) {
-            log.info(event.toString());
+            logEntry(Level.INFO, event.toString(), null);
         }
         super.handleUpstream(ctx, event);
     }
@@ -62,14 +60,14 @@ public class TimberClientHandler extends SimpleChannelUpstreamHandler {
         }
 
         // If we get something else we log it.
-        log.info("Got unknown response from log server " + event.toString());
+        logEntry(Level.INFO, "Got unknown response from log server " + event.toString(), null);
     }
 
     @Override
     public void exceptionCaught(ChannelHandlerContext ctx, ExceptionEvent exceptionEvent) {
-        log.log(Level.WARNING,
-                "Exception from downstream",
-                exceptionEvent.getCause());
+        logEntry(Level.WARNING,
+                 "Exception from downstream",
+                 exceptionEvent.getCause());
         exceptionEvent.getChannel().close();
     }
 
@@ -101,5 +99,24 @@ public class TimberClientHandler extends SimpleChannelUpstreamHandler {
         }
         // Alert the client that we have disconnected
         client.onDisconnect();
+    }
+
+    // Note: use the logEntry method call to log; using this directly might cause deadlocks
+    private static final Logger xlog = Logger.getLogger(TimberClientHandler.class.getName());
+    /**
+     * This method logs in a new thread and we're avoiding any deadlocks from exceptions and
+     * downstream events that would otherwise happen. If one of the log handlers uses a lock we'd
+     * normally allocate locks from the top down, ie. 1) Log handler, 2) Timber and 3) NIO libs but
+     * if we get incoming data in the NIO libraries and an exception we'd get locks in this order:
+     * 1) NIO 2) Log handler. If we launch logging in a new thread we'll get the log message a bit
+     * later in the log handler but we'll avoid deadlocks.
+     */
+    private void logEntry(final Level logLevel, final String message, final Throwable cause) {
+        (new Thread(new Runnable() {
+            @Override
+            public void run() {
+                xlog.log(logLevel, message, cause);
+            }
+        })).start();
     }
 }
