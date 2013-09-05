@@ -6,9 +6,9 @@ import java.util.logging.Logger;
  * Simple ID generator that will produce unique IDs given that no ID
  * generator instances with the same worker ID exist at the same time.
  *
- * This ID generator uses a fixed number of bits for timestamp (40
- * bits), worker ID (12 bits) and sequence (12 bits).  These numbers
- * translate to the following limitations:
+ * The default instance of the ID generator uses 40 bits for the
+ * timestamp, 12 bits for the worker ID and 12 bits for the sequence.
+ * These numbers translate to the following limitations:
  *
  * <ul>
  *   <li> the timer will wrap every 34.87 years, meaning that after
@@ -39,19 +39,18 @@ public class IdGenerator {
             }
         };
 
-    // Set how many bits we use for each field.
-    private static final int NUM_BITS_TIMESTAMP = 40;
-    private static final int NUM_BITS_WORKER_ID = 12;
-    private static final int NUM_BITS_SEQUENCE  = 12;
+    // The defaults
+    private static final int DEFAULT_NUM_BITS_WORKER_ID = 12;
+    private static final int DEFAULT_NUM_BITS_SEQUENCE  = 12;
 
-    // Calculate the bitmasks
-    private static final long timestampBitMask = makeLongBitMask(NUM_BITS_TIMESTAMP);
-    private static final long workerIdBitMask  = makeLongBitMask(NUM_BITS_WORKER_ID);
-    private static final long sequenceBitMask  = makeLongBitMask(NUM_BITS_SEQUENCE);
+    // The bit masks
+    private final long timestampBitMask;
+    private final long workerIdBitMask;
+    private final long sequenceBitMask;
 
-    // Calculate shift lengths
-    private static final int timestampLeftShiftBy = NUM_BITS_WORKER_ID + NUM_BITS_SEQUENCE;
-    private static final int workerLeftShiftBy    = NUM_BITS_SEQUENCE;
+    // Shift lengths
+    private final int timestampLeftShiftBy;
+    private final int workerLeftShiftBy;
 
     // Set the default time provider -- ie. the system clock.
     private TimeProvider timeProvider;
@@ -62,7 +61,7 @@ public class IdGenerator {
     private long sequence = 0L;
 
     // Sync object
-    private Object syncObject = new Object();
+    private final Object syncObject = new Object();
 
     /**
      * Create new IdGenerator.  To ensure that this ID generator
@@ -73,7 +72,7 @@ public class IdGenerator {
      * @param workerId the worker id of the id generator.
      */
     public IdGenerator(long workerId) {
-        this(workerId, defaultTimeProvider);
+        this(workerId, defaultTimeProvider, DEFAULT_NUM_BITS_WORKER_ID, DEFAULT_NUM_BITS_SEQUENCE);
     }
 
     /**
@@ -86,6 +85,53 @@ public class IdGenerator {
      * @param timeProvider override default time provider.
      */
     public IdGenerator(long workerId, TimeProvider timeProvider) {
+        this(workerId, timeProvider, DEFAULT_NUM_BITS_WORKER_ID, DEFAULT_NUM_BITS_SEQUENCE);
+    }
+
+    /**
+     * Create new IdGenerator with the specified bit layout.
+     * @param workerId The worker ID.
+     * @param numBitsWorkerId The number of bits to use for the worker ID.
+     * @param numBitsSequence The number of bits to use for the sequence.
+     */
+    public IdGenerator(long workerId, int numBitsWorkerId, int numBitsSequence) {
+        this(workerId, defaultTimeProvider, numBitsWorkerId, numBitsSequence);
+    }
+    /**
+     * Create new IdGenerator with custom time provider and id layout.
+     * The layout allows you to create id generators with different
+     * properties. A short epoch will give IDs that may clash at
+     * regular intervals but you'll be able to create a lot of IDs
+     * in a short time. Similarly, a long epoch ensures there will
+     * be no collisions for a long time but the total throughput
+     * will be lower. If in doubt use the defaults.
+     *
+     * @param workerId the worker id of the id generator
+     * @param timeProvider The time provider to use.
+     * @param numBitsWorkerId The number of bits to use for the worker id.
+     *                        (ie the max number of simultaneous workers)
+     * @param numBitsSequence The number of bits to use for the sequence.
+     *                        (ie the maximum throughput per id generator
+     *                        per second)
+     */
+    public IdGenerator(long workerId, TimeProvider timeProvider,
+                       int numBitsWorkerId, int numBitsSequence) {
+        // Do some sanity checks on the layout
+        if ((numBitsWorkerId + numBitsSequence) > 63) {
+            throw new IllegalArgumentException("The number of bits for the "
+                    + "id generator cannot exceed 64 bits");
+        }
+        int numBitsTimestamp = Long.SIZE - numBitsWorkerId - numBitsSequence;
+
+        if (Math.pow(2, numBitsWorkerId) < workerId) {
+            throw new IllegalArgumentException("There isn't enough room to fit the worker ID "
+            + "(" + workerId + ") into the allocated bits (" + numBitsWorkerId + ")");
+        }
+        this.timestampLeftShiftBy = numBitsWorkerId + numBitsSequence;
+        this.workerLeftShiftBy = numBitsSequence;
+        this.timestampBitMask = makeLongBitMask(numBitsTimestamp);
+        this.workerIdBitMask = makeLongBitMask(numBitsWorkerId);
+        this.sequenceBitMask = makeLongBitMask(numBitsSequence);
         this.workerId = workerId;
         this.timeProvider = timeProvider;
     }
@@ -156,9 +202,9 @@ public class IdGenerator {
      * The rightmost (LSB) bits are set; {@code makeLongBitMask(1)}
      * returns {@code 1L}
      *
-     * @param bitsToSet
+     * @param bitsToSet the number of bits to set in the bit mask.
      */
     private static long makeLongBitMask(int bitsToSet) {
-        return (long) (0xFFFFFFFFFFFFFFFFL >>> (64 - bitsToSet));
+        return (0xFFFFFFFFFFFFFFFFL >>> (64 - bitsToSet));
     }
 }
