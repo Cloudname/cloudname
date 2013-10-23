@@ -1,13 +1,20 @@
 package org.cloudname.zk;
 
-import org.cloudname.*;
-
 import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
-
-import java.util.List;
+import org.cloudname.CloudnameException;
+import org.cloudname.CloudnameLock;
+import org.cloudname.ConfigListener;
+import org.cloudname.Coordinate;
+import org.cloudname.CoordinateListener;
+import org.cloudname.CoordinateListener.Event;
+import org.cloudname.CoordinateMissingException;
+import org.cloudname.Endpoint;
+import org.cloudname.ServiceHandle;
+import org.cloudname.ServiceStatus;
 
 /**
  * A service handle implementation. It does not have a lot of logic, it wraps ClaimedCoordinate, and
@@ -36,26 +43,28 @@ public class ZkServiceHandle implements ServiceHandle {
         this.zkClient = zkClient;
     }
 
+    @Override
+    public boolean waitForCoordinateOkSeconds(final int seconds) throws InterruptedException {
+        return waitForCoordinateEventSeconds(seconds, Event.COORDINATE_OK);
+    }
 
     @Override
-    public boolean waitForCoordinateOkSeconds(int seconds) throws InterruptedException {
+    public boolean waitForCoordinateEventSeconds(final int seconds, final Event expectedEvent)
+            throws InterruptedException {
         final CountDownLatch latch = new CountDownLatch(1);
-
-        CoordinateListener listner = new CoordinateListener() {
-
+        final CoordinateListener listner = new CoordinateListener() {
             @Override
-            public void onCoordinateEvent(Event event, String message) {
-                if (event == Event.COORDINATE_OK) {
+            public void onCoordinateEvent(final Event event, final String message) {
+                if (event == expectedEvent) {
                     latch.countDown();
                 }
             }
         };
         registerCoordinateListener(listner);
-        boolean result = latch.await(seconds, TimeUnit.SECONDS);
+        final boolean result = latch.await(seconds, TimeUnit.SECONDS);
         claimedCoordinate.deregisterCoordinateListener(listner);
         return result;
     }
-
 
     @Override
     public void setStatus(ServiceStatus status)
