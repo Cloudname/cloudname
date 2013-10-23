@@ -207,4 +207,8 @@ public class IdGenerator {
     private static long makeLongBitMask(int bitsToSet) {
         return (0xFFFFFFFFFFFFFFFFL >>> (64 - bitsToSet));
     }
+
+    public long getWorkerId() {
+        return workerId;
+    }
 }
