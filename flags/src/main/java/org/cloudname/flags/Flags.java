@@ -1,11 +1,6 @@
 package org.cloudname.flags;
 
-import joptsimple.OptionParser;
-import joptsimple.OptionSet;
-import joptsimple.OptionSpec;
-
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.PrintWriter;
@@ -21,6 +16,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.TreeMap;
+import joptsimple.OptionParser;
+import joptsimple.OptionSet;
+import joptsimple.OptionSpec;
 
 
 /**
@@ -340,6 +338,9 @@ public class Flags {
         if (helpFlagged()) {
             return this;
         }
+        if (versionFlagged()) {
+            return this;
+        }
         if (propertiesFlagged()) {
             List<String> files = optionSet.valuesOf(PROPERTIES_FILE);
             ArrayList<String> newArgs = new ArrayList<String>();
@@ -534,7 +535,6 @@ public class Flags {
         final PrintWriter w = new PrintWriter(out);
         w.println(versionString);
         w.flush();
-        w.close();
     }
 
     /**
