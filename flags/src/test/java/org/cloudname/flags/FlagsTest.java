@@ -1,16 +1,14 @@
 package org.cloudname.flags;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
-
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
-
 import junit.framework.Assert;
-
 import org.junit.Test;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 /**
  * Test class for Flags.
@@ -141,6 +139,7 @@ public class FlagsTest {
 
         // Check that printHelp does not crash.
         flags.printHelp(System.out);
+        flags.printVersion(System.out);
     }
 
     /**
@@ -232,6 +231,27 @@ public class FlagsTest {
         Flags flags = new Flags()
         .loadOpts(FlagsRequiredArg.class)
         .parse(new String[]{});
+    }
+
+    /**
+     * Test that --help and --version does not trigger ArgumentException when parsing flags are required.
+     */
+    @Test
+    public void testRequiredArgWithHelp() {
+        try {
+            Flags helpFlags = new Flags()
+                .loadOpts(FlagsRequiredArg.class)
+                .parse(new String[]{"--help"});
+            helpFlags.printHelp(System.out);
+
+            Flags versionFlags = new Flags()
+                .loadOpts(FlagsRequiredArg.class)
+                .parse(new String[]{"--version"});
+            versionFlags.printVersion(System.out);
+        } catch (Exception e) {
+            e.printStackTrace();
+            assertFalse("Should not throw exceptions", true);
+        }
     }
 
     /**
