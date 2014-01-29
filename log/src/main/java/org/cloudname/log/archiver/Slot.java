@@ -98,7 +98,11 @@ public class Slot {
 
         // Make sure directory exists
         if (!parentDir.exists()) {
-            parentDir.mkdirs();
+            if (!parentDir.mkdirs()) {
+                throw new ArchiverException("Could not create folder '"
+                        + parentDir.getAbsolutePath() + "', hence slot-file logging will fail. " +
+                        "Does your user have sufficient permissions to create folders?");
+            }
         }
 
         File foundFile = null;
