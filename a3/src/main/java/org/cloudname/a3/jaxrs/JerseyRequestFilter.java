@@ -9,6 +9,8 @@ import com.sun.jersey.spi.container.ContainerRequestFilter;
 
 import java.security.Principal;
 
+import javax.annotation.Priority;
+import javax.ws.rs.Priorities;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
@@ -51,6 +53,7 @@ import org.cloudname.a3.domain.User;
  *
  * @see JerseyRoleBasedAccessControlResourceFilterFactory
  */
+@Priority(Priorities.AUTHENTICATION)
 public class JerseyRequestFilter implements ContainerRequestFilter {
 
     private static final String REALM = "Schmealm";
