@@ -2,6 +2,7 @@ package org.cloudname.a3;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import java.io.File;
@@ -126,6 +127,18 @@ public class A3ClientTest {
             AuthnResult result = a3.authenticate("unexist", "the password");
             assertNotNull(result);
             assertEquals(AuthnResult.State.UNKNOWN_USER, result.getState());
+        }
+
+        // Try fetching user
+        {
+            User user = a3.getUser("alice");
+            assertNotNull(user);
+        }
+
+        // Try fetching bogus user
+        {
+            User user = a3.getUser("unexist");
+            assertNull(user);
         }
 
         // Now we change the database a bit, update it and try again

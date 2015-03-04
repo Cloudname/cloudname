@@ -134,24 +134,15 @@ public class A3Client
      * @return an AuthnResult
      */
     public AuthnResult authenticate(String username, String cleartextPassword) {
-        ensureOpened();
-
-        // If we do not already have a user database we fetch it.
-        if (null == dbReference.get()) {
-            try {
-                // Tempted to use compareAndSet but this doesn't really make
-                // that much sense since the value we fetch is likely to be
-                // newer anyway.  I think.
-                dbReference.set(dbStorage.getUserDB());
-            } catch (Exception e) {
-                return new AuthnResult(AuthnResult.State.INTERNAL_ERROR,
-                                       "Unable to get user database",
-                                       e);
-            }
+        final User user;
+        try {
+            user = getUser(username);
+        } catch (final IOException e) {
+            return new AuthnResult(AuthnResult.State.INTERNAL_ERROR,
+                    "Unable to get user database",
+                    e);
         }
-
         // Deal with the case where the user does not exist.
-        final User user = dbReference.get().getUser(username);
         if (null == user) {
             return new AuthnResult(AuthnResult.State.UNKNOWN_USER, "Unknown user");
         }
@@ -183,6 +174,31 @@ public class A3Client
 
         // Nothing left to try. We failed.
         return new AuthnResult(AuthnResult.State.WRONG_PASSWORD, "Incorrect password");
+    }
+
+    /**
+     * Fetch a user from the userDB.
+     *
+     * @param username username of user to fetch
+     * @return a User object with the given username on success, null if none was found
+     * @throws IOException if fetching the user triggered an exception
+     */
+    public User getUser(final String username) throws IOException {
+        ensureOpened();
+
+        // If we do not already have a user database we fetch it.
+        if (null == dbReference.get()) {
+            try {
+                // Tempted to use compareAndSet but this doesn't really make
+                // that much sense since the value we fetch is likely to be
+                // newer anyway.  I think.
+                dbReference.set(dbStorage.getUserDB());
+            } catch (final Exception e) {
+                throw new IOException("Unable to get user database", e);
+            }
+        }
+
+        return dbReference.get().getUser(username);
     }
 
     public static User getCurrentAuthenticatedUser()
