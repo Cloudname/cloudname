@@ -168,6 +168,11 @@
     </dependency>
 
     <dependency>
+      <groupId>org.cloudname</groupId>
+      <artifactId>idgen</artifactId>
+    </dependency>
+
+    <dependency>
       <groupId>junit</groupId>
       <artifactId>junit-dep</artifactId>
       <scope>test</scope>

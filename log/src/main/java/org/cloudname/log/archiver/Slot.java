@@ -1,5 +1,6 @@
 package org.cloudname.log.archiver;
 
+import org.cloudname.idgen.TimeProvider;
 import org.cloudname.log.pb.Timber;
 import org.cloudname.log.recordstore.RecordWriter;
 
@@ -39,6 +40,7 @@ public class Slot {
 
     private final String prefix;
     private final long maxSize;
+    private TimeProvider timeProvider;
     private final long resumeLimit;
     private final int outputBufferSize = DEFAULT_OUTPUT_BUFFER_SIZE;
 
@@ -59,8 +61,25 @@ public class Slot {
      * @param maxSize the maximum allowed file size in bytes for individual slot files
      */
     public Slot(final String prefix, final long maxSize) {
+        this(prefix, maxSize, new TimeProvider() {
+            @Override
+            public long getTimeInMillis() {
+                return System.currentTimeMillis();
+            }
+        });
+    }
+
+    /**
+     * Create a Slot.
+     *
+     * @param prefix the prefix for the slot file
+     * @param maxSize the maximum allowed file size in bytes for individual slot files
+     * @param timeProvider optional custom TimeProvider
+     */
+    public Slot(final String prefix, final long maxSize, final TimeProvider timeProvider) {
         this.prefix = prefix;
         this.maxSize = maxSize;
+        this.timeProvider = timeProvider;
 
         resumeLimit = (maxSize * RESUME_LIMIT_PERCENT) / 100;
     }
@@ -93,7 +112,7 @@ public class Slot {
      * @return a File instance that points to the next slot file
      */
     private File findNextSlotFile() throws IOException {
-        final File file = new File(nameForTimestamp(System.currentTimeMillis()));
+        final File file = new File(nameForTimestamp(timeProvider.getTimeInMillis()));
         final File parentDir = file.getParentFile();
 
         // Make sure directory exists
