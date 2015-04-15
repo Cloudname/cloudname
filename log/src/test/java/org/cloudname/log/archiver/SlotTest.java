@@ -264,4 +264,32 @@ public class SlotTest {
         assertNull(reader.read());
         reader.close();
     }
+
+    /**
+     * If current file is full and we store a new record, a new file is opened and written to.
+     */
+    @Test
+    public void testNextFileForSlot() throws Exception {
+        String prefix = temp.newFolder("test-next-file-for-slot").getAbsolutePath();
+        long fileSizeInBytes = 1024;
+        Slot slot = new Slot(prefix, (fileSizeInBytes));
+
+        for (int i = 0; i < 10; i++) {
+            Timber.LogEvent event = makeLogEvent(pointInTime);
+            slot.write(event);
+            slot.flush();
+        }
+
+        int counter = 0;
+        String currentSlotFileName = slot.getCurrentSlotFileName();
+        assertNotNull(currentSlotFileName);
+        File[] files = new File(currentSlotFileName).getParentFile().listFiles();
+        assertNotNull(files);
+        for (File file : files) {
+            if (file.isFile()) {
+                counter++;
+            }
+        }
+        assertEquals(2, counter);
+    }
 }

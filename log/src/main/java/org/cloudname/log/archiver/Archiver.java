@@ -1,5 +1,6 @@
 package org.cloudname.log.archiver;
 
+import org.cloudname.idgen.TimeProvider;
 import org.cloudname.log.pb.Timber;
 
 import java.io.File;
@@ -30,6 +31,7 @@ public class Archiver {
 
     private final String logPath;
     private final long maxFileSize;
+    private TimeProvider timeProvider;
 
     private boolean closed = false;
 
@@ -40,9 +42,26 @@ public class Archiver {
      * @param maxFileSize maximum file size in bytes
      */
     public Archiver(String logPath, String service, long maxFileSize) {
+        this(logPath, service, maxFileSize, new TimeProvider() {
+            @Override
+            public long getTimeInMillis() {
+                return System.currentTimeMillis();
+            }
+        });
+    }
+
+    /**
+     * The directory
+     * @param logPath folder to store logs
+     * @param service name of the service storing logs
+     * @param maxFileSize maximum file size in bytes
+     * @param timeProvider option custom TimeProvider
+     */
+    public Archiver(String logPath, String service, long maxFileSize, TimeProvider timeProvider) {
         this.logPath = logPath;
         this.service = service;
         this.maxFileSize = maxFileSize;
+        this.timeProvider = timeProvider;
     }
 
     /**
@@ -131,7 +150,7 @@ public class Archiver {
             return slot;
         }
 
-        slot = new Slot(slotPathPrefix, maxFileSize);
+        slot = new Slot(slotPathPrefix, maxFileSize, timeProvider);
         slotLruCache.put(slotPathPrefix, slot);
 
         return slot;
