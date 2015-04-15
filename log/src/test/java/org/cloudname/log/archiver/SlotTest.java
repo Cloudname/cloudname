@@ -271,17 +271,18 @@ public class SlotTest {
     @Test
     public void testNextFileForSlot() throws Exception {
         String prefix = temp.newFolder("test-next-file-for-slot").getAbsolutePath();
-        long fileSizeInBytes = 1024;
+        long fileSizeInBytes = 800;
         Slot slot = new Slot(prefix, (fileSizeInBytes));
 
         for (int i = 0; i < 10; i++) {
             Timber.LogEvent event = makeLogEvent(pointInTime);
             slot.write(event);
-            slot.flush();
         }
+        String currentSlotFileName = slot.getCurrentSlotFileName();
+        slot.flush();
+        slot.close();
 
         int counter = 0;
-        String currentSlotFileName = slot.getCurrentSlotFileName();
         assertNotNull(currentSlotFileName);
         File[] files = new File(currentSlotFileName).getParentFile().listFiles();
         assertNotNull(files);
