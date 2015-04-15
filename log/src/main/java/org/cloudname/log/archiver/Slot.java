@@ -91,9 +91,10 @@ public class Slot {
      * Find the next slot file to write to.
      *
      * @return a File instance that points to the next slot file
+     * @param eventTimestamp the timestamp of the event you are trying to find a new slot for.
      */
-    private File findNextSlotFile() throws IOException {
-        final File file = new File(nameForTimestamp(System.currentTimeMillis()));
+    private File findNextSlotFile(final long eventTimestamp) throws IOException {
+        final File file = new File(nameForTimestamp(eventTimestamp));
         final File parentDir = file.getParentFile();
 
         // Make sure directory exists
@@ -164,7 +165,7 @@ public class Slot {
                 throw new IllegalStateException("Slot was closed");
             }
 
-            currentFile = findNextSlotFile();
+            currentFile = findNextSlotFile(event.getTimestamp());
 
             // Pick up number of bytes in file
             numBytesInFile = currentFile.length();
