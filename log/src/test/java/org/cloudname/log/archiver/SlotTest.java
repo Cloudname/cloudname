@@ -274,17 +274,20 @@ public class SlotTest {
         long fileSizeInBytes = 800;
         Slot slot = new Slot(prefix, (fileSizeInBytes));
 
+        String lastSlotFile = null;
         for (int i = 0; i < 10; i++) {
             Timber.LogEvent event = makeLogEvent(pointInTime);
             slot.write(event);
+            if (slot.getCurrentSlotFileName() != null) {
+                lastSlotFile = slot.getCurrentSlotFileName();
+            }
+            slot.flush();
         }
-        String currentSlotFileName = slot.getCurrentSlotFileName();
-        slot.flush();
         slot.close();
 
         int counter = 0;
-        assertNotNull(currentSlotFileName);
-        File[] files = new File(currentSlotFileName).getParentFile().listFiles();
+        assertNotNull(lastSlotFile);
+        File[] files = new File(lastSlotFile).getParentFile().listFiles();
         assertNotNull(files);
         for (File file : files) {
             if (file.isFile()) {
