@@ -275,28 +275,6 @@ public final class ZkTool {
                 }
                 }
                 break;
-            case SET_CONFIG:
-                try {
-                    cloudname.setConfig(coordinate, configFlag, null);
-                } catch (CloudnameException e) {
-                    System.err.println("Got error: " + e.getMessage());
-                    break;
-
-                } catch (CoordinateMissingException e) {
-                    System.err.println("Non-existing coordinate.");
-                }
-                System.err.println("Config updated.");
-                break;
-
-            case READ_CONFIG:
-                try {
-                    System.out.println("Config is:" + cloudname.getConfig(coordinate));
-                } catch (CoordinateMissingException e) {
-                    System.err.println("Non-existing coordinate.");
-                } catch (CloudnameException e) {
-                    System.err.println("Problem with cloudname: " + e.getMessage());
-                }
-                break;
             default:
                 System.out.println("Unknown command " + operationFlag);
         }

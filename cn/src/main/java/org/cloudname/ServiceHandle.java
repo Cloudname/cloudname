@@ -1,7 +1,5 @@
 package org.cloudname;
 
-import org.cloudname.zk.ZkCloudnameLock;
-
 import java.util.List;
 
 /**
@@ -71,18 +69,6 @@ public interface ServiceHandle {
 
 
     /**
-     * Register a ConfigListener which will be called whenever there
-     * is a configuration change.
-     *
-     * There may have been configuration pushed to the backing storage
-     * already by the time a ConfigListener is registered.  In that
-     * case the ConfigListener will see these configuration items as
-     * being created.
-     */
-    // TODO(dybdahl): This logic lacks tests. Before used in any production code, tests have to be added.
-    public void registerConfigListener(ConfigListener listener);
-
-    /**
      * After registering a new listener, a new event is triggered which include current state, even without change
      * of state.
      * Don't call the cloudname library, do any heavy lifting, or do any IO operation from this callback thread.
@@ -103,14 +89,5 @@ public interface ServiceHandle {
     public void close()
             throws CloudnameException;
 
-    /**
-     * Get a CloudnameLock object.
-     * @param scope The scope of the coordinate you want to place the lock on.
-     * @param lockName The String identifying the lock across the level selected.
-     * @return CloudnameLock
-     */
-    // TODO (acidmoose): Revisit api for creating CloudnameLock object.
-    // Should perhaps be a default Scope set to Scope.SERVICE.
-    public CloudnameLock getCloudnameLock(CloudnameLock.Scope scope, String lockName);
 }
 

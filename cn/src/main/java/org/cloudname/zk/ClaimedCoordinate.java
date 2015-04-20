@@ -6,7 +6,6 @@ import org.cloudname.*;
 
 import java.io.IOException;
 
-import java.io.UnsupportedEncodingException;
 import java.util.*;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -237,10 +236,6 @@ public class ClaimedCoordinate implements Watcher, ZkObjectHandler.ConnectionSta
         scheduler.scheduleWithFixedDelay(new ResolveProblems(), 1 /* initial delay ms */,
                 periodicDelayMs, TimeUnit.MILLISECONDS);
         return this;
-    }
-
-    public CloudnameLock getCloudnameLock(CloudnameLock.Scope scope, String lockName) {
-        return new ZkCloudnameLock(zkClient.getZookeeper(), coordinate, scope, lockName);
     }
 
     /**
@@ -526,11 +521,7 @@ public class ClaimedCoordinate implements Watcher, ZkObjectHandler.ConnectionSta
             } catch (KeeperException e) {
                 throw new CloudnameException("ZooKeeper errror in updateCoordinateData: "
                         + e.getMessage(), e);
-            } catch (UnsupportedEncodingException e) {
-                throw new CloudnameException(e);
-            } catch (InterruptedException e) {
-                throw new CloudnameException(e);
-            } catch (IOException e) {
+            } catch (InterruptedException|IOException e) {
                 throw new CloudnameException(e);
             }
         }

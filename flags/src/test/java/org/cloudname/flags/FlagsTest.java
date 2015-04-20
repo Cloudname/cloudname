@@ -3,12 +3,23 @@ package org.cloudname.flags;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
+import java.util.Arrays;
+import java.util.List;
+
 import junit.framework.Assert;
 import org.junit.Test;
 
+import static org.hamcrest.CoreMatchers.equalTo;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.assertThat;
+
+import static org.hamcrest.CoreMatchers.hasItems;
+import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.CoreMatchers.either;
+import static org.hamcrest.CoreMatchers.anyOf;
+
 
 /**
  * Test class for Flags.
@@ -209,8 +220,14 @@ public class FlagsTest {
             .loadOpts(FlagsOptionTest.class);
 
         assertEquals(flags.getFlagsAsList().size(), 2);
-        assertEquals(flags.getFlagsAsList().get(0).name(), "int");
-        assertEquals(flags.getFlagsAsList().get(1).name(), "Integer");
+
+        final List<String> names = Arrays.asList();
+
+        assertThat(flags.getFlagsAsList().get(0).name(),
+                anyOf(equalTo("int"), equalTo("Integer")));
+
+        assertThat(flags.getFlagsAsList().get(1).name(),
+                anyOf(equalTo("int"), equalTo("Integer")));
     }
 
     /**

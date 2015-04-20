@@ -11,7 +11,6 @@ import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Logger;
 
@@ -25,7 +24,6 @@ public class TrackedConfig implements Watcher, ZkObjectHandler.ConnectionStateCh
 
     private String configData = null;
     private final Object configDataMonitor = new Object();
-    private final ConfigListener configListener;
 
     private static final Logger log = Logger.getLogger(TrackedConfig.class.getName());
 
@@ -42,9 +40,8 @@ public class TrackedConfig implements Watcher, ZkObjectHandler.ConnectionStateCh
      * @param path is the path of the configuration of the coordinate.
      */
     public TrackedConfig(
-            String path, ConfigListener configListener, ZkObjectHandler.Client zkClient) {
+            String path, ZkObjectHandler.Client zkClient) {
         this.path = path;
-        this.configListener = configListener;
         this.zkClient = zkClient;
     }
 
@@ -68,9 +65,6 @@ public class TrackedConfig implements Watcher, ZkObjectHandler.ConnectionStateCh
      */
     public void start() {
         zkClient.registerListener(this);
-        final long periodicDelayMs = 2000;
-        scheduler.scheduleWithFixedDelay(new ReloadConfigOnErrors(), 1 /* initial delay ms */,
-                periodicDelayMs, TimeUnit.MILLISECONDS);
     }
 
     /**
@@ -81,26 +75,6 @@ public class TrackedConfig implements Watcher, ZkObjectHandler.ConnectionStateCh
         zkClient.deregisterListener(this);
     }
 
-    /**
-     * If connection to zookeeper is away, we need to reload because messages might have been
-     * lost. This class has a method for checking this.
-     */
-    private class ReloadConfigOnErrors implements Runnable {
-        @Override
-        public void run() {
-
-            if (isSynchronizedWithZookeeper.get())
-                return;
-
-            try {
-                if (refreshConfigData()) {
-                    configListener.onConfigEvent(ConfigListener.Event.UPDATED, getConfigData());
-                }
-            } catch (CloudnameException e) {
-                // No worries, we try again later
-            }
-        }
-    }
 
     /**
      * Returns current config.
@@ -148,7 +122,6 @@ public class TrackedConfig implements Watcher, ZkObjectHandler.ConnectionStateCh
                     isSynchronizedWithZookeeper.set(false);
                     configData = null;
                 }
-                configListener.onConfigEvent(ConfigListener.Event.DELETED, "");
                 return;
             case NodeDataChanged:
                 isSynchronizedWithZookeeper.set(false);

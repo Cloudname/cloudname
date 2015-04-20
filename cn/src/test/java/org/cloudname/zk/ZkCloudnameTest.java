@@ -15,6 +15,7 @@ import org.junit.*;
 import org.junit.rules.TemporaryFolder;
 import static org.junit.Assert.*;
 import static org.junit.Assert.assertTrue;
+import static org.hamcrest.CoreMatchers.is;
 
 import org.cloudname.testtools.Net;
 import org.cloudname.testtools.zookeeper.EmbeddedZooKeeper;
@@ -101,7 +102,6 @@ public class ZkCloudnameTest {
 
         // Coordinate should exist, but no status node
         assertTrue(pathExists("/cn/cell/user/service/1"));
-        assertTrue(pathExists("/cn/cell/user/service/1/config"));
         assertFalse(pathExists("/cn/cell/user/service/1/status"));
 
         // Claiming the coordinate creates the status node
@@ -120,30 +120,13 @@ public class ZkCloudnameTest {
         });
         assertTrue(latch.await(2, TimeUnit.SECONDS));
 
-        final CountDownLatch configLatch1 = new CountDownLatch(1);
-        final CountDownLatch configLatch2 = new CountDownLatch(2);
-        final StringBuilder buffer = new StringBuilder();
-        handle.registerConfigListener(new ConfigListener() {
-            @Override
-            public void onConfigEvent(Event event, String data) {
-                buffer.append(data);
-                configLatch1.countDown();
-                configLatch2.countDown();
-            }
-        });
-        assertTrue(configLatch1.await(5, TimeUnit.SECONDS));
-        assertEquals(buffer.toString(), "");
-        zk.setData("/cn/cell/user/service/1/config", "hello".getBytes(), -1);
-        assertTrue(configLatch2.await(5, TimeUnit.SECONDS));
-        assertEquals(buffer.toString(), "hello");
-
         assertTrue(pathExists("/cn/cell/user/service/1/status"));
 
         List<String> nodes = new ArrayList<String>();
         cn.listRecursively(nodes);
         assertEquals(2, nodes.size());
-        assertEquals(nodes.get(0), "/cn/cell/user/service/1/config");
-        assertEquals(nodes.get(1), "/cn/cell/user/service/1/status");
+        assertThat(nodes.get(0), is("/cn/cell/user/service/1/config"));
+        assertThat(nodes.get(1), is("/cn/cell/user/service/1/status"));
 
         // Try to set the status to something else
         String msg = "Hamster getting quite eager now";

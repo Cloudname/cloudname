@@ -59,18 +59,17 @@
     <module>timber</module>
     <module>flags</module>
     <module>idgen</module>
-    <module>codelabs</module>
+    <module>samples</module>
   </modules>
 
   <build>
     <plugins>
-      <!-- Use Java 6 -->
       <plugin>
         <artifactId>maven-compiler-plugin</artifactId>
         <version>2.3.2</version>
         <configuration>
-          <source>1.6</source>
-          <target>1.6</target>
+          <source>1.7</source>
+          <target>1.7</target>
         </configuration>
       </plugin>
 
@@ -81,15 +80,6 @@
         <version>2.7.2</version>
         <configuration>
           <useFile>false</useFile>
-        </configuration>
-      </plugin>
-      <plugin>
-        <groupId>org.codehaus.mojo</groupId>
-        <artifactId>cobertura-maven-plugin</artifactId>
-        <version>2.5.2</version>
-        <configuration>
-          <format>xml</format>
-          <aggregate>true</aggregate>
         </configuration>
       </plugin>
     </plugins>

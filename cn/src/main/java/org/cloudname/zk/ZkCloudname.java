@@ -303,67 +303,6 @@ public final class ZkCloudname implements Cloudname, Watcher, Runnable {
         return zkCoordinateData.snapshot().getServiceStatus();
     }
 
-    @Override
-    public void setConfig(
-            final Coordinate coordinate, final String newConfig, final String oldConfig)
-            throws CoordinateMissingException, CloudnameException {
-        String configPath = ZkCoordinatePath.getConfigPath(coordinate, null);
-        int version = -1;
-        final ZooKeeper zk = zkObjectHandler.getClient().getZookeeper();
-        if (oldConfig != null) {
-            Stat stat = new Stat();
-            byte [] data = null;
-            try {
-                data = zk.getData(configPath, false, stat);
-            } catch (KeeperException e) {
-                throw new CloudnameException(e);
-            } catch (InterruptedException e) {
-                throw new CloudnameException(e);
-            }
-            try {
-                String stringData = new String(data, Util.CHARSET_NAME);
-                if (! stringData.equals(oldConfig)) {
-                    throw new CloudnameException("Data did not match old config. Actual old "
-                            + stringData + " specified old " + oldConfig);
-                }
-            } catch (UnsupportedEncodingException e) {
-                throw new CloudnameException(e);
-            }
-            version = stat.getVersion();
-        }
-        try {
-            zk.setData(configPath, newConfig.getBytes(Util.CHARSET_NAME), version);
-        } catch (KeeperException e) {
-            throw new CloudnameException(e);
-        } catch (InterruptedException e) {
-            throw new CloudnameException(e);
-        } catch (UnsupportedEncodingException e) {
-            throw new CloudnameException(e);
-        }
-    }
-
-
-    @Override
-    public String getConfig(final Coordinate coordinate)
-            throws CoordinateMissingException, CloudnameException {
-        String configPath = ZkCoordinatePath.getConfigPath(coordinate, null);
-        Stat stat = new Stat();
-        try {
-            byte[] data = zkObjectHandler.getClient().getZookeeper().getData(
-                    configPath, false, stat);
-            if (data == null) {
-                return null;
-            }
-            return new String(data, Util.CHARSET_NAME);
-        } catch (KeeperException e) {
-            throw new CloudnameException(e);
-        } catch (InterruptedException e) {
-            throw new CloudnameException(e);
-        } catch (UnsupportedEncodingException e) {
-            throw new CloudnameException(e);
-        }
-    }
-
     /**
      * Close the connection to ZooKeeper.
      */

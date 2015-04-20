@@ -60,24 +60,6 @@ public interface Cloudname {
             throws CloudnameException;
 
     /**
-     * Updates the config for a coordinate. If the oldConfig is set (not null) it will require that the old config
-     * matches otherwise it will throw an exception
-     * @throws CoordinateMissingException if coordinate does not exist.
-     * @throws CloudnameException if problems including oldConfig does not match old config.
-     */
-    public void setConfig(final Coordinate coordinate, final String newConfig, final String oldConfig)
-     throws CoordinateMissingException, CloudnameException;
-
-    /**
-     * Get config for a coordinate.
-     * @return the new config.
-     * @throws CoordinateMissingException if coordinate does not exist.
-     * @throws CloudnameException
-     */
-    public String getConfig(final Coordinate coordinate)
-            throws CoordinateMissingException, CloudnameException;
-
-    /**
      * Close down connection to storage.
      */
     public void close();

@@ -12,7 +12,6 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.Executors;
 import java.util.concurrent.RejectedExecutionException;
@@ -69,12 +68,6 @@ class DynamicExpression implements Watcher, TrackedCoordinate.ExpressionResolver
     final private Map<String, TrackedCoordinate> coordinateByPath =
             new HashMap<String, TrackedCoordinate>();
 
-    /**
-     * We always add some random noise to when to do things so not all servers fire at the same time
-     * against
-     * ZooKeeper.
-     */
-    private final Random random = new Random();
     
     private static final Logger log = Logger.getLogger(DynamicExpression.class.getName());
 

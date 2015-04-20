@@ -92,14 +92,6 @@ public class ZkServiceHandle implements ServiceHandle {
     }
 
     @Override
-    public void registerConfigListener(ConfigListener listener) {
-        TrackedConfig trackedConfig = new TrackedConfig(
-                ZkCoordinatePath.getConfigPath(coordinate, null), listener, zkClient);
-        claimedCoordinate.registerTrackedConfig(trackedConfig);
-        trackedConfig.start();
-    }
-
-    @Override
     public void registerCoordinateListener(CoordinateListener listener)  {
         claimedCoordinate.registerCoordinateListener(listener);
     }
@@ -107,11 +99,6 @@ public class ZkServiceHandle implements ServiceHandle {
     @Override
     public void close() throws CloudnameException {
         claimedCoordinate.releaseClaim();
-    }
-
-    @Override
-    public CloudnameLock getCloudnameLock(CloudnameLock.Scope scope, String lockName) {
-        return claimedCoordinate.getCloudnameLock(scope, lockName);
     }
 
     @Override
