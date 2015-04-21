@@ -3,11 +3,17 @@ package org.cloudname.flags;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
+import javax.annotation.PostConstruct;
 import junit.framework.Assert;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.ExpectedException;
 
+import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.CoreMatchers.isA;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
 
 /**
@@ -372,4 +378,99 @@ public class FlagsTest {
         Assert.assertNull(FlagsPropertiesFile.comments);
     }
 
+    static class BaseFlaggedTestClass {
+        static int baseCallCounter;
+
+        @PostConstruct
+        protected void b0() {baseCallCounter++;}
+
+        @PostConstruct
+        private void b1() {baseCallCounter++;}
+
+    }
+    static class FlaggedTestClass extends BaseFlaggedTestClass {
+        @Flag (name="flag-one")
+        private String flagOne;
+
+        static int callCounter;
+
+        @PostConstruct
+        public void i1() { callCounter++; }
+
+        @PostConstruct
+        private void i2() {  callCounter++; }
+
+        @PostConstruct
+        protected void i3() { callCounter++;}
+
+        @PostConstruct
+        static void i4() {
+            callCounter++;
+        }
+    }
+
+    static class FlaggedTestStaticClass {
+        @Flag (name="flag-two")
+        private static String flagTwo;
+        public static int callCounter;
+
+        @PostConstruct
+        public static void c1() { callCounter++; }
+
+        @PostConstruct
+        public void i2(int i) { callCounter++; }
+    }
+
+    @Test
+    public void testPostConstructForInstanceConfiguration() {
+        final String[] args = new String[] { "--flag-one", "xyz"};
+        final FlaggedTestClass instance = new FlaggedTestClass();
+        new Flags().loadOpts(instance).parse(args);
+
+        assertThat(instance.flagOne, is("xyz"));
+        assertThat(FlaggedTestClass.callCounter, is(3));
+        // don't support i methods.
+        assertThat(BaseFlaggedTestClass.baseCallCounter, is(0));
+    }
+
+    @Test
+    public void testPostConstructForСlassConfiguration() {
+        final String[] args = new String[] { "--flag-two", "abc"};
+        new Flags().loadOpts(FlaggedTestStaticClass.class).parse(args);
+
+        assertThat(FlaggedTestStaticClass.flagTwo, is("abc"));
+        assertThat(FlaggedTestStaticClass.callCounter, is(1));
+        // don't support i methods.
+        assertThat(BaseFlaggedTestClass.baseCallCounter, is(0));
+    }
+
+    static class FlaggedTestClassInvalidMethod {
+        @PostConstruct
+        public void i1(final String string) { }
+    }
+
+    @Rule
+    public ExpectedException expectedException = ExpectedException.none();
+
+    @Test
+    public void testPostConstructInvalidMethod() {
+        final FlaggedTestClassInvalidMethod invalidMethod = new FlaggedTestClassInvalidMethod();
+        expectedException.expect(IllegalArgumentException.class);
+        new Flags().loadOpts(invalidMethod).parse(new String[0]);
+    }
+
+    static class FlaggedTestClassThrowsException {
+        @Flag (name="flag-one")
+        private String flagOne;
+
+        @PostConstruct
+        public void i1() { throw new UnsupportedOperationException(); }
+    }
+
+    @Test
+    public void testPostConstructExceptionInMethod() {
+        final FlaggedTestClassThrowsException invalidMethod = new FlaggedTestClassThrowsException();
+        expectedException.expectCause(isA(UnsupportedOperationException.class));
+        new Flags().loadOpts(invalidMethod).parse(new String[0]);
+    }
 }
