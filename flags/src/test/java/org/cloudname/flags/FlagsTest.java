@@ -382,10 +382,10 @@ public class FlagsTest {
         static int baseCallCounter;
 
         @PostConstruct
-        protected void b0() {baseCallCounter++;}
+        protected void base1() {baseCallCounter++;}
 
         @PostConstruct
-        private void b1() {baseCallCounter++;}
+        private void base2() {baseCallCounter++;}
 
     }
     static class FlaggedTestClass extends BaseFlaggedTestClass {
@@ -395,16 +395,16 @@ public class FlagsTest {
         static int callCounter;
 
         @PostConstruct
-        public void i1() { callCounter++; }
+        public void instance1() { callCounter++; }
 
         @PostConstruct
-        private void i2() {  callCounter++; }
+        private void instance2() {  callCounter++; }
 
         @PostConstruct
-        protected void i3() { callCounter++;}
+        protected void instance3() { callCounter++;}
 
         @PostConstruct
-        static void i4() {
+        static void instance4() {
             callCounter++;
         }
     }
@@ -415,11 +415,11 @@ public class FlagsTest {
         public static int callCounter;
 
         @PostConstruct
-        public static void c1() { callCounter++; }
+        public static void static1() { callCounter++; }
 
         // check that instance methods are ignored
         @PostConstruct
-        public void i2() { callCounter++; }
+        public void instsance1() { callCounter++; }
 
     }
 
