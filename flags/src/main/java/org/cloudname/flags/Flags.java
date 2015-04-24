@@ -5,6 +5,8 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.io.PrintWriter;
 import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -16,6 +18,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.TreeMap;
+import javax.annotation.PostConstruct;
 import joptsimple.OptionParser;
 import joptsimple.OptionSet;
 import joptsimple.OptionSpec;
@@ -40,6 +43,9 @@ import joptsimple.OptionSpec;
  *
  * The class supports the use of --help. If --help is given, parse will just print the help
  * and not attempt to set any values.
+ *
+ * If the class type contains methods annotated with @PostConstruct annotation they will be
+ * automatically called after parsing the arguments.
  *
  * @author acidmoose
  *
@@ -82,6 +88,9 @@ public class Flags {
     // Helper map to store enum options.
     private final Map<Class<? extends Enum<?>>, List<String>> enumOptions = new HashMap<Class<? extends Enum<?>>, List<String>>();
 
+    private final List<Object> objects = new ArrayList<Object>();
+    private final List<Class<?>> classes = new ArrayList<Class<?>>();
+
 
     /**
      * Load a class that contains Flag annotations.
@@ -90,6 +99,7 @@ public class Flags {
      * @return this
      */
     public Flags loadOpts(Class<?> c) {
+        classes.add(c);
         return loadOpts(c, false);
     }
 
@@ -100,6 +110,7 @@ public class Flags {
      * @return this
      */
     public Flags loadOpts(final Object o) {
+        objects.add(o);
         return loadOpts(o, true);
     }
 
@@ -440,7 +451,65 @@ public class Flags {
                 throw new RuntimeException("Programming error, illegal access for " + holder.getField().toGenericString());
             }
         }
+        try {
+            callPostConstructMethods();
+        } catch (final InvocationTargetException e) {
+            throw new RuntimeException("Post construct method thrown exception", e.getCause());
+        } catch (final IllegalAccessException e) {
+            // this probably should never happen
+            throw new RuntimeException(
+                    "Programming error, illegal access to a post construct method",
+                    e);
+        }
         return this;
+    }
+
+    /**
+     * Call all the methods annotated with the @PostConstruct annotation and have no parameters.
+     * For the flagged objects all the instance methods are called (including private).
+     * Inherited methods are not recognised (we may add this later). For the flagged classes all
+     * the static method are called. The instance methods are ignored.
+     *
+     * @throws InvocationTargetException if the underlying post construct method throws an
+     * exception.
+     * @throws IllegalAccessException if there is no access to the method.
+     */
+    private void callPostConstructMethods() throws InvocationTargetException, IllegalAccessException {
+        for (final Object o : objects) {
+            for (final Method method : findPostConstructMethod(o.getClass(), true)) {
+                method.invoke(o);
+            }
+        }
+        for (final Class<?> cls : classes) {
+            for (final Method method : findPostConstructMethod(cls, false)) {
+                method.invoke(false);
+            }
+        }
+    }
+
+    private List<Method> findPostConstructMethod(final Class<?> type, final boolean instanced) {
+        final List<Method> result = new ArrayList<Method>();
+        for (final Method method : type.getDeclaredMethods()) {
+            if (method.getAnnotation(PostConstruct.class) != null) {
+                final boolean isStatic = Modifier.isStatic(method.getModifiers());
+                if ((instanced && !isStatic) || (!instanced && isStatic)) {
+                    checkNoMethodArguments(method);
+                    if (!method.isAccessible()) {
+                        method.setAccessible(true);
+                    }
+                    result.add(method);
+                }
+            }
+        }
+        return result;
+    }
+
+    private void checkNoMethodArguments(final Method method) {
+        if (method.getParameterTypes().length != 0) {
+            final String methodName = method.getDeclaringClass().getName() + "#" + method.getName();
+            throw new IllegalArgumentException(
+                    "Post construct method " + methodName + " must not have parameters");
+        }
     }
 
     /**
