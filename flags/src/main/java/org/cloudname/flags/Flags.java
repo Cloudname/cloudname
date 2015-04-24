@@ -493,7 +493,7 @@ public class Flags {
             if (method.getAnnotation(PostConstruct.class) != null) {
                 final boolean isStatic = Modifier.isStatic(method.getModifiers());
                 if ((instanced && !isStatic) || (!instanced && isStatic)) {
-                    checkMethodSignature(method);
+                    checkNoMethodArguments(method);
                     if (!method.isAccessible()) {
                         method.setAccessible(true);
                     }
@@ -504,7 +504,7 @@ public class Flags {
         return result;
     }
 
-    private void checkMethodSignature(final Method method) {
+    private void checkNoMethodArguments(final Method method) {
         if (method.getParameterTypes().length != 0) {
             final String methodName = method.getDeclaringClass().getName() + "#" + method.getName();
             throw new IllegalArgumentException(

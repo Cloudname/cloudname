@@ -417,8 +417,10 @@ public class FlagsTest {
         @PostConstruct
         public static void c1() { callCounter++; }
 
+        // check that instance methods are ignored
         @PostConstruct
-        public void i2(int i) { callCounter++; }
+        public void i2() { callCounter++; }
+
     }
 
     @Test
@@ -429,7 +431,8 @@ public class FlagsTest {
 
         assertThat(instance.flagOne, is("xyz"));
         assertThat(FlaggedTestClass.callCounter, is(3));
-        // don't support i methods.
+
+        // check that we don't support inherited methods for now
         assertThat(BaseFlaggedTestClass.baseCallCounter, is(0));
     }
 
