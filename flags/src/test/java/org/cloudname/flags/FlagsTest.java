@@ -24,6 +24,9 @@ import static org.junit.Assert.assertTrue;
  */
 public class FlagsTest {
 
+    @Rule
+    public ExpectedException exception = ExpectedException.none();
+
     /**
      * Test all supported field types.
      */
@@ -301,19 +304,38 @@ public class FlagsTest {
         File propertiesFile = File.createTempFile("test", "properties");
         propertiesFile.setWritable(true);
         FileOutputStream fio = new FileOutputStream(propertiesFile);
-        String properties = "integer=1\n\n" + "#comments=not included\n" +
-            "not-in-options=abc\n" + "name=myName\n" +
-            "help\n" + "version\n";
+        String properties = "integer=1\n\n"
+                + "#comments=not included\n"
+                + "name=myName\n"
+                + "booleanvalue\n"
+                + "help\n";
         fio.write(properties.getBytes());
         fio.close();
         Flags flags = new Flags()
             .loadOpts(FlagsPropertiesFile.class)
             .parse(new String[]{"--properties-file", propertiesFile.getAbsolutePath()});
-        assertFalse("Help seems to have been called. It should not have been.", flags.helpFlagged());
-        assertFalse("Version seems to have been called. It should not have been.", flags.versionFlagged());
         assertEquals("myName", FlagsPropertiesFile.name);
+        assertTrue(FlagsPropertiesFile.booleanValue);
+        assertTrue(flags.helpFlagged());
         assertEquals(1, FlagsPropertiesFile.integer);
         Assert.assertNull(FlagsPropertiesFile.comments);
+    }
+
+    /**
+     * Test that --properties-file does not accept keys which are not defined as flags
+     */
+    @Test
+    public void testLoadingUndefinedFlagFromPropertiesFile() throws Exception {
+        exception.expect(joptsimple.OptionException.class);
+        File propertiesFile = File.createTempFile("test", "properties");
+        propertiesFile.setWritable(true);
+        FileOutputStream fio = new FileOutputStream(propertiesFile);
+        String properties = "not-in-options=abc\n";
+        fio.write(properties.getBytes());
+        fio.close();
+        new Flags()
+                .loadOpts(FlagsPropertiesFile.class)
+                .parse(new String[]{"--properties-file", propertiesFile.getAbsolutePath()});
     }
 
     /**
@@ -340,8 +362,6 @@ public class FlagsTest {
             .parse(new String[]{"--properties-file", propertiesFile1.getAbsolutePath(),
                                 "--properties-file", propertiesFile2.getAbsolutePath()
             });
-        assertFalse("Help seems to have been called. It should not have been.", flags.helpFlagged());
-        assertFalse("Version seems to have been called. It should not have been.", flags.versionFlagged());
         assertEquals("myName", FlagsPropertiesFile.name);
         assertEquals(1, FlagsPropertiesFile.integer);
         Assert.assertNull(FlagsPropertiesFile.comments);
@@ -366,13 +386,11 @@ public class FlagsTest {
             "help\n" + "version\n";
         fio2.write(properties2.getBytes());
         fio2.close();
-        Flags flags = new Flags()
+        new Flags()
             .loadOpts(FlagsPropertiesFile.class)
             .parse(new String[]{"--properties-file", propertiesFile1.getAbsolutePath() + ';'
                 +propertiesFile2.getAbsolutePath()
             });
-        assertFalse("Help seems to have been called. It should not have been.", flags.helpFlagged());
-        assertFalse("Version seems to have been called. It should not have been.", flags.versionFlagged());
         assertEquals("myName", FlagsPropertiesFile.name);
         assertEquals(1, FlagsPropertiesFile.integer);
         Assert.assertNull(FlagsPropertiesFile.comments);

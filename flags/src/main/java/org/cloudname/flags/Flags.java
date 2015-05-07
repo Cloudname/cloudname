@@ -362,13 +362,16 @@ public class Flags {
                     props.load(stream);
                     for (Enumeration<?> keys = props.propertyNames(); keys.hasMoreElements();) {
                         String flagName = (String) keys.nextElement();
-                        if (!options.containsKey(flagName) || optionSet.hasArgument(flagName)) {
-                            //Properties contains something not in options or is already set by commandline argument
+                        if (optionSet.hasArgument(flagName)) {
+                            //Properties contains something already set by commandline argument
                             //Command line argument takes precedence over properties file
                             continue;
                         }
                         newArgs.add("--" + flagName);
-                        newArgs.add(props.getProperty(flagName));
+                        String value = props.getProperty(flagName);
+                        if (value != null && ! value.isEmpty()) {
+                            newArgs.add(value);
+                        }
                     }
 
                     stream.close();
