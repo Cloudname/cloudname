@@ -1,31 +1,24 @@
 package org.cloudname.a3;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.Reader;
+import java.security.AccessControlContext;
+import java.security.AccessController;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.logging.Logger;
+import javax.security.auth.Subject;
 import org.cloudname.a3.domain.ServiceCoordinate;
 import org.cloudname.a3.domain.User;
 import org.cloudname.a3.domain.UserDB;
-
+import org.cloudname.a3.storage.MemoryStorage;
 import org.cloudname.a3.storage.UserDBStorage;
 import org.cloudname.a3.storage.ZKStorage;
-import org.cloudname.a3.storage.MemoryStorage;
-
 import org.joda.time.DateTime;
-
-import java.io.InputStream;
-import java.io.IOException;
-import java.io.Reader;
-
-import java.security.AccessController;
-import java.security.AccessControlContext;
-import java.security.Principal;
-
-import java.util.Set;
-
-import java.util.concurrent.atomic.AtomicReference;
-
-import java.util.logging.Logger;
-import java.util.logging.Level;
-
-import javax.security.auth.Subject;
 
 /**
  * A3 client interface.
@@ -116,6 +109,50 @@ public class A3Client
         return new A3Client(MemoryStorage.fromReader(in));
     }
 
+    /**
+     * Gets a collection of Users by looking up a specific property and matching on of it's values
+     * (All properties are whitespace separated lists).
+     *
+     * @param key the property key
+     * @param value the value to look for
+     * @return a GetUserResult instance containing a collection of Users.
+     */
+    public GetUserResult getUserByProperty(final String key, final String value) {
+        final UserDB userDB;
+        try {
+            userDB = getUserDb();
+        } catch (Exception e) {
+            return new GetUserResult(GetUserResult.State.INTERNAL_ERROR,
+                    "Unable to get user database",
+                    e);
+        }
+        final Set<User> users = new HashSet<User>();
+        for (final User user : userDB.getAllUsers()) {
+            final Map<String, String> properties = user.getProperties();
+            if (properties == null || properties.get(key) == null) {
+                continue;
+            }
+            final String propertyValue = properties.get(key);
+            if (Arrays.asList(propertyValue.split(" ")).contains(value)) {
+                users.add(user);
+            }
+        }
+        if (users.isEmpty()) {
+            return new GetUserResult(GetUserResult.State.UNKNOWN_USER);
+        }
+        return new GetUserResult(users, GetUserResult.State.OK);
+    }
+
+    private UserDB getUserDb() throws Exception {
+        // If we do not already have a user database we fetch it.
+        if (null == dbReference.get()) {
+            // Tempted to use compareAndSet but this doesn't really make
+            // that much sense since the value we fetch is likely to be
+            // newer anyway.  I think.
+            dbReference.set(dbStorage.getUserDB());
+        }
+        return dbReference.get();
+    }
 
     /**
      * Authenticate the user.  If the authentication succeeds the
@@ -136,22 +173,15 @@ public class A3Client
     public AuthnResult authenticate(String username, String cleartextPassword) {
         ensureOpened();
 
-        // If we do not already have a user database we fetch it.
-        if (null == dbReference.get()) {
-            try {
-                // Tempted to use compareAndSet but this doesn't really make
-                // that much sense since the value we fetch is likely to be
-                // newer anyway.  I think.
-                dbReference.set(dbStorage.getUserDB());
-            } catch (Exception e) {
-                return new AuthnResult(AuthnResult.State.INTERNAL_ERROR,
-                                       "Unable to get user database",
-                                       e);
-            }
-        }
-
         // Deal with the case where the user does not exist.
-        final User user = dbReference.get().getUser(username);
+        final User user;
+        try {
+            user = getUserDb().getUser(username);
+        } catch (Exception e) {
+            return new AuthnResult(AuthnResult.State.INTERNAL_ERROR,
+                    "Unable to get user database",
+                    e);
+        }
         if (null == user) {
             return new AuthnResult(AuthnResult.State.UNKNOWN_USER, "Unknown user");
         }
@@ -194,7 +224,7 @@ public class A3Client
         }
         final Set<A3Principal> a3Principals
             = subject.getPrincipals(A3Principal.class);
-        if (a3Principals == null || a3Principals.isEmpty()) {
+        if (a3Principals.isEmpty()) {
             return null;
         }
         if (a3Principals.size() > 1) {
