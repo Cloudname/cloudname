@@ -32,7 +32,7 @@
     </profile>
 
     <profile>
-      <id>profile-protoc-linux-x86</id>
+      <id>profile-protoc-linux-x86_64</id>
       <activation>
         <os>
           <family>unix</family>
@@ -40,7 +40,7 @@
         </os>
       </activation>
       <properties>
-        <protoc.executable>bin/protoc-linux-i386</protoc.executable>
+        <protoc.executable>bin/protoc-linux-x86_64</protoc.executable>
       </properties>
     </profile>
     <profile>
