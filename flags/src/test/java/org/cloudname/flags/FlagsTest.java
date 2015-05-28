@@ -3,11 +3,17 @@ package org.cloudname.flags;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
+import javax.annotation.PostConstruct;
 import junit.framework.Assert;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.ExpectedException;
 
+import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.CoreMatchers.isA;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
 
 /**
@@ -17,6 +23,9 @@ import static org.junit.Assert.assertTrue;
  *
  */
 public class FlagsTest {
+
+    @Rule
+    public ExpectedException exception = ExpectedException.none();
 
     /**
      * Test all supported field types.
@@ -295,19 +304,38 @@ public class FlagsTest {
         File propertiesFile = File.createTempFile("test", "properties");
         propertiesFile.setWritable(true);
         FileOutputStream fio = new FileOutputStream(propertiesFile);
-        String properties = "integer=1\n\n" + "#comments=not included\n" +
-            "not-in-options=abc\n" + "name=myName\n" +
-            "help\n" + "version\n";
+        String properties = "integer=1\n\n"
+                + "#comments=not included\n"
+                + "name=myName\n"
+                + "booleanvalue\n"
+                + "help\n";
         fio.write(properties.getBytes());
         fio.close();
         Flags flags = new Flags()
             .loadOpts(FlagsPropertiesFile.class)
             .parse(new String[]{"--properties-file", propertiesFile.getAbsolutePath()});
-        assertFalse("Help seems to have been called. It should not have been.", flags.helpFlagged());
-        assertFalse("Version seems to have been called. It should not have been.", flags.versionFlagged());
         assertEquals("myName", FlagsPropertiesFile.name);
+        assertTrue(FlagsPropertiesFile.booleanValue);
+        assertTrue(flags.helpFlagged());
         assertEquals(1, FlagsPropertiesFile.integer);
         Assert.assertNull(FlagsPropertiesFile.comments);
+    }
+
+    /**
+     * Test that --properties-file does not accept keys which are not defined as flags
+     */
+    @Test
+    public void testLoadingUndefinedFlagFromPropertiesFile() throws Exception {
+        exception.expect(joptsimple.OptionException.class);
+        File propertiesFile = File.createTempFile("test", "properties");
+        propertiesFile.setWritable(true);
+        FileOutputStream fio = new FileOutputStream(propertiesFile);
+        String properties = "not-in-options=abc\n";
+        fio.write(properties.getBytes());
+        fio.close();
+        new Flags()
+                .loadOpts(FlagsPropertiesFile.class)
+                .parse(new String[]{"--properties-file", propertiesFile.getAbsolutePath()});
     }
 
     /**
@@ -334,8 +362,6 @@ public class FlagsTest {
             .parse(new String[]{"--properties-file", propertiesFile1.getAbsolutePath(),
                                 "--properties-file", propertiesFile2.getAbsolutePath()
             });
-        assertFalse("Help seems to have been called. It should not have been.", flags.helpFlagged());
-        assertFalse("Version seems to have been called. It should not have been.", flags.versionFlagged());
         assertEquals("myName", FlagsPropertiesFile.name);
         assertEquals(1, FlagsPropertiesFile.integer);
         Assert.assertNull(FlagsPropertiesFile.comments);
@@ -360,16 +386,112 @@ public class FlagsTest {
             "help\n" + "version\n";
         fio2.write(properties2.getBytes());
         fio2.close();
-        Flags flags = new Flags()
+        new Flags()
             .loadOpts(FlagsPropertiesFile.class)
             .parse(new String[]{"--properties-file", propertiesFile1.getAbsolutePath() + ';'
                 +propertiesFile2.getAbsolutePath()
             });
-        assertFalse("Help seems to have been called. It should not have been.", flags.helpFlagged());
-        assertFalse("Version seems to have been called. It should not have been.", flags.versionFlagged());
         assertEquals("myName", FlagsPropertiesFile.name);
         assertEquals(1, FlagsPropertiesFile.integer);
         Assert.assertNull(FlagsPropertiesFile.comments);
     }
 
+    static class BaseFlaggedTestClass {
+        static int baseCallCounter;
+
+        @PostConstruct
+        protected void base1() {baseCallCounter++;}
+
+        @PostConstruct
+        private void base2() {baseCallCounter++;}
+
+    }
+    static class FlaggedTestClass extends BaseFlaggedTestClass {
+        @Flag (name="flag-one")
+        private String flagOne;
+
+        static int callCounter;
+
+        @PostConstruct
+        public void instance1() { callCounter++; }
+
+        @PostConstruct
+        private void instance2() {  callCounter++; }
+
+        @PostConstruct
+        protected void instance3() { callCounter++;}
+
+        @PostConstruct
+        static void instance4() {
+            callCounter++;
+        }
+    }
+
+    static class FlaggedTestStaticClass {
+        @Flag (name="flag-two")
+        private static String flagTwo;
+        public static int callCounter;
+
+        @PostConstruct
+        public static void static1() { callCounter++; }
+
+        // check that instance methods are ignored
+        @PostConstruct
+        public void instsance1() { callCounter++; }
+
+    }
+
+    @Test
+    public void testPostConstructForInstanceConfiguration() {
+        final String[] args = new String[] { "--flag-one", "xyz"};
+        final FlaggedTestClass instance = new FlaggedTestClass();
+        new Flags().loadOpts(instance).parse(args);
+
+        assertThat(instance.flagOne, is("xyz"));
+        assertThat(FlaggedTestClass.callCounter, is(3));
+
+        // check that we don't support inherited methods for now
+        assertThat(BaseFlaggedTestClass.baseCallCounter, is(0));
+    }
+
+    @Test
+    public void testPostConstructForСlassConfiguration() {
+        final String[] args = new String[] { "--flag-two", "abc"};
+        new Flags().loadOpts(FlaggedTestStaticClass.class).parse(args);
+
+        assertThat(FlaggedTestStaticClass.flagTwo, is("abc"));
+        assertThat(FlaggedTestStaticClass.callCounter, is(1));
+        // don't support i methods.
+        assertThat(BaseFlaggedTestClass.baseCallCounter, is(0));
+    }
+
+    static class FlaggedTestClassInvalidMethod {
+        @PostConstruct
+        public void i1(final String string) { }
+    }
+
+    @Rule
+    public ExpectedException expectedException = ExpectedException.none();
+
+    @Test
+    public void testPostConstructInvalidMethod() {
+        final FlaggedTestClassInvalidMethod invalidMethod = new FlaggedTestClassInvalidMethod();
+        expectedException.expect(IllegalArgumentException.class);
+        new Flags().loadOpts(invalidMethod).parse(new String[0]);
+    }
+
+    static class FlaggedTestClassThrowsException {
+        @Flag (name="flag-one")
+        private String flagOne;
+
+        @PostConstruct
+        public void i1() { throw new UnsupportedOperationException(); }
+    }
+
+    @Test
+    public void testPostConstructExceptionInMethod() {
+        final FlaggedTestClassThrowsException invalidMethod = new FlaggedTestClassThrowsException();
+        expectedException.expectCause(isA(UnsupportedOperationException.class));
+        new Flags().loadOpts(invalidMethod).parse(new String[0]);
+    }
 }

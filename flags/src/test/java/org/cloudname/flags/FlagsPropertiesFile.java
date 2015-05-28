@@ -9,4 +9,7 @@ public class FlagsPropertiesFile {
 
     @Flag(name="comments", description = "should not be set")
     static String comments;
+
+    @Flag(name="booleanvalue")
+    static boolean booleanValue = false;
 }
