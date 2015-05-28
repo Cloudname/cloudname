@@ -1,21 +1,19 @@
 package org.cloudname.a3.domain;
 
 
-import java.util.Map;
-import java.util.Set;
-import java.util.TreeSet;
-import java.util.HashMap;
-import java.util.List;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.datatype.joda.JodaModule;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
-
-import java.io.IOException;
-
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
-import com.fasterxml.jackson.datatype.joda.JodaModule;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.TreeSet;
 
 /**
  * Extremely simple user database which is simply a collection of
@@ -87,6 +85,14 @@ public class UserDB {
         return new TreeSet(userMap.keySet());
     }
 
+    /**
+     * Get entire collection of Users from database.
+     *
+     * @return Unmodifiable Collection of User objects.
+     */
+    public Collection<User> getAllUsers() {
+        return Collections.unmodifiableCollection(userMap.values());
+    }
 
     /**
      * Serialize entire user database to json format.

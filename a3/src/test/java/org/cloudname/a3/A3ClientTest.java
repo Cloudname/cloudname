@@ -1,9 +1,5 @@
 package org.cloudname.a3;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
-
 import java.io.File;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -11,7 +7,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import java.util.logging.Logger;
-
 import org.cloudname.a3.domain.ServiceCoordinate;
 import org.cloudname.a3.domain.User;
 import org.cloudname.a3.domain.UserDB;
@@ -24,6 +19,11 @@ import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 
 public class A3ClientTest {
     private static Logger log = Logger.getLogger(A3ClientTest.class.getName());
@@ -66,6 +66,7 @@ public class A3ClientTest {
         sampleProperties = new HashMap<String, String>();
         sampleProperties.put("foo", "foovalue");
         sampleProperties.put("bar", "barvalue");
+        sampleProperties.put("foobar", "foovalue barvalue");
 
         // Set up and initialize the embedded ZooKeeper
         ezk = new EmbeddedZooKeeper(rootDir, port);
@@ -128,6 +129,20 @@ public class A3ClientTest {
             assertEquals(AuthnResult.State.UNKNOWN_USER, result.getState());
         }
 
+        {
+            GetUserResult getUserResult = a3.getUserByProperty("foobar", "foovalue");
+            assertTrue(getUserResult.isOk());
+        }
+
+        {
+            GetUserResult getUserResult = a3.getUserByProperty("foobar", "barvalue");
+            assertTrue(getUserResult.isOk());
+        }
+
+        {
+            GetUserResult getUserResult = a3.getUserByProperty("unexist", "unexistvalue");
+            assertFalse(getUserResult.isOk());
+        }
         // Now we change the database a bit, update it and try again
         UserDB newDB = zkUserDBStorage.getUserDB();
         newDB.addUser(new User("unexist", "$2a$04$ScORS0wG.JjulVc3fJlcTuGJfG8GSuIRyRun0Gu7KmgwDuY0VSdOK", null, null, "Xavier Cooper", "xavier@example.com", sampleRoles, sampleProperties));
