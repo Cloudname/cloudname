@@ -1,8 +1,7 @@
 package org.cloudname;
 
-import org.cloudname.zk.ZkCloudnameLock;
-
 import java.util.List;
+import org.cloudname.CoordinateListener.Event;
 
 /**
  * The service handle -- the interface through which services
@@ -14,10 +13,17 @@ import java.util.List;
 public interface ServiceHandle {
 
     /**
-     * This is a convenient function for waiting for the connection to storage to be ok. It is the same as
-     * registering a CoordinateListener and waiting for event coordinate ok.
+     * This is a convenient function for waiting for the connection to storage
+     * to be ok. It is the same as registering a CoordinateListener and waiting
+     * for a given event.
      */
     public boolean waitForCoordinateOkSeconds(int seconds) throws InterruptedException;
+
+    /**
+     * Convenience method waiting for a coordinate ok event.
+     */
+    public boolean waitForCoordinateEventSeconds(final int seconds, final Event event)
+            throws InterruptedException;
 
     /**
      * Set the status of this service.

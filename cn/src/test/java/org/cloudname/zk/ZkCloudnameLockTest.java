@@ -1,32 +1,22 @@
 package org.cloudname.zk;
 
-import junit.framework.TestCase;
-import org.apache.zookeeper.WatchedEvent;
-import org.apache.zookeeper.Watcher;
-import org.apache.zookeeper.ZooKeeper;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import org.cloudname.CloudnameLock;
 import org.cloudname.Coordinate;
 import org.cloudname.CoordinateException;
 import org.cloudname.ServiceHandle;
-import org.cloudname.testtools.Net;
-import org.cloudname.testtools.network.PortForwarder;
-import org.cloudname.testtools.zookeeper.EmbeddedZooKeeper;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
-
-import java.io.File;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
-import java.util.logging.Logger;
-
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
 
 /**
  * Test class for Zookeeper implementation of CloudnameLock.
@@ -35,15 +25,12 @@ import static org.junit.Assert.fail;
  */
 public class ZkCloudnameLockTest {
 
-    private static Logger log = Logger.getLogger(ZkCloudnameTest.class.getName());
-
-    private EmbeddedZooKeeper ezk;
-    private ZooKeeper zk;
-    private int zkport;
     private ZkCloudname cn = null;
 
     @Rule
     public TemporaryFolder temp = new TemporaryFolder();
+
+    private final EmbeddedZooKeeperWithClient embeddedZookeeperWithClient = new EmbeddedZooKeeperWithClient();
 
     /**
      * Set up an embedded ZooKeeper instance backed by a temporary
@@ -53,34 +40,12 @@ public class ZkCloudnameLockTest {
      */
     @Before
     public void setup() throws Exception {
-        File rootDir = temp.newFolder("zklock-test");
-        zkport = Net.getFreePort();
-
-        log.info("EmbeddedZooKeeper rootDir=" + rootDir.getCanonicalPath() + ", port=" + zkport);
-
-        // Set up and initialize the embedded ZooKeeper
-        ezk = new EmbeddedZooKeeper(rootDir, zkport);
-        ezk.init();
-
-        // Set up a zookeeper client that we can use for inspection
-        final CountDownLatch connectedLatch = new CountDownLatch(1);
-
-
-        zk = new ZooKeeper("localhost:" + zkport, 1000, new Watcher() {
-            public void process(WatchedEvent event) {
-                if (event.getState() == Event.KeeperState.SyncConnected) {
-                    connectedLatch.countDown();
-                }
-            }
-        });
-        connectedLatch.await();
-
-        System.out.println("ZooKeeper port is " + zkport);
+        embeddedZookeeperWithClient.setup(temp);
     }
 
     @After
     public void tearDown() throws Exception {
-        zk.close();
+        embeddedZookeeperWithClient.close();
     }
 
     /**
@@ -88,7 +53,10 @@ public class ZkCloudnameLockTest {
      */
     @Test
     public void testInternalLockAbuse() throws Exception {
-        cn = new ZkCloudname.Builder().setConnectString("localhost:" + zkport).build().connect();
+        cn =
+                new ZkCloudname.Builder()
+                        .setConnectString("localhost:" + embeddedZookeeperWithClient.getZkPort()).build()
+                        .connect();
 
         final Coordinate coordinate1 = Coordinate.parse("1.service.user.cell");
         final CloudnameLock.Scope scope = CloudnameLock.Scope.SERVICE;
@@ -96,7 +64,7 @@ public class ZkCloudnameLockTest {
 
         try {
             cn.createCoordinate(coordinate1);
-        } catch (CoordinateException e) {
+        } catch (final CoordinateException e) {
             fail(e.toString());
         }
 
@@ -117,7 +85,10 @@ public class ZkCloudnameLockTest {
      */
     @Test
     public void testLockAndRelease() throws Exception {
-        cn = new ZkCloudname.Builder().setConnectString("localhost:" + zkport).build().connect();
+        cn =
+                new ZkCloudname.Builder()
+                        .setConnectString("localhost:" + embeddedZookeeperWithClient.getZkPort()).build()
+                        .connect();
 
         final Coordinate coordinate1 = Coordinate.parse("1.service.user.cell");
         final Coordinate coordinate2 = Coordinate.parse("2.service.user.cell");
@@ -126,7 +97,7 @@ public class ZkCloudnameLockTest {
         try {
             cn.createCoordinate(coordinate1);
             cn.createCoordinate(coordinate2);
-        } catch (CoordinateException e) {
+        } catch (final CoordinateException e) {
             fail(e.toString());
         }
 
@@ -179,7 +150,10 @@ public class ZkCloudnameLockTest {
      */
     @Test
     public void testWaitForLockWithProperRelease() throws Exception {
-        cn = new ZkCloudname.Builder().setConnectString("localhost:" + zkport).build().connect();
+        cn =
+                new ZkCloudname.Builder()
+                        .setConnectString("localhost:" + embeddedZookeeperWithClient.getZkPort()).build()
+                        .connect();
 
         final Coordinate coordinate1 = Coordinate.parse("1.service.user.cell");
         final Coordinate coordinate2 = Coordinate.parse("2.service.user.cell");
@@ -189,7 +163,7 @@ public class ZkCloudnameLockTest {
         try {
             cn.createCoordinate(coordinate1);
             cn.createCoordinate(coordinate2);
-        } catch (CoordinateException e) {
+        } catch (final CoordinateException e) {
             fail(e.toString());
         }
 
@@ -204,7 +178,7 @@ public class ZkCloudnameLockTest {
         // Attempt to lock
         assertTrue("Unable to lock.", lock1.tryLock());
 
-        Thread thread = new Thread() {
+        final Thread thread = new Thread() {
             @Override
             public void run() {
                 if (lock2.tryLock(5000))
@@ -225,7 +199,10 @@ public class ZkCloudnameLockTest {
      */
     @Test
     public void testComplexWaitForLock() throws Exception {
-        cn = new ZkCloudname.Builder().setConnectString("localhost:" + zkport).build().connect();
+        cn =
+                new ZkCloudname.Builder()
+                        .setConnectString("localhost:" + embeddedZookeeperWithClient.getZkPort()).build()
+                        .connect();
 
         final CloudnameLock.Scope scope = CloudnameLock.Scope.SERVICE;
         final String lockName = "testComplexWaitForLock";
@@ -244,7 +221,7 @@ public class ZkCloudnameLockTest {
             final Coordinate coordinate = Coordinate.parse(i + ".service.user.cell");
             try {
                 cn.createCoordinate(coordinate);
-            } catch (CoordinateException e) {
+            } catch (final CoordinateException e) {
                 fail(e.toString());
             }
             final ServiceHandle serviceHandle = cn.claim(coordinate);
@@ -293,13 +270,16 @@ public class ZkCloudnameLockTest {
      */
     @Test
     public void testNamePrefix () throws Exception {
-        cn = new ZkCloudname.Builder().setConnectString("localhost:" + zkport).build().connect();
+        cn =
+                new ZkCloudname.Builder()
+                        .setConnectString("localhost:" + embeddedZookeeperWithClient.getZkPort()).build()
+                        .connect();
         final Coordinate coordinate = Coordinate.parse("1.service.user.cell");
         cn.createCoordinate(coordinate);
         final ServiceHandle serviceHandle = cn.claim(coordinate);
         final CloudnameLock.Scope scope = CloudnameLock.Scope.SERVICE;
-        CloudnameLock lock1 = serviceHandle.getCloudnameLock(scope, "aaa");
-        CloudnameLock lock2 = serviceHandle.getCloudnameLock(scope, "aaabbb");
+        final CloudnameLock lock1 = serviceHandle.getCloudnameLock(scope, "aaa");
+        final CloudnameLock lock2 = serviceHandle.getCloudnameLock(scope, "aaabbb");
 
         assertTrue("Did not get lock.", lock2.tryLock());
         assertTrue("Did not get lock.", lock1.tryLock());
@@ -315,7 +295,7 @@ public class ZkCloudnameLockTest {
         private boolean busy = false;
         private final long simulatedWorkTime;
 
-        public Work(long simulatedWorkTime) {
+        public Work(final long simulatedWorkTime) {
             this.simulatedWorkTime = simulatedWorkTime;
         }
 
@@ -325,7 +305,7 @@ public class ZkCloudnameLockTest {
             busy = true;
             try {
                 Thread.sleep(simulatedWorkTime);
-            } catch (InterruptedException e) {
+            } catch (final InterruptedException e) {
                 fail("InterruptedException while simulating work.");
             }
             busy = false;
