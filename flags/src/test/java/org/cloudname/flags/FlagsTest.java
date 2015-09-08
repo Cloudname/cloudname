@@ -218,8 +218,8 @@ public class FlagsTest {
             .loadOpts(FlagsOptionTest.class);
 
         assertEquals(flags.getFlagsAsList().size(), 2);
-        assertEquals(flags.getFlagsAsList().get(0).name(), "int");
-        assertEquals(flags.getFlagsAsList().get(1).name(), "Integer");
+        assertEquals(flags.getFlagsAsList().get(0).name(), "Integer");
+        assertEquals(flags.getFlagsAsList().get(1).name(), "int");
     }
 
     /**
