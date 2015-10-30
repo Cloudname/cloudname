@@ -19,7 +19,7 @@ public interface Resolver {
      *                   endpoint.instance.service.user.cell (see ZkResolver for details).
      * @throws CloudnameException if problems talking with storage.
      */
-    public List<Endpoint> resolve(String expression) throws CloudnameException;
+    List<Endpoint> resolve(String expression) throws CloudnameException;
 
 
     /**
@@ -27,8 +27,8 @@ public interface Resolver {
      * If you want to register more than 1000 listeners in the same resolver, you might consider overriding
      * equals() and hashCode(), but the default implementation should work in normal cases.
      */
-    public interface ResolverListener {
-        public enum Event {
+    interface ResolverListener {
+        enum Event {
             /**
              * New endpoint was added.
              */
@@ -69,21 +69,21 @@ public interface Resolver {
      * endpoint.instance.service.user.cell (see ZkResolver for details). This should be static data, i.e.
      * the function might be called only once.
      */
-    public void addResolverListener(String expression, ResolverListener listener) throws CloudnameException;
+    void addResolverListener(String expression, ResolverListener listener) throws CloudnameException;
 
     /**
      * Calling this function unregisters the listener, i.e. stopping future callbacks.
      * The listener must be registered. For identification of listener, see comment on ResolverListener.
      * The default is to use object id.
      */
-    public void removeResolverListener(ResolverListener listener);
+    void removeResolverListener(ResolverListener listener);
 
     /**
      * This class is used as a parameter to {@link #getEndpoints(CoordinateDataFilter)}. Override methods to filter
      * the endpoints to be
      * returned.
      */
-    public class CoordinateDataFilter {
+    class CoordinateDataFilter {
         /**
          * Override these methods to filter on cell, user, service, endpointName, and/or service state.
          */
@@ -111,5 +111,5 @@ public interface Resolver {
      * @param filter class for filtering out endpoints
      * @return list of endpoints.
      */
-    public Set<Endpoint> getEndpoints(CoordinateDataFilter filter) throws CloudnameException, InterruptedException;
+    Set<Endpoint> getEndpoints(CoordinateDataFilter filter) throws CloudnameException, InterruptedException;
 }

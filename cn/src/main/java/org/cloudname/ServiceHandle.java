@@ -1,7 +1,5 @@
 package org.cloudname;
 
-import org.cloudname.zk.ZkCloudnameLock;
-
 import java.util.List;
 
 /**
@@ -17,7 +15,7 @@ public interface ServiceHandle {
      * This is a convenient function for waiting for the connection to storage to be ok. It is the same as
      * registering a CoordinateListener and waiting for event coordinate ok.
      */
-    public boolean waitForCoordinateOkSeconds(int seconds) throws InterruptedException;
+    boolean waitForCoordinateOkSeconds(int seconds) throws InterruptedException;
 
     /**
      * Set the status of this service.
@@ -27,7 +25,7 @@ public interface ServiceHandle {
      * @throws CloudnameException if coordinate is not claimed, connection to storage is down, or problems
      * with ZooKeeper.
      */
-    public void setStatus(ServiceStatus status) throws CoordinateMissingException, CloudnameException;
+    void setStatus(ServiceStatus status) throws CoordinateMissingException, CloudnameException;
 
     /**
      * Publish a named endpoint.  It is legal to push an endpoint with updated data.
@@ -37,7 +35,7 @@ public interface ServiceHandle {
      * @throws CloudnameException if coordinate is not claimed, connection to storage is down, or problems
      * with ZooKeeper.
      */
-    public void putEndpoint(Endpoint endpoint) throws CoordinateMissingException, CloudnameException;
+    void putEndpoint(Endpoint endpoint) throws CoordinateMissingException, CloudnameException;
 
     /**
      * Same as putEndpoints, but takes a list.
@@ -47,7 +45,7 @@ public interface ServiceHandle {
      * with ZooKeeper.
      * @throws CoordinateMissingException if coordinate does not exist.
      */
-    public void putEndpoints(List<Endpoint> endpoints) throws CoordinateMissingException, CloudnameException;
+    void putEndpoints(List<Endpoint> endpoints) throws CoordinateMissingException, CloudnameException;
 
     /**
      * Remove a published endpoint.
@@ -57,7 +55,7 @@ public interface ServiceHandle {
      * @throws CloudnameException if coordinate is not claimed, connection to storage is down, or problems
      * with ZooKeeper.
      */
-    public void removeEndpoint(String name) throws CoordinateMissingException, CloudnameException;
+    void removeEndpoint(String name) throws CoordinateMissingException, CloudnameException;
 
     /**
      * Same as removeEndpoint() but takes a list of names.
@@ -67,7 +65,7 @@ public interface ServiceHandle {
      * @throws CoordinateMissingException if coordinate does not exist.
      * @throws CoordinateMissingException if coordinate does not exist.
      */
-    public void removeEndpoints(List<String> names) throws CoordinateMissingException, CloudnameException;
+    void removeEndpoints(List<String> names) throws CoordinateMissingException, CloudnameException;
 
 
     /**
@@ -80,7 +78,7 @@ public interface ServiceHandle {
      * being created.
      */
     // TODO(dybdahl): This logic lacks tests. Before used in any production code, tests have to be added.
-    public void registerConfigListener(ConfigListener listener);
+    void registerConfigListener(ConfigListener listener);
 
     /**
      * After registering a new listener, a new event is triggered which include current state, even without change
@@ -90,7 +88,7 @@ public interface ServiceHandle {
      *
      * @throws CloudnameException if problems talking with storage.
      */
-    public void registerCoordinateListener(CoordinateListener listener)
+    void registerCoordinateListener(CoordinateListener listener)
             throws CloudnameException;
 
     /**
@@ -100,17 +98,8 @@ public interface ServiceHandle {
      * in an exception being thrown. All endpoints are deleted.
      * @throws CloudnameException if problems removing the claim.
      */
-    public void close()
+    void close()
             throws CloudnameException;
 
-    /**
-     * Get a CloudnameLock object.
-     * @param scope The scope of the coordinate you want to place the lock on.
-     * @param lockName The String identifying the lock across the level selected.
-     * @return CloudnameLock
-     */
-    // TODO (acidmoose): Revisit api for creating CloudnameLock object.
-    // Should perhaps be a default Scope set to Scope.SERVICE.
-    public CloudnameLock getCloudnameLock(CloudnameLock.Scope scope, String lockName);
 }
 

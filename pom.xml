@@ -4,7 +4,7 @@
 
   <groupId>org.cloudname</groupId>
   <artifactId>cloudname-parent</artifactId>
-  <version>2.14-SNAPSHOT</version>
+  <version>3.0-SNAPSHOT</version>
   <packaging>pom</packaging>
 
   <name>Cloudname Parent</name>
@@ -35,18 +35,18 @@
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 
     <!-- Dependency versions -->
-    <cn.zookeeper.version>3.3.3</cn.zookeeper.version>
+    <cn.zookeeper.version>3.4.6</cn.zookeeper.version>
+    <cn.curator.version>2.9.0</cn.curator.version>
     <cn.jackson.version>2.1.1</cn.jackson.version>
     <cn.junit.version>4.11</cn.junit.version>
-    <cn.netty.version>3.2.8.Final</cn.netty.version>
+    <cn.netty.version>4.0.32.Final</cn.netty.version>
     <cn.protobuf.version>2.6.1</cn.protobuf.version>
     <cn.jline.version>0.9.94</cn.jline.version>
     <cn.jmxri.version>1.2.1</cn.jmxri.version>
     <cn.jsr250-api.version>1.0</cn.jsr250-api.version>
-    <cn.jersey.version>1.16</cn.jersey.version>
     <cn.jbcrypt.version>0.3m</cn.jbcrypt.version>
     <cn.joda-time.version>2.1</cn.joda-time.version>
-
+    <cn.a3.jersey.version>1.16</cn.a3.jersey.version>
     <integrationSourceDirectory>src/integrationtest</integrationSourceDirectory>
     <integrationOutputDirectory>target/integrationtest-classes</integrationOutputDirectory>
   </properties>
@@ -59,7 +59,6 @@
     <module>timber</module>
     <module>flags</module>
     <module>idgen</module>
-    <module>codelabs</module>
   </modules>
 
   <build>
@@ -69,8 +68,8 @@
         <artifactId>maven-compiler-plugin</artifactId>
         <version>2.3.2</version>
         <configuration>
-          <source>1.6</source>
-          <target>1.6</target>
+          <source>1.7</source>
+          <target>1.7</target>
         </configuration>
       </plugin>
 
@@ -132,15 +131,15 @@
       </dependency>
 
       <dependency>
-	<groupId>org.cloudname</groupId>
-	<artifactId>idgen</artifactId>
-	<version>${project.version}</version>
+        <groupId>org.cloudname</groupId>
+        <artifactId>idgen</artifactId>
+        <version>${project.version}</version>
       </dependency>
 
       <!-- Netty -->
       <dependency>
-        <groupId>org.jboss.netty</groupId>
-        <artifactId>netty</artifactId>
+        <groupId>io.netty</groupId>
+        <artifactId>netty-all</artifactId>
         <version>${cn.netty.version}</version>
       </dependency>
 
@@ -177,6 +176,13 @@
             <artifactId>jms</artifactId>
           </exclusion>
         </exclusions>
+      </dependency>
+
+      <!-- Apache Curator -->
+      <dependency>
+        <groupId>org.apache.curator</groupId>
+        <artifactId>curator-framework</artifactId>
+        <version>${cn.curator.version}</version>
       </dependency>
 
       <!-- Jackson JSON library -->
@@ -232,12 +238,6 @@
       <groupId>org.mindrot</groupId>
       <artifactId>jbcrypt</artifactId>
       <version>${cn.jbcrypt.version}</version>
-    </dependency>
-
-    <dependency>
-      <groupId>com.sun.jersey</groupId>
-      <artifactId>jersey-server</artifactId>
-      <version>${cn.jersey.version}</version>
     </dependency>
 
     <dependency>
@@ -386,5 +386,3 @@
     </profile>
   </profiles>
 </project>
-
-  

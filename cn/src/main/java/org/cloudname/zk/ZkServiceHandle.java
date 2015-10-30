@@ -110,11 +110,6 @@ public class ZkServiceHandle implements ServiceHandle {
     }
 
     @Override
-    public CloudnameLock getCloudnameLock(CloudnameLock.Scope scope, String lockName) {
-        return claimedCoordinate.getCloudnameLock(scope, lockName);
-    }
-
-    @Override
     public String toString() {
         return "Claimed coordinate instance: "+ claimedCoordinate.toString();
     }

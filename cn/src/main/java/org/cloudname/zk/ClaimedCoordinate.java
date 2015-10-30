@@ -239,10 +239,6 @@ public class ClaimedCoordinate implements Watcher, ZkObjectHandler.ConnectionSta
         return this;
     }
 
-    public CloudnameLock getCloudnameLock(CloudnameLock.Scope scope, String lockName) {
-        return new ZkCloudnameLock(zkClient.getZookeeper(), coordinate, scope, lockName);
-    }
-
     /**
      * Callbacks from zkClient
      */

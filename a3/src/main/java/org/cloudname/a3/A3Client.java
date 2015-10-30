@@ -12,12 +12,11 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.logging.Logger;
 import javax.security.auth.Subject;
-import org.cloudname.a3.domain.ServiceCoordinate;
+
 import org.cloudname.a3.domain.User;
 import org.cloudname.a3.domain.UserDB;
 import org.cloudname.a3.storage.MemoryStorage;
 import org.cloudname.a3.storage.UserDBStorage;
-import org.cloudname.a3.storage.ZKStorage;
 import org.joda.time.DateTime;
 
 /**
@@ -70,19 +69,6 @@ public class A3Client
         if (! opened) {
             throw new IllegalStateException("The a3 client was not open()'ed");
         }
-    }
-
-    /**
-     * Create new client that uses the ZooKeeper storage.
-     *
-     * @param coordinate The service coordinate of the user database.
-     * @param connectString the ZooKeeper connect string.
-     * @return an A3Client instance backed by ZooKeeper storage
-     */
-    public static A3Client newZooKeeperClient(ServiceCoordinate coordinate, String connectString) {
-        ZKStorage zs = new ZKStorage(coordinate, connectString);
-        zs.open();
-        return new A3Client(zs);
     }
 
     /**

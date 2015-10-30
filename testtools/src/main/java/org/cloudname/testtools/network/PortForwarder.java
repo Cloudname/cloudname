@@ -14,6 +14,7 @@ import java.util.logging.Logger;
  * Simple class for setting up port forwarding in unit tests. This
  * enables killing the connection.
  *
+ * TODO(stalehd): Remove? Replace with TestCluster class. Makes for better integration tests.
  * TODO(borud): this class lacks unit tests
  *
  * @author dybdahl
