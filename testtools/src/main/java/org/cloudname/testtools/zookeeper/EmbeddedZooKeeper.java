@@ -1,9 +1,7 @@
 package org.cloudname.testtools.zookeeper;
 
-import org.apache.zookeeper.server.ZooKeeperServer;
-import org.apache.zookeeper.server.ServerConfig;
-import org.apache.zookeeper.server.NIOServerCnxn;
-import org.apache.zookeeper.server.persistence.FileTxnSnapLog;
+import org.apache.curator.test.TestingServer;
+
 import java.io.File;
 import java.io.IOException;
 
@@ -12,17 +10,12 @@ import java.io.IOException;
  * current JVM for testing purposes.
  *
  * @author borud
+ * @author stalehd
  */
 public final class EmbeddedZooKeeper {
-    private File rootDir;
-    private int port;
-    private NIOServerCnxn.Factory cnxnFactory;
-    private FileTxnSnapLog fileTxnSnapLog;
-
-    /**
-     * Make default constructor private.
-     */
-    private EmbeddedZooKeeper() {}
+    private final File rootDir;
+    private final int port;
+    private TestingServer server;
 
     /**
      * @param rootDir the root directory of where the ZooKeeper
@@ -31,52 +24,9 @@ public final class EmbeddedZooKeeper {
      *   connections.
      */
     public EmbeddedZooKeeper(File rootDir, int port) {
-        if (rootDir == null) {
-            rootDir = createTempDir();
-        }
-
         this.rootDir = rootDir;
         this.port = port;
-
-        if (! rootDir.exists()) {
-            throw new IllegalStateException("Root directory does not exist: " + rootDir);
-        }
     }
-
-    /**
-     * Delete directory with content.
-     * @param path to be deleted.
-     */
-    static private void deleteDirectory(File path) {
-        for(File f : path.listFiles())
-        {
-            if(f.isDirectory()) {
-                deleteDirectory(f);
-                f.delete();
-            } else {
-                f.delete();
-            }
-        }
-        path.delete();
-    }
-
-
-   /**
-     * Deletes and recreates a temp dir. Sets deleteOnExit().
-     * @return
-     */
-    private static File createTempDir() {
-        File baseDir = new File(System.getProperty("java.io.tmpdir"));
-        File tempDir = new File(baseDir, "EmbeddedZooKeeper");
-        if (tempDir.exists()) {
-            System.err.println("Deleting old instance on startup.");
-            deleteDirectory(tempDir);
-        }
-        tempDir.mkdir();
-        tempDir.deleteOnExit();
-        return tempDir;
-    }
-
 
     private void delDir(File path) throws IOException {
         for(File f : path.listFiles())
@@ -109,24 +59,12 @@ public final class EmbeddedZooKeeper {
      * Set up the ZooKeeper instance.
      */
     public void init() throws Exception {
+        this.server = new TestingServer(this.port, this.rootDir);
         // Create the data directory
         File  dataDir = new File(rootDir, "data");
         dataDir.mkdir();
 
-        // Create server
-        ServerConfig config = new ServerConfig();
-        config.parse( new String[] {Integer.toString(port), dataDir.getCanonicalPath()});
-        ZooKeeperServer zk = new ZooKeeperServer();
-        fileTxnSnapLog = new FileTxnSnapLog(new File(config.getDataLogDir()),
-                new File(config.getDataDir()));
-        zk.setTxnLogFactory(fileTxnSnapLog);
-        zk.setTickTime(config.getTickTime());
-        zk.setMinSessionTimeout(config.getMinSessionTimeout());
-        zk.setMaxSessionTimeout(config.getMaxSessionTimeout());
-
-        cnxnFactory = new NIOServerCnxn.Factory(config.getClientPortAddress(),
-                                                config.getMaxClientCnxns());
-        cnxnFactory.startup(zk);
+        this.server.start();
     }
 
     /**
@@ -134,14 +72,8 @@ public final class EmbeddedZooKeeper {
      * @throws IOException if shutdown encountered I/O errors
      */
     public void shutdown() throws IOException {
-        if (null != cnxnFactory) {
-            cnxnFactory.shutdown();
-            cnxnFactory = null;
-        }
-        if (null != fileTxnSnapLog) {
-            fileTxnSnapLog.close();
-            fileTxnSnapLog = null;
-        }
+        this.server.stop();
+        del();
     }
 
     /**

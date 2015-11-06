@@ -33,8 +33,14 @@ public class MockChannel extends AbstractChannel {
             null,
             new TimberServerPipelineFactory(null).getPipeline(),
             new ChannelSink() {
+                @Override
                 public void eventSunk(ChannelPipeline pipeline, ChannelEvent e) {}
+                @Override
                 public void exceptionCaught(ChannelPipeline pipeline, ChannelEvent e, ChannelPipelineException cause) {}
+                @Override
+                public ChannelFuture execute(ChannelPipeline channelPipeline, Runnable runnable) {
+                    return null;
+                }
             }
         );
     }

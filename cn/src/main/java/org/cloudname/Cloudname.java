@@ -20,12 +20,12 @@ public interface Cloudname {
      * @param coordinate of the service we wish to claim.
      * @return a ServiceHandle that can wait for the claim to be successful and listen to the state of the claim.
      */
-    public ServiceHandle claim(Coordinate coordinate);
+    ServiceHandle claim(Coordinate coordinate);
 
     /**
      * Get a resolver instance.
      */
-    public Resolver getResolver();
+    Resolver getResolver();
 
     /**
      * Create a coordinate in the persistent service store.  Must
@@ -36,7 +36,7 @@ public interface Cloudname {
      * @throws CoordinateExistsException if coordinate already exists.
      * @throws CloudnameException if problems with talking with storage.
      */
-    public void createCoordinate(Coordinate coordinate)
+    void createCoordinate(Coordinate coordinate)
             throws CloudnameException, CoordinateExistsException;
 
     /**
@@ -46,7 +46,7 @@ public interface Cloudname {
      * @throws CloudnameException if problems talking with storage.
      * @throws CoordinateDeletionException if problems occurred during deletion.
      */
-    public void destroyCoordinate(Coordinate coordinate)
+    void destroyCoordinate(Coordinate coordinate)
             throws CoordinateDeletionException, CoordinateMissingException, CloudnameException;
     
     /**
@@ -56,7 +56,7 @@ public interface Cloudname {
      * @return a ServiceStatus instance.
      * @throws CloudnameException if problems with talking with storage.
      */
-    public ServiceStatus getStatus(Coordinate coordinate)
+    ServiceStatus getStatus(Coordinate coordinate)
             throws CloudnameException;
 
     /**
@@ -65,7 +65,7 @@ public interface Cloudname {
      * @throws CoordinateMissingException if coordinate does not exist.
      * @throws CloudnameException if problems including oldConfig does not match old config.
      */
-    public void setConfig(final Coordinate coordinate, final String newConfig, final String oldConfig)
+    void setConfig(final Coordinate coordinate, final String newConfig, final String oldConfig)
      throws CoordinateMissingException, CloudnameException;
 
     /**
@@ -74,11 +74,11 @@ public interface Cloudname {
      * @throws CoordinateMissingException if coordinate does not exist.
      * @throws CloudnameException
      */
-    public String getConfig(final Coordinate coordinate)
+    String getConfig(final Coordinate coordinate)
             throws CoordinateMissingException, CloudnameException;
 
     /**
      * Close down connection to storage.
      */
-    public void close();
+    void close();
 }
