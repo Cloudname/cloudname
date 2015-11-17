@@ -20,10 +20,10 @@ public class CloudnamePath {
     private static final Pattern NAME_PATTERN = Pattern.compile("[a-z0-9-]*");
 
     /**
-     * Check if path element is a valid name according to RFC 953/RCC 1123
+     * Check if path element is a valid name according to RFC 953/RCC 1123.
      *
      * @param name The element to check
-     * @return true if element is a valid stirng
+     * @return true if element is a valid string
      */
     public static boolean isValidPathElementName(final String name) {
         if (name == null || name.isEmpty()) {
@@ -45,8 +45,9 @@ public class CloudnamePath {
 
     /**
      * @param pathElements the string array to create the path from. Order is preserved so
-     *     pathElements[0] corresponds to the first element in the path.
-     * @throws AssertionError if the pathElements parameter is null.
+     *     pathElements[0] corresponds to the first element in the path. Note that the element will
+     *     be converted to lower case strings
+     * @throws AssertionError if the pathElements parameter is null
      */
     public CloudnamePath(final String[] pathElements) {
         if (pathElements == null) {
@@ -66,7 +67,7 @@ public class CloudnamePath {
     }
 
     /**
-     * Create a new path based on an existing one by appending a new element
+     * Create a new path based on an existing one by appending a new element.
      *
      * @param path The original CloudnamePath instance
      * @param additionalElement Element to append to the end of the original path
@@ -170,15 +171,7 @@ public class CloudnamePath {
             return false;
         }
         final CloudnamePath otherPath = (CloudnamePath) other;
-        if (otherPath.pathElements.length != pathElements.length) {
-            return false;
-        }
-        for (int i = 0; i < pathElements.length; i++) {
-            if (!pathElements[i].equals(otherPath.pathElements[i])) {
-                return false;
-            }
-        }
-        return true;
+        return Arrays.deepEquals(otherPath.pathElements, pathElements);
     }
 
     @Override

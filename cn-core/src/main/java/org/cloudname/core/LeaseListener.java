@@ -7,7 +7,7 @@ package org.cloudname.core;
  */
 public interface LeaseListener {
     /**
-     * A new lease is created. The lease is created at this point in time.
+     * A new lease is created.
      *
      * @param path The full path of the lease
      * @param data The data stored on the lease
