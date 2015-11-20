@@ -42,10 +42,10 @@ public abstract class CoreBackendTest {
 
     /**
      * Max data propagation time (in ms) for notifications from the backend. Override if your
-     * backend implementation is slow. 5 ms is a lot of time though so do it carefully.
+     * backend implementation is slow. 100 ms is a lot of time though so do it carefully.
      */
     protected int getBackendPropagationTime() {
-        return 5;
+        return 100;
     }
     /**
      * Ensure multiple clients can connect and that leases get an unique path for each client.
