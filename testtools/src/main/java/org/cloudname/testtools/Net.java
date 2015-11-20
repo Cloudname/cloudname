@@ -1,11 +1,17 @@
 package org.cloudname.testtools;
 
+import java.net.InterfaceAddress;
+import java.net.NetworkInterface;
+import java.util.Arrays;
+import java.util.Enumeration;
 import java.util.List;
 import java.util.ArrayList;
 
 import java.net.ServerSocket;
-import java.net.SocketException;
 import java.io.IOException;
+import java.util.Map;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * Testing utilities for networking.
@@ -13,6 +19,8 @@ import java.io.IOException;
  * @author borud
  */
 public class Net {
+    private static final Logger LOG = Logger.getLogger(Net.class.getName());
+
     /**
      * Find a network port that is not in use.
      * <p>
@@ -66,5 +74,47 @@ public class Net {
                 sock.close();
             }
         }
+    }
+
+    /**
+     * Check all available interfaces; find the ones most likely to be the external one. Override
+     * by setting the CLOUDNAME_INTERFACE environment variable or the cloudname.interface system
+     * property.
+     *
+     * Note that both IPv4 and IPv6 addresses will be returned.
+     *
+     * @return list of addresses
+     */
+    public static List<String> getHostInterfaces() {
+        // Docker might use lower case values here
+        for (final Map.Entry<String, String> var : System.getenv().entrySet()) {
+            if (var.getKey().equalsIgnoreCase("cloudname_interface")) {
+                if (var.getValue() != null && !var.getValue().isEmpty()) {
+                    return Arrays.asList(var.getValue());
+                }
+            }
+        }
+        final String systemProperty = System.getProperty("cloudname.interface");
+        if (systemProperty != null && !systemProperty.isEmpty()) {
+            return Arrays.asList(systemProperty);
+        }
+
+        final List<String> ret = new ArrayList<>();
+        try {
+            final Enumeration<NetworkInterface> netifs = NetworkInterface.getNetworkInterfaces();
+            while (netifs.hasMoreElements()) {
+                final NetworkInterface netif = netifs.nextElement();
+                for (final InterfaceAddress address : netif.getInterfaceAddresses()) {
+                    if (address.getAddress().isSiteLocalAddress()) {
+                        ret.add(address.getAddress().getHostAddress());
+                    }
+                }
+            }
+        } catch (final IOException ioe) {
+            LOG.log(Level.WARNING, "Got error retrieving host interfaces. Override with"
+                    + " CLOUDNAME_INTERFACE environment variable or"
+                    + " cloudname.interface system property", ioe);
+        }
+        return ret;
     }
 }

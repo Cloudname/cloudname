@@ -1,0 +1,225 @@
+<html lang="en">
+<head>
+    <title>Pac services</title>
+    <style>
+    body {
+        font-family: sans-serif;
+        font-size: 14pt;
+        background-color: 000030;
+    }
+    h1 {
+        font-size: 16pt;
+        font-weight: bold;
+    }
+    h1.pinky { color: pink; }
+    h1.blinky{ color: red; }
+    h1.inky { color: cyan; }
+    h1.clyde { color: orange; }
+
+    div.ghost {
+        background-image: url(ghosts.png);
+        float: left;
+        width: 64px;
+        height: 64px;
+        cursor: pointer;
+    }
+    div.clyde { background-position: 0px -192px; }
+    div.inky { background-position: 0px -128px; }
+    div.pinky { background-position: 0px -64px; }
+    div.blinky { background-position: 0px 0px; }
+    div.scared { background-position: 0px -256px; }
+    #pinky-list, #blinky-list, #inky-list, #clyde-list { width: 100%; }
+
+    div.ghost-container {
+        border: solid 2px lightblue;
+        border-radius: 1em;
+        padding: 0 2em 1em 1em;
+        margin: 1em;
+        -webkit-order: 0;
+                order: 0;
+        -webkit-flex: 1 1 auto;
+                flex: 1 1 auto;
+        -webkit-align-self: auto;
+                align-self: auto;
+    }
+
+    div.ghosts {
+        min-height: 25%;
+        display: -webkit-flex;
+        display:         flex;
+        -webkit-flex-direction: row;
+                flex-direction: row;
+        -webkit-flex-wrap: nowrap;
+                flex-wrap: nowrap;
+        -webkit-justify-content: center;
+                justify-content: center;
+        -webkit-align-content: stretch;
+                align-content: stretch;
+        -webkit-align-items: stretch;
+                align-items: stretch;
+    }
+    div.logo-container {
+        display: -webkit-flex;
+        display:         flex;
+        -webkit-flex-direction: row;
+                flex-direction: row;
+        -webkit-flex-wrap: nowrap;
+                flex-wrap: nowrap;
+        -webkit-justify-content: center;
+                justify-content: center;
+        -webkit-align-content: stretch;
+                align-content: stretch;
+        -webkit-align-items: center;
+                align-items: center;
+    }
+    #game-over-container {
+        visibility:hidden;
+        position: absolute;
+        top: 0;
+        left: 0;
+        z-index: 0;
+        width: 100%;
+        height: 100%;
+        margin: 0;
+        padding: 0;
+        background-color: black;
+        opacity: 0.8;
+        display: -webkit-flex;
+        display:         flex;
+        -webkit-flex-direction: row;
+                flex-direction: row;
+        -webkit-flex-wrap: nowrap;
+                flex-wrap: nowrap;
+        -webkit-justify-content: center;
+                justify-content: center;
+        -webkit-align-content: center;
+                align-content: center;
+        -webkit-align-items: center;
+                align-items: center;
+    }
+    div.game-over {
+        border: double 12px lightblue;
+        color: lightblue;
+        font-size: 24pt;
+        font-weight: bold;
+        border-radius: 1em;
+        width: 250px;
+        height: 80px;
+        display: flex;
+    }
+    div.game-over span {
+        margin-top: auto;
+        margin-bottom: auto;
+        width: 100%;
+        text-align: center;
+    }
+    </style>
+</head>
+<body>
+    <div id="game-over-container">
+        <div class="game-over">
+            <span>GAME OVER</span>
+        </div>
+    </div>
+    <div class="logo-container">
+        <img src="logo.png" width="480" height="128" alt="pac-serv"/>
+    </div>
+    <div class="ghosts">
+        <div class="ghost-container">
+            <h1 class="pinky">Pinky</h1>
+            <div id="pinky-list"></div>
+        </div>
+        <div class="ghost-container">
+            <h1 class="blinky">Blinky</h1>
+            <div id="blinky-list"></div>
+        </div>
+        <div class="ghost-container">
+            <h1 class="inky">Inky</h1>
+            <div id="inky-list"></div>
+        </div>
+        <div class="ghost-container">
+            <h1 class="clyde">Clyde</h1>
+            <div id="clyde-list"></div>
+        </div>
+    </div>
+</body>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js"></script>
+<script>
+function addGhost(ghost, identifier, endpoint) {
+    var container = $('#' + ghost + '-list');
+    var existingElement = $('#' + identifier);
+    if (existingElement.length) {
+        return;
+    }
+    var element = $('<div style="display:none" class="ghost ' + ghost + '" title="This is ' + identifier + '" id="' + identifier + '"></div>');
+    element.data("endpoint", endpoint);
+    element.click(function() { window.open('http://' + endpoint + '/', identifier, "width=640,height=480,resizable,scrollbars=yes,status=0"); });
+    container.append(element);
+    element.fadeIn(1000);
+}
+
+function removeGhost(ghost, identifier) {
+    var existingElement = $('#' + identifier);
+    existingElement.addClass('scared');
+    existingElement.removeClass('blinky');
+    existingElement.removeClass('inky');
+    existingElement.removeClass('pinky');
+    existingElement.removeClass('clyde');
+    if (existingElement.length > 0) {
+        existingElement.fadeOut(2000, function() {
+            existingElement.remove();
+        });
+    }
+}
+
+function gameOver() {
+    $('#game-over-container').css('visibility', 'visible');
+}
+
+function gameOn() {
+    $('#game-over-container').css('visibility', 'hidden');
+}
+
+$(document).ready(function() {
+    var messageStream = new WebSocket('ws://' + window.location.host + '/messages');
+    messageStream.onmessage = function(e) {
+        var message = JSON.parse(e.data);
+        if (message.action == 'gameover') {
+            gameOver();
+            return;
+        }
+        if (message.actio == 'gameon') {
+            gameOn();
+            return;
+        }
+        var elements = message.coordinate.split('.');
+        if (message.action == 'created') {
+            addGhost(elements[1], elements.join('_'), message.host + ':' + message.port);
+        }
+        else {
+            removeGhost(elements[1], elements.join('_'));
+        }
+    };
+    messageStream.onerror = function(err) {
+        console.log('Got error reading from websocket', err);
+    };
+
+    var inkyDirection = true;
+    var blinkyDirection = false;
+    var pinkyDirection = true;
+    var clydeDirection = false;
+    setInterval(function() {
+        inkyDirection = !inkyDirection;
+        pinkyDirection = !pinkyDirection;
+        blinkyDirection = !blinkyDirection;
+        clydeDirection = !clydeDirection;
+        $('.inky').css('background-position', inkyDirection ? '0px -128px' : '64px -128px');
+        $('.pinky').css('background-position', pinkyDirection ? '0px -64px' : '64px -64px');
+        $('.blinky').css('background-position', blinkyDirection ? '0px 0px' : '64px 0px');
+        $('.clyde').css('background-position', clydeDirection ? '0px -192px' : '64px -192px');
+        $('.scared').css('background-position', inkyDirection ? '0px -256px' : '64px -256px');
+    }, 500);
+});
+
+</script>
+</html>

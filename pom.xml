@@ -56,6 +56,7 @@
     <module>cn-memory</module>
     <module>cn-zookeeper</module>
     <module>cn-consul</module>
+    <module>cn-service-sample</module>
     <module>testtools</module>
     <module>log</module>
     <module>timber</module>
@@ -108,6 +109,18 @@
       <dependency>
         <groupId>org.cloudname</groupId>
         <artifactId>cn-memory</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+
+      <dependency>
+        <groupId>org.cloudname</groupId>
+        <artifactId>cn-service</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+
+      <dependency>
+        <groupId>org.cloudname</groupId>
+        <artifactId>cn-zookeeper</artifactId>
         <version>${project.version}</version>
       </dependency>
 
