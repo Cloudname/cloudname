@@ -45,7 +45,7 @@ public class ServiceHandle implements AutoCloseable {
      * @param endpoint The endpoint to register
      * @return true if endpoint is registered
      */
-    boolean registerEndpoint(final Endpoint endpoint) {
+    public boolean registerEndpoint(final Endpoint endpoint) {
         if (!serviceData.addEndpoint(endpoint)) {
             return false;
         }
@@ -56,7 +56,7 @@ public class ServiceHandle implements AutoCloseable {
      * @param endpoint The endpoint to remove
      * @return true if endpoint is removed
      */
-    boolean removeEndpoint(final Endpoint endpoint) {
+    public boolean removeEndpoint(final Endpoint endpoint) {
         if (!serviceData.removeEndpoint(endpoint)) {
             return false;
         }
@@ -71,5 +71,9 @@ public class ServiceHandle implements AutoCloseable {
             LOG.log(Level.WARNING, "Got exception closing lease for instance "
                     + instanceCoordinate.toCanonicalString(), ex);
         }
+    }
+
+    public InstanceCoordinate getCoordinate() {
+        return instanceCoordinate;
     }
 }
