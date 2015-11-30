@@ -117,7 +117,9 @@ public class Slot {
 
         // Make sure directory exists
         if (!parentDir.exists()) {
-            parentDir.mkdirs();
+            if (!parentDir.mkdirs()) {
+                throw new IOException("Could not create the non-existing directory " + parentDir.toString());
+            }
         }
 
         File foundFile = null;
