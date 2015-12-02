@@ -531,9 +531,12 @@ public abstract class CoreBackendTest {
             // Add the lease back
             backend.addPermanentLeaseListener(rootLease, listener);
 
+            Thread.sleep(getBackendPropagationTime());
+
             assertThat("New data can be written",
                     backend.writePermanentLeaseData(rootLease, newLeaseData), is(true));
 
+            Thread.sleep(getBackendPropagationTime());
             // Write new data
             assertThat("Lease can be removed", backend.removePermanentLease(rootLease), is(true));
 

@@ -8,12 +8,16 @@
     <version>3.0-SNAPSHOT</version>
   </parent>
 
-  <artifactId>cn-service</artifactId>
+  <artifactId>cn-consul</artifactId>
   <packaging>jar</packaging>
-  
-  <name>Cloudname Service Discovery</name>
-  <description>Simple library for service discovery (and notifications)</description>
+
+  <name>Cloudname Consul backend</name>
+  <description>Consul backend for cloudname</description>
   <url>https://github.com/Cloudname/cloudname</url>
+
+  <properties>
+    <jersey.version>2.19</jersey.version>
+  </properties>
 
   <dependencies>
     <dependency>
@@ -34,16 +38,22 @@
     </dependency>
 
     <dependency>
+      <groupId>org.glassfish.jersey.core</groupId>
+      <artifactId>jersey-client</artifactId>
+      <version>${jersey.version}</version>
+    </dependency>
+
+    <dependency>
       <groupId>org.json</groupId>
       <artifactId>json</artifactId>
     </dependency>
 
     <dependency>
       <groupId>org.cloudname</groupId>
-      <artifactId>cn-memory</artifactId>
+      <artifactId>testtools</artifactId>
       <scope>test</scope>
-
     </dependency>
+    
   </dependencies>
 
     <build>
@@ -56,7 +66,6 @@
             <groupId>org.apache.maven.plugins</groupId>
             <artifactId>maven-compiler-plugin</artifactId>
           </plugin>
-
         </plugins>
     </build>
 </project>
