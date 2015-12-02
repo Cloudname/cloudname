@@ -31,3 +31,5 @@ docker run -d --net=host -e zookeeper=$DOCKER_IP:2181 -e ghost=clyde -e cloudnam
 ```
 
 The new ghosts should appear on the web page. Click on one of the ghosts to see its internal state. Click on the *Shutdown* button to shut it down. It should disappear from the web page.
+
+(If you can't be bothered to do all of this you can see it in action at https://youtu.be/dlrNYbGZvAk)
