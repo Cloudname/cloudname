@@ -1,5 +1,6 @@
 package org.cloudname.backends.zookeeper;
 import com.google.common.base.Charsets;
+
 import org.apache.curator.RetryPolicy;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.framework.CuratorFrameworkFactory;
@@ -39,6 +40,7 @@ public class ZooKeeperBackend implements CloudnameBackend {
     private final Map<LeaseListener, NodeCollectionWatcher> clientListeners = new HashMap<>();
     private final Map<LeaseListener, NodeCollectionWatcher> permanentListeners = new HashMap<>();
     private final Object syncObject = new Object();
+
     /**
      * @param connectionString ZooKeeper connection string
      * @throws IllegalStateException if the cluster isn't available.

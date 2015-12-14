@@ -1,6 +1,7 @@
 package org.cloudname.service;
 
 import org.cloudname.backends.memory.MemoryBackend;
+import org.cloudname.core.BackendManager;
 import org.cloudname.core.CloudnameBackend;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -20,7 +21,7 @@ import static org.junit.Assert.fail;
  */
 public class CloudnameServicePermanentTest {
     private static final String SERVICE_COORDINATE = "myoldskoolserver.test.local";
-    private static final CloudnameBackend memoryBackend = new MemoryBackend();
+    private static final CloudnameBackend memoryBackend = BackendManager.getBackend("memory://");
     private static final Endpoint DEFAULT_ENDPOINT = new Endpoint("serviceport", "localhost", 80);
     private final ServiceCoordinate serviceCoordinate = ServiceCoordinate.parse(SERVICE_COORDINATE);
 

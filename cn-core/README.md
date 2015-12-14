@@ -28,3 +28,10 @@ Elements in the paths follow the DNS naming conventions in RFC 952 and RFC 1123:
 * The backend will create notifications in the same order as they occur.
 * Past leases given to disconnected clients are not guaranteed to be unique
 * The backend is responsible for cleanups of leases; if all clients disconnect the only leases that should be left is the permanent leases.
+
+## Implementing new backends
+New implementations must implement two ìnterfaces -- CloudnameBackend` and `BackendMetadata. Each backend is registered with the `org.cloudname.core.BackendManager class which uses the ServiceLoader class to locate the implementation.
+
+Implement the BackendMetadata interface in a class and put the class name of the class that implements BackendMetadata into a file named `src/main/resources/META-INF/services/org.cloudname.core.BackendMetadata`. As soon as the jar file is included in the classpath of the client the backend will become available for the client to use. Needless to say, the name should be unique but that shouldn't be an issue. There are no restrictions on the connection string the backend can use. Everything after the `[backend]://` is passed on unaltered to the backend.
+
+Note that the BackendMetadata isn't required for a working backend but strongly recommended. It is easier to switch backends for testing environments, experimentation if the backend can be created via the `BackendManager` class.

@@ -1,6 +1,7 @@
 package org.cloudname.service;
 
 import org.cloudname.backends.memory.MemoryBackend;
+import org.cloudname.core.BackendManager;
 import org.cloudname.core.CloudnameBackend;
 import org.junit.Test;
 
@@ -23,7 +24,7 @@ import static org.hamcrest.CoreMatchers.is;
  * Test service registration with memory-based backend.
  */
 public class CloudnameServiceTest {
-    private static final CloudnameBackend memoryBackend = new MemoryBackend();
+    private static final CloudnameBackend memoryBackend = BackendManager.getBackend("memory://");
 
     private final ServiceCoordinate coordinate = ServiceCoordinate.parse("service.tag.region");
 
