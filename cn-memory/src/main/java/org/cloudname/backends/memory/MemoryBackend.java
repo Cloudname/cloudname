@@ -189,11 +189,11 @@ public class MemoryBackend implements CloudnameBackend {
      */
     private void regenerateEventsForTemporaryListener(
             final CloudnamePath path, final LeaseListener listener) {
-        for (final CloudnamePath temporaryPath : temporaryLeases.keySet()) {
-            if (path.isSubpathOf(temporaryPath)) {
-                listener.leaseCreated(temporaryPath, temporaryLeases.get(temporaryPath));
-            }
-        }
+       temporaryLeases.keySet().forEach((temporaryPath) -> {
+           if (path.isSubpathOf(temporaryPath)) {
+               listener.leaseCreated(temporaryPath, temporaryLeases.get(temporaryPath));
+           }
+       });
     }
 
     /**
@@ -201,11 +201,11 @@ public class MemoryBackend implements CloudnameBackend {
      */
     private void regenerateEventsForPermanentListener(
             final CloudnamePath path, final LeaseListener listener) {
-        for (final CloudnamePath permanentPath : permanentLeases.keySet()) {
+        permanentLeases.keySet().forEach((permanentPath) -> {
             if (path.isSubpathOf(permanentPath)) {
                 listener.leaseCreated(permanentPath, permanentLeases.get(permanentPath));
             }
-        }
+        });
     }
 
     @Override
