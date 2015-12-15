@@ -184,11 +184,14 @@ $(document).ready(function() {
     var messageStream = new WebSocket('ws://' + window.location.host + '/messages');
     messageStream.onmessage = function(e) {
         var message = JSON.parse(e.data);
+        if (message.action == 'heartbeat') {
+            return;
+        }
         if (message.action == 'gameover') {
             gameOver();
             return;
         }
-        if (message.actio == 'gameon') {
+        if (message.action == 'gameon') {
             gameOn();
             return;
         }

@@ -9,8 +9,12 @@ import org.cloudname.service.Endpoint;
 import org.cloudname.service.InstanceCoordinate;
 import org.cloudname.service.ServiceCoordinate;
 import org.cloudname.service.ServiceData;
+import org.cloudname.service.ServiceHandle;
 import org.cloudname.service.ServiceListener;
 import org.json.JSONObject;
+
+import java.util.concurrent.Executors;
+import java.util.logging.Logger;
 
 import static spark.Spark.*;
 
@@ -19,6 +23,9 @@ import static spark.Spark.*;
  * web socket is served through /messages.
  */
 public class DemoServer {
+    private static final Logger LOG = Logger.getLogger(DemoServer.class.getName());
+    private final int httpPort = 4567;
+
     @Flag (name = "cloudname-url", description = "Cloudname URL", required = true)
     private static String cloudnameUrl = null;
 
@@ -33,7 +40,8 @@ public class DemoServer {
         service = new CloudnameService(BackendManager.getBackend(cloudnameUrl));
     }
 
-    private String getCreateNotification(final InstanceCoordinate coordinate, final ServiceData serviceData) {
+    private String getCreateNotification(
+            final InstanceCoordinate coordinate, final ServiceData serviceData) {
         final Endpoint ep = serviceData.getEndpoint("http");
         return new JSONObject()
                 .put("coordinate", coordinate.toCanonicalString())
@@ -51,43 +59,77 @@ public class DemoServer {
     }
 
     private void connectToCloudname() {
-        final String[] ghostNames = new String[] { "pinky", "blinky", "inky", "clyde" };
-        for (final String name : ghostNames) {
-            final ServiceCoordinate ghostCoordinate = new ServiceCoordinate.Builder()
-                    .fromCoordinate(ServiceCoordinate.parse(myCoordinate))
-                    .setService(name)
-                    .build();
+        final ServiceData myServiceData = new ServiceData();
+        myServiceData.addEndpoint(new Endpoint("http", "0.0.0.0", httpPort));
 
-            service.addServiceListener(ghostCoordinate, new ServiceListener() {
-                @Override
-                public void onServiceCreated(InstanceCoordinate coordinate, ServiceData serviceData) {
-                    publisher.publish(getCreateNotification(coordinate, serviceData));
-                }
+        try (final ServiceHandle handle = service.registerService(
+                ServiceCoordinate.parse(myCoordinate), myServiceData)) {
 
-                @Override
-                public void onServiceDataChanged(InstanceCoordinate coordinate, ServiceData data) {
-                    // ignore
-                }
+            final String[] ghostNames = new String[]{"pinky", "blinky", "inky", "clyde"};
+            for (final String name : ghostNames) {
+                final ServiceCoordinate ghostCoordinate = new ServiceCoordinate.Builder()
+                        .fromCoordinate(ServiceCoordinate.parse(myCoordinate))
+                        .setService(name)
+                        .build();
+                LOG.info("Listening for " + ghostCoordinate);
+                service.addServiceListener(ghostCoordinate, new ServiceListener() {
+                    @Override
+                    public void onServiceCreated(
+                            final InstanceCoordinate coordinate, final ServiceData serviceData) {
+                        LOG.info("Service " + coordinate.toCanonicalString()
+                                + " with serviceData " + serviceData + " is created");
+                        publisher.publish(getCreateNotification(coordinate, serviceData));
+                    }
 
-                @Override
-                public void onServiceRemoved(InstanceCoordinate coordinate) {
-                    publisher.publish(getRemoveNotification(coordinate));
-                }
-            });
+                    @Override
+                    public void onServiceDataChanged(
+                            final InstanceCoordinate coordinate, final ServiceData data) {
+                        LOG.info("Service data changed for: " + coordinate.toCanonicalString()
+                                + " to: " + data.toString());
+                    }
+
+                    @Override
+                    public void onServiceRemoved(InstanceCoordinate coordinate) {
+                        LOG.info("Service " + coordinate.toCanonicalString() + " was removed");
+                        publisher.publish(getRemoveNotification(coordinate));
+                    }
+                });
+            }
+
+            LOG.info("Connected, using coordinate " + handle.getCoordinate().toCanonicalString());
         }
     }
 
     private void startServer() {
+        port(httpPort);
         staticFileLocation("/demoServerHtml");
         webSocket("/messages", NotificationsWebSocket.class);
-        System.out.println("Starting server....");
+        LOG.info("Starting server on port " + httpPort + "....");
         init();
     }
     public static void main(final String[] args) {
         new Flags().loadOpts(DemoServer.class).parse(args);
 
         final DemoServer demoServer = new DemoServer();
+
         demoServer.connectToCloudname();
+
+        // Start publishing a heartbeat
+        Executors.newSingleThreadExecutor().execute(() -> {
+            while (true) {
+                try {
+                    Thread.sleep(10000L);
+                    publisher.publish(new JSONObject()
+                            .put("action", "heartbeat")
+                            .put("time", System.currentTimeMillis())
+                            .toString());
+                } catch (final InterruptedException ie) {
+                    throw new RuntimeException(ie);
+                }
+            }
+        });
+
         demoServer.startServer();
+
     }
 }
