@@ -39,7 +39,7 @@
     <cn.curator.version>2.9.0</cn.curator.version>
     <cn.jackson.version>2.1.1</cn.jackson.version>
     <cn.junit.version>4.11</cn.junit.version>
-    <cn.netty.version>4.0.32.Final</cn.netty.version>
+    <cn.netty.version>3.7.0.Final</cn.netty.version>
     <cn.protobuf.version>2.6.1</cn.protobuf.version>
     <cn.jline.version>0.9.94</cn.jline.version>
     <cn.jmxri.version>1.2.1</cn.jmxri.version>
@@ -47,13 +47,14 @@
     <cn.jbcrypt.version>0.3m</cn.jbcrypt.version>
     <cn.joda-time.version>2.1</cn.joda-time.version>
     <cn.a3.jersey.version>1.16</cn.a3.jersey.version>
-    <integrationSourceDirectory>src/integrationtest</integrationSourceDirectory>
-    <integrationOutputDirectory>target/integrationtest-classes</integrationOutputDirectory>
   </properties>
 
   <modules>
     <module>a3</module>
-    <module>cn</module>
+    <module>cn-core</module>
+    <module>cn-service</module>
+    <module>cn-memory</module>
+    <module>cn-zookeeper</module>
     <module>testtools</module>
     <module>log</module>
     <module>timber</module>
@@ -68,8 +69,8 @@
         <artifactId>maven-compiler-plugin</artifactId>
         <version>2.3.2</version>
         <configuration>
-          <source>1.7</source>
-          <target>1.7</target>
+          <source>1.8</source>
+          <target>1.8</target>
         </configuration>
       </plugin>
 
@@ -80,15 +81,6 @@
         <version>2.7.2</version>
         <configuration>
           <useFile>false</useFile>
-        </configuration>
-      </plugin>
-      <plugin>
-        <groupId>org.codehaus.mojo</groupId>
-        <artifactId>cobertura-maven-plugin</artifactId>
-        <version>2.5.2</version>
-        <configuration>
-          <format>xml</format>
-          <aggregate>true</aggregate>
         </configuration>
       </plugin>
     </plugins>
@@ -108,7 +100,13 @@
       <!-- Internal dependencies -->
       <dependency>
         <groupId>org.cloudname</groupId>
-        <artifactId>cn</artifactId>
+        <artifactId>cn-core</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+
+      <dependency>
+        <groupId>org.cloudname</groupId>
+        <artifactId>cn-memory</artifactId>
         <version>${project.version}</version>
       </dependency>
 
@@ -139,7 +137,7 @@
       <!-- Netty -->
       <dependency>
         <groupId>io.netty</groupId>
-        <artifactId>netty-all</artifactId>
+        <artifactId>netty</artifactId>
         <version>${cn.netty.version}</version>
       </dependency>
 
@@ -155,34 +153,6 @@
         <groupId>com.google.protobuf</groupId>
         <artifactId>protobuf-java</artifactId>
         <version>${cn.protobuf.version}</version>
-      </dependency>
-
-      <!-- ZooKeeper -->
-      <dependency>
-        <groupId>org.apache.zookeeper</groupId>
-        <artifactId>zookeeper</artifactId>
-        <version>${cn.zookeeper.version}</version>
-        <exclusions>
-          <exclusion>
-            <groupId>com.sun.jmx</groupId>
-            <artifactId>jmxri</artifactId>
-          </exclusion>
-          <exclusion>
-            <groupId>com.sun.jdmk</groupId>
-            <artifactId>jmxtools</artifactId>
-          </exclusion>
-          <exclusion>
-            <groupId>javax.jms</groupId>
-            <artifactId>jms</artifactId>
-          </exclusion>
-        </exclusions>
-      </dependency>
-
-      <!-- Apache Curator -->
-      <dependency>
-        <groupId>org.apache.curator</groupId>
-        <artifactId>curator-framework</artifactId>
-        <version>${cn.curator.version}</version>
       </dependency>
 
       <!-- Jackson JSON library -->
@@ -252,137 +222,13 @@
       <version>1.2.17</version>
     </dependency>
 
+    <dependency>
+      <groupId>org.hamcrest</groupId>
+      <artifactId>hamcrest-all</artifactId>
+      <version>1.3</version>
+      <scope>test</scope>
+    </dependency>
+
     </dependencies>
   </dependencyManagement>
-  <profiles>
-    <profile>
-      <activation>
-        <file><exists>src/integrationtest</exists></file>
-      </activation>
-      <id>it</id>
-      <build>
-        <pluginManagement>
-          <plugins>
-            <plugin>
-              <groupId>org.apache.maven.plugins</groupId>
-              <artifactId>maven-surefire-plugin</artifactId>
-              <version>2.10</version>
-              <configuration>
-                <test>**/*.java</test>
-              </configuration>
-            </plugin>
-            <plugin>
-              <groupId>org.apache.maven.plugins</groupId>
-              <artifactId>maven-antrun-plugin</artifactId>
-              <executions>
-                <execution>
-                  <id>create-directory</id>
-                  <phase>pre-integration-test</phase>
-                  <goals>
-                    <goal>run</goal>
-                  </goals>
-                  <configuration>
-                    <tasks>
-                      <echo message="Creating Directory ${integrationOutputDirectory}" />
-                      <mkdir dir="${integrationOutputDirectory}" />
-                    </tasks>
-                  </configuration>
-                </execution>
-              </executions>
-            </plugin>
-            <plugin>
-              <groupId>org.codehaus.mojo</groupId>
-              <artifactId>build-helper-maven-plugin</artifactId>
-              <version>1.5</version>
-              <executions>
-                <execution>
-                  <id>add-test-sources</id>
-                  <phase>pre-integration-test</phase>
-                  <goals>
-                    <goal>add-test-source</goal>
-                  </goals>
-                  <configuration>
-                    <sources>
-                      <source>${integrationSourceDirectory}/java</source>
-                    </sources>
-                  </configuration>
-                </execution>
-                <execution>
-                  <id>add-test-resources</id>
-                  <phase>pre-integration-test</phase>
-                  <goals>
-                    <goal>add-test-resource</goal>
-                  </goals>
-                  <configuration>
-                    <resources>
-                      <resource>
-                        <directory>${integrationSourceDirectory}/java</directory>
-                        <targetPath>${integrationOutputDirectory}</targetPath>
-                      </resource>
-                    </resources>
-                  </configuration>
-                </execution>
-                <execution>
-                  <id>add-empty-directory</id>
-                  <phase>pre-integration-test</phase>
-                  <goals>
-                    <goal>add-test-resource</goal>
-                  </goals>
-                  <configuration>
-                    <resources>
-                      <resource>
-                        <directory>${integrationSourceDirectory}/java</directory>
-                        <targetPath>${integrationOutputDirectory}</targetPath>
-                        <excludes>
-                          <exclude>**/*</exclude>
-                        </excludes>
-                      </resource>
-                    </resources>
-                  </configuration>
-                </execution>
-              </executions>
-            </plugin>
-            <plugin>
-              <groupId>org.apache.maven.plugins</groupId>
-              <artifactId>maven-compiler-plugin</artifactId>
-              <version>2.3.2</version>
-              <executions>
-                <execution>
-                  <phase>pre-integration-test</phase>
-                  <goals>
-                    <goal>testCompile</goal>
-                  </goals>
-                  <configuration>
-                    <compilerArguments>
-                      <d>${basedir}/${integrationOutputDirectory}</d>
-                    </compilerArguments>
-                  </configuration>
-                </execution>
-              </executions>
-            </plugin>
-            <plugin>
-              <artifactId>maven-failsafe-plugin</artifactId>
-              <version>2.8</version>
-              <configuration>
-                <testClassesDirectory>${integrationOutputDirectory}</testClassesDirectory>
-                <reportsDirectory>${integrationOutputDirectory}/failsafe-reports</reportsDirectory>
-                <test>**/*.java</test>
-                <additionalClasspathElements>
-                  <additionalClasspathElement>${integrationSourceDirectory}/resources</additionalClasspathElement>
-                </additionalClasspathElements>
-              </configuration>
-              <executions>
-                <execution>
-                  <goals>
-                    <goal>integration-test</goal>
-                    <goal>verify</goal>
-                  </goals>
-                </execution>
-              </executions>
-            </plugin>
-          </plugins>
-        </pluginManagement>
-      </build>
-    </profile>
-  </profiles>
 </project>

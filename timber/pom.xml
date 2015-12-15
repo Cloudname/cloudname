@@ -62,7 +62,7 @@
 
     <dependency>
       <groupId>io.netty</groupId>
-      <artifactId>netty-all</artifactId>
+      <artifactId>netty</artifactId>
     </dependency>
 
     <dependency>
@@ -75,11 +75,13 @@
       <artifactId>junit</artifactId>
       <scope>test</scope>
     </dependency>
+
     <dependency>
       <groupId>org.cloudname</groupId>
       <artifactId>idgen</artifactId>
       <scope>test</scope>
     </dependency>
+
     <dependency>
       <groupId>joda-time</groupId>
       <artifactId>joda-time</artifactId>
