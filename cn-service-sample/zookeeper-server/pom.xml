@@ -11,7 +11,7 @@
   <artifactId>cn-service-sample-zookeeper</artifactId>
   <packaging>jar</packaging>
 
-  <name>ZooKeeper test service</name>
+  <name>Service sample: ZooKeeper test service</name>
   <description>Test service for ZooKeeper. Not for production use!</description>
 
   <build>

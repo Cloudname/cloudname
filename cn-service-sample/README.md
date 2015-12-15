@@ -14,20 +14,20 @@ First launch the ZooKeeper image (assuming you use the `default` docker-machine)
 eval $(docker-machine env default)
 export DOCKER_IP=$(docker-machine ip default)
 docker run -d --net=host cloudname/cn-zookeeper
-docker run -d --net=host -e zookeeper=$DOCKER_IP:2181 cloudname/pacserver
+docker run -d --net=host -e cloudname=zookeeper://$DOCKER_IP:2181 cloudname/pacserver
 ```
 Open up your browser at http://$DOCKER_IP:4567/ to see the service.
 
 Then launch a ghost named *blinky*:
 ```
-docker run -d --net=host -e zookeeper=$DOCKER_IP:2181 -e ghost=blinky -e cloudname_interface=$DOCKER_IP cloudname/ghost
+docker run -d --net=host -e cloudname=zookeeper://$DOCKER_IP:2181 -e ghost=blinky -e cloudname_interface=$DOCKER_IP cloudname/ghost
 ```
 
 The ghost should appear on the pac server's web page. Launch a few more ghosts:
 ```
-docker run -d --net=host -e zookeeper=$DOCKER_IP:2181 -e ghost=inky -e cloudname_interface=$DOCKER_IP cloudname/ghost
-docker run -d --net=host -e zookeeper=$DOCKER_IP:2181 -e ghost=pinky -e cloudname_interface=$DOCKER_IP cloudname/ghost
-docker run -d --net=host -e zookeeper=$DOCKER_IP:2181 -e ghost=clyde -e cloudname_interface=$DOCKER_IP cloudname/ghost
+docker run -d --net=host -e cloudname=zookeeper://$DOCKER_IP:2181 -e ghost=inky -e cloudname_interface=$DOCKER_IP cloudname/ghost
+docker run -d --net=host -e cloudname=zookeeper://$DOCKER_IP:2181 -e ghost=pinky -e cloudname_interface=$DOCKER_IP cloudname/ghost
+docker run -d --net=host -e cloudname=zookeeper://$DOCKER_IP:2181 -e ghost=clyde -e cloudname_interface=$DOCKER_IP cloudname/ghost
 ```
 
 The new ghosts should appear on the web page. Click on one of the ghosts to see its internal state. Click on the *Shutdown* button to shut it down. It should disappear from the web page.

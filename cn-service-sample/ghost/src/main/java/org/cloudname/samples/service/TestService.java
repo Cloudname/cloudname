@@ -1,6 +1,6 @@
 package org.cloudname.samples.service;
 
-import org.cloudname.backends.zookeeper.ZooKeeperBackend;
+import org.cloudname.core.BackendManager;
 import org.cloudname.flags.Flag;
 import org.cloudname.flags.Flags;
 import org.cloudname.service.CloudnameService;
@@ -14,8 +14,6 @@ import org.cloudname.testtools.Net;
 import spark.Spark;
 
 import java.io.IOException;
-import java.net.InetAddress;
-import java.net.UnknownHostException;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
@@ -30,8 +28,8 @@ import java.util.logging.Logger;
 public class TestService {
     private static final Logger LOG = Logger.getLogger(TestService.class.getName());
 
-    @Flag(name = "zk-connection-string", description = "ZooKeeper connection string", required = true)
-    private static String zkConnectionString = null;
+    @Flag (name = "cloudname-url", description = "Cloudname URL", required = true)
+    private static String cloudnameUrl = null;
 
     @Flag(name = "service-name", description = "Service name", required = false)
     private static String myServiceName = null;
@@ -44,8 +42,8 @@ public class TestService {
     private final Map<String, InstanceCoordinate> peerMap = new ConcurrentHashMap<>();
     private final CloudnameService service;
     private final int sparkPort;
-    private TestService(final String connectionString) {
-        service = new CloudnameService(new ZooKeeperBackend(connectionString));
+    private TestService() {
+        service = new CloudnameService(BackendManager.getBackend(cloudnameUrl));
         try {
             sparkPort = Net.getFreePort();
         } catch (final IOException ioe) {
@@ -80,6 +78,7 @@ public class TestService {
             });
             try {
                 terminateLatch.await();
+                LOG.info("Stopping service");
                 Spark.stop();
             } catch (final InterruptedException ie) {
                 throw new RuntimeException(ie);
@@ -143,7 +142,7 @@ public class TestService {
 
     public static void main(final String[] args) {
         new Flags().loadOpts(TestService.class).parse(args);
-        final TestService service = new TestService(zkConnectionString);
+        final TestService service = new TestService();
         Executors.newSingleThreadExecutor().execute(() -> {
             Spark.awaitInitialization();
             service.connectToCloudname();

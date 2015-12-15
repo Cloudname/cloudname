@@ -1,6 +1,6 @@
 package org.cloudname.samples.service;
 
-import org.cloudname.backends.zookeeper.ZooKeeperBackend;
+import org.cloudname.core.BackendManager;
 import org.cloudname.flags.Flag;
 import org.cloudname.flags.Flags;
 
@@ -19,8 +19,8 @@ import static spark.Spark.*;
  * web socket is served through /messages.
  */
 public class DemoServer {
-    @Flag (name = "zk-connection-string", description = "ZooKeeper connection string", required = true)
-    private static String zkConnectionString = null;
+    @Flag (name = "cloudname-url", description = "Cloudname URL", required = true)
+    private static String cloudnameUrl = null;
 
     @Flag (name = "coordinate", description = "Service coordinate", required = false)
     private static String myCoordinate = "pacman.test.local";
@@ -29,8 +29,8 @@ public class DemoServer {
 
     public static final NotificationPublisher publisher = new NotificationPublisher();
 
-    private DemoServer(final String connectionString) {
-        service = new CloudnameService(new ZooKeeperBackend(connectionString));
+    private DemoServer() {
+        service = new CloudnameService(BackendManager.getBackend(cloudnameUrl));
     }
 
     private String getCreateNotification(final InstanceCoordinate coordinate, final ServiceData serviceData) {
@@ -86,7 +86,7 @@ public class DemoServer {
     public static void main(final String[] args) {
         new Flags().loadOpts(DemoServer.class).parse(args);
 
-        final DemoServer demoServer = new DemoServer(zkConnectionString);
+        final DemoServer demoServer = new DemoServer();
         demoServer.connectToCloudname();
         demoServer.startServer();
     }

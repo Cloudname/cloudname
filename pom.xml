@@ -126,6 +126,12 @@
 
       <dependency>
         <groupId>org.cloudname</groupId>
+        <artifactId>cn-consul</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+
+      <dependency>
+        <groupId>org.cloudname</groupId>
         <artifactId>testtools</artifactId>
         <version>${project.version}</version>
       </dependency>
