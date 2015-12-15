@@ -27,10 +27,32 @@
             <configuration>
               <!-- Optional, default is false -->
               <attachToBuild>true</attachToBuild>
-	      <mainClass>org.cloudname.timber.server.Main</mainClass>
+      	      <mainClass>org.cloudname.timber.server.Main</mainClass>
             </configuration>
             <goals>
               <goal>one-jar</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-checkstyle-plugin</artifactId>
+        <version>2.17</version>
+        <executions>
+          <execution>
+            <phase>process-sources</phase>
+            <configuration>
+              <configLocation>checkstyle.xml</configLocation>
+              <encoding>UTF-8</encoding>
+              <failsOnViolation>false</failsOnViolation>
+              <failsOnError>false</failsOnError>
+              <consoleOutput>false</consoleOutput>
+              <violationSeverity>error</violationSeverity>
+              <excludes>**/target/generated-sources/**/*</excludes>
+            </configuration>
+            <goals>
+              <goal>check</goal>
             </goals>
           </execution>
         </executions>

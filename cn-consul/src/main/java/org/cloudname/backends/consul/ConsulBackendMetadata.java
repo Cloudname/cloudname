@@ -6,7 +6,7 @@ import org.cloudname.core.CloudnameBackend;
 import java.util.function.Function;
 
 /**
- * The Consul backend's metadata
+ * The Consul backend's metadata.
  */
 public class ConsulBackendMetadata implements BackendMetadata {
     @Override

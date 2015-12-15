@@ -40,28 +40,28 @@ public class Endpoint {
     }
 
     /**
-     * @return The endpoint's name
+     * The endpoint's name.
      */
     public String getName() {
         return name;
     }
 
     /**
-     * @return The endpoint's host name or IP address
+     * The endpoint's host name or IP address.
      */
     public String getHost() {
         return host;
     }
 
     /**
-     * @return The endpoint's port number
+     * The endpoint's port number.
      */
     public int getPort() {
         return port;
     }
 
     /**
-     * @return JSON representation of isntance
+     * JSON representation of endpoint.
      */
     /* package-private */ String toJsonString() {
         return new JSONObject()
@@ -72,8 +72,8 @@ public class Endpoint {
     }
 
     /**
-     * @param jsonString String with JSON representation of instance
-     * @return Endpoint instance
+     * Create new Endpoint instance from JSON string
+     *
      * @throws org.json.JSONException if the string is malformed.
      */
     /* package-private */ static Endpoint fromJson(final String jsonString) {
@@ -85,11 +85,11 @@ public class Endpoint {
     }
 
     @Override
-    public boolean equals(final Object o) {
-        if (o == null || !(o instanceof Endpoint)) {
+    public boolean equals(final Object otherInstance) {
+        if (otherInstance == null || !(otherInstance instanceof Endpoint)) {
             return false;
         }
-        final Endpoint other = (Endpoint) o;
+        final Endpoint other = (Endpoint) otherInstance;
 
         if (!this.name.equals(other.name)
                 || !this.host.equals(other.host)

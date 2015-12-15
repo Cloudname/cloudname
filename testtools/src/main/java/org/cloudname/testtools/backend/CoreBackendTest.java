@@ -1,5 +1,14 @@
 package org.cloudname.testtools.backend;
 
+import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.CoreMatchers.notNullValue;
+import static org.hamcrest.CoreMatchers.nullValue;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertThat;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
+
 import org.cloudname.core.CloudnameBackend;
 import org.cloudname.core.CloudnamePath;
 import org.cloudname.core.LeaseHandle;
@@ -17,15 +26,6 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import static org.hamcrest.CoreMatchers.equalTo;
-import static org.hamcrest.CoreMatchers.is;
-import static org.hamcrest.CoreMatchers.notNullValue;
-import static org.hamcrest.CoreMatchers.nullValue;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertThat;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
-
 /**
  * Core backend tests. This ensures the backend implementation works as expected on the most
  * basic level. Override this class in your backend implementation to test it.
@@ -34,9 +34,9 @@ import static org.junit.Assert.fail;
  */
 public abstract class CoreBackendTest {
     private final CloudnamePath serviceA = new CloudnamePath(
-            new String[] { "local", "test", "service-a" });
+            new String[] {"local", "test", "service-a"});
     private final CloudnamePath serviceB = new CloudnamePath(
-            new String[] { "local", "test", "service-b" });
+            new String[] {"local", "test", "service-b"});
 
     private final Random random = new Random();
 
@@ -90,7 +90,8 @@ public abstract class CoreBackendTest {
                 handle.close();
             }
 
-            assertThat("Expected " + numberOfLeases + " unique paths but it was " + leasePaths.size(),
+            assertThat("Expected " + numberOfLeases + " unique paths but it was "
+                    + leasePaths.size(),
                     leasePaths.size(), is(numberOfLeases));
         }
     }
@@ -113,7 +114,7 @@ public abstract class CoreBackendTest {
             final String lastData = "last data";
             final LeaseListener listener = new LeaseListener() {
                 @Override
-                public void leaseCreated(CloudnamePath path, String data) {
+                public void leaseCreated(final CloudnamePath path, final String data) {
                     createCounter.countDown();
                     if (data.equals(lastData)) {
                         dataCounter.countDown();
@@ -121,12 +122,12 @@ public abstract class CoreBackendTest {
                 }
 
                 @Override
-                public void leaseRemoved(CloudnamePath path) {
+                public void leaseRemoved(final CloudnamePath path) {
                     removeCounter.countDown();
                 }
 
                 @Override
-                public void dataChanged(CloudnamePath path, String data) {
+                public void dataChanged(final CloudnamePath path, final String data) {
                     dataCounter.countDown();
                 }
             };
@@ -194,7 +195,7 @@ public abstract class CoreBackendTest {
     }
 
     /**
-     * Ensure clients are notified of changes
+     * Ensure clients are notified of changes.
      */
     @Test
     public void multipleTemporaryNotifications() throws Exception {
@@ -252,16 +253,19 @@ public abstract class CoreBackendTest {
 
             assertThat("All create notifications are received but " + createNotifications.getCount()
                             + " remains out of " + numListeners,
-                    createNotifications.await(getBackendPropagationTime(), TimeUnit.MICROSECONDS), is(true));
+                    createNotifications.await(getBackendPropagationTime(), TimeUnit.MICROSECONDS),
+                    is(true));
 
             assertThat("All data notifications are received but " + dataNotifications.getCount()
                             + " remains out of " + (numListeners * numUpdates),
-                    dataNotifications.await(getBackendPropagationTime(), TimeUnit.MILLISECONDS), is(true));
+                    dataNotifications.await(getBackendPropagationTime(), TimeUnit.MILLISECONDS),
+                    is(true));
 
             lease.close();
             assertThat("All remove notifications are received but " + removeNotifications.getCount()
                             + " remains out of " + numListeners,
-                    removeNotifications.await(getBackendPropagationTime(), TimeUnit.MILLISECONDS), is(true));
+                    removeNotifications.await(getBackendPropagationTime(), TimeUnit.MILLISECONDS),
+                    is(true));
 
             // Remove the listeners
             for (final LeaseListener listener : listeners) {
@@ -360,9 +364,8 @@ public abstract class CoreBackendTest {
         }
     }
 
-
     /**
-     * Just make sure unknown listeners doesn't throw exceptions
+     * Just make sure unknown listeners doesn't throw exceptions.
      */
     @Test
     public void removeInvalidListener() throws Exception {
@@ -402,7 +405,7 @@ public abstract class CoreBackendTest {
                 private final AtomicInteger dataNotifications = new AtomicInteger(0);
                 private LeaseHandle handle;
 
-                public LeaseWorker(final String id) {
+                LeaseWorker(final String id) {
                     this.id = id;
                     rootPath = new CloudnamePath(new String[]{"pair", id});
                     listener = new LeaseListener() {
@@ -479,11 +482,11 @@ public abstract class CoreBackendTest {
     }
 
     /**
-     * Ensure permanent leases distribute notifications as well
+     * Ensure permanent leases distribute notifications as well.
      */
     @Test
     public void permanentLeaseNotifications() throws Exception {
-        final CloudnamePath rootLease = new CloudnamePath(new String[] { "permanent", "vacation" });
+        final CloudnamePath rootLease = new CloudnamePath(new String[] {"permanent", "vacation"});
         final String leaseData = "the aero smiths";
         final String newLeaseData = "popcultural reference";
 
@@ -560,10 +563,10 @@ public abstract class CoreBackendTest {
      */
     @Test
     public void multiplePermanentListeners() throws Exception {
-        final CloudnamePath permanentA = new CloudnamePath(new String[] { "primary" });
-        final CloudnamePath permanentB = new CloudnamePath(new String[] { "secondary" });
+        final CloudnamePath permanentA = new CloudnamePath(new String[] {"primary"});
+        final CloudnamePath permanentB = new CloudnamePath(new String[] {"secondary"});
         final CloudnamePath permanentC = new CloudnamePath(
-                new String[] { "tertiary", "permanent", "lease" });
+                new String[] {"tertiary", "permanent", "lease"});
 
         try (final CloudnameBackend backend = getBackend()) {
             backend.addPermanentLeaseListener(permanentA, new LeaseListener() {

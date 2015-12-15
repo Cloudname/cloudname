@@ -3,9 +3,6 @@ package org.cloudname.backends.consul;
 import org.json.JSONArray;
 import org.json.JSONException;
 
-import javax.ws.rs.client.Client;
-import javax.ws.rs.client.ClientBuilder;
-import javax.ws.rs.core.Response;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
@@ -17,12 +14,16 @@ import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import javax.ws.rs.client.Client;
+import javax.ws.rs.client.ClientBuilder;
+import javax.ws.rs.core.Response;
+
 /**
  * A consul watch. The watch is implemented as a HTTP poll on the KV endpoint. There might be
  * changes that slips under the radar if someone creates, then updates a KV entry since non-existing
  * KV entries just return a 404 without waiting.
  *
- * @author Ståle Dahl <stalehd@gmail.com>
+ * @author stalehd@gmail.com
  */
 public class ConsulWatch {
     /**
@@ -46,7 +47,8 @@ public class ConsulWatch {
         void changed(final String key, final String value);
 
         /**
-         * A value is removed
+         * A value is removed.
+         *
          * @param key The removed key
          */
         void removed(final String key);
@@ -75,6 +77,7 @@ public class ConsulWatch {
     private final CountDownLatch stopLatch = new CountDownLatch(1);
 
     /**
+     * Create a new watch.
      * @param endpoint The Consul Agend endpoint
      * @param pathToWatch The path to watch
      */
@@ -86,12 +89,15 @@ public class ConsulWatch {
     }
 
     /**
-     * Stop the watch. This will (eventually) stop all requests
+     * Stop the watch. This will (eventually) stop all requests.
      */
     public void stop() {
         stopLatch.countDown();
     }
 
+    /**
+     * Start watching for changes.
+     */
     public void startWatching(final ConsulWatchListener listener) {
         watchExecutor.execute(() -> {
             int currentIndex = 0;
@@ -107,6 +113,7 @@ public class ConsulWatch {
                             .request().get();
 
                     currentIndex = Integer.parseInt(response.getHeaderString("X-Consul-Index"));
+
                     switch (response.getStatus()) {
                         case 200:
                             try {
@@ -143,7 +150,7 @@ public class ConsulWatch {
     }
 
     /**
-     * Process the returned list from Consul
+     * Process the returned list from Consul.
      */
     private void processOutput(final String output, final ConsulWatchListener listener) {
         // Keep track of the values returned by the set.
@@ -173,7 +180,7 @@ public class ConsulWatch {
     }
 
     /**
-     * Invoke the listener, catching any surprise exceptions
+     * Invoke the listener, catching any surprise exceptions.
      */
     private void invokeListener(final Runnable call) {
         try {

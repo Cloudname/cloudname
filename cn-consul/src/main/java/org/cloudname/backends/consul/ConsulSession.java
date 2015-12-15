@@ -3,11 +3,6 @@ package org.cloudname.backends.consul;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import javax.ws.rs.client.Client;
-import javax.ws.rs.client.ClientBuilder;
-import javax.ws.rs.client.Entity;
-import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.Response;
 import java.util.concurrent.Executors;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.ScheduledExecutorService;
@@ -16,11 +11,17 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import javax.ws.rs.client.Client;
+import javax.ws.rs.client.ClientBuilder;
+import javax.ws.rs.client.Entity;
+import javax.ws.rs.core.MediaType;
+import javax.ws.rs.core.Response;
+
 /**
  * Session entity sent to/from Consul. Uses a thread to keep the session alive until it is closed
  * or the JVM terminates.
  *
- * @author Ståle Dahl <stalehd@gmail.com>
+ * @author stalehd@gmail.com
  */
 public class ConsulSession {
     private final String endpoint;
@@ -37,6 +38,8 @@ public class ConsulSession {
     private final AtomicBoolean closed = new AtomicBoolean(false);
 
     /**
+     * Create new session object.
+     *
      * @param endpoint Consul Agent endpoint to use
      * @param id The session ID. This is not validated
      * @param name Session name. Not used for anything but human readable tag for the session.
@@ -54,19 +57,19 @@ public class ConsulSession {
     }
 
     /**
-     * @return The session ID
+     * The session ID.
      */
     public String getId() {
         return id;
     }
 
     /**
-     * @return Session object that can be submitted to the Consul Agent
+     * Session object that can be submitted to the Consul Agent.
      */
     public String toJson() {
         return new JSONObject()
                 .put("Name", id)
-                .put("TTL", (ttl/1000) + "s")
+                .put("TTL", (ttl / 1000) + "s")
                 .put("LockDelay", lockDelay + "s")
                 .put("Behavior", behavior)
                 .toString();
@@ -74,14 +77,14 @@ public class ConsulSession {
 
     /**
      * Build actual session from Consul Agent response. Only the ID field is returned, use the
-     * submitted entity
+     * submitted entity.
      */
     public static ConsulSession fromJsonResponse(final ConsulSession submitted, final String json) {
         try {
             final JSONObject ret = new JSONObject(json);
             // Note that the TTL returned is in milliseconds. Nice gotcha.
             return new ConsulSession(submitted.endpoint, ret.getString("ID"),
-                    submitted.name, submitted.ttl/1_000, submitted.lockDelay);
+                    submitted.name, submitted.ttl / 1_000, submitted.lockDelay);
         } catch (final JSONException je) {
             LOG.log(Level.WARNING, "Couldn't grok JSON from Consul Agent. Response was " + json);
             return null;
@@ -89,7 +92,7 @@ public class ConsulSession {
     }
 
     /**
-     * Start the session refresh thread
+     * Start the session refresh thread.
      */
     public void startKeepAlive() {
         final Entity<String> emptyEntity = Entity.entity("{}", MediaType.APPLICATION_JSON_TYPE);

@@ -1,4 +1,5 @@
 package org.cloudname.backends.zookeeper;
+
 import com.google.common.base.Charsets;
 
 import org.apache.curator.RetryPolicy;
@@ -165,17 +166,21 @@ public class ZooKeeperBackend implements CloudnameBackend {
         final String zkPath = TEMPORARY_ROOT + pathToObserve.join('/');
         try {
             curator.createContainers(zkPath);
-            final NodeCollectionWatcher watcher = new NodeCollectionWatcher(curator.getZookeeperClient().getZooKeeper(),
+            final NodeCollectionWatcher watcher = new NodeCollectionWatcher(
+                    curator.getZookeeperClient().getZooKeeper(),
                     zkPath,
                     new NodeWatcherListener() {
+
                         @Override
                         public void nodeCreated(final String path, final String data) {
                             listener.leaseCreated(toCloudnamePath(path, TEMPORARY_ROOT), data);
                         }
+
                         @Override
                         public void dataChanged(final String path, final String data) {
                             listener.dataChanged(toCloudnamePath(path, TEMPORARY_ROOT), data);
                         }
+
                         @Override
                         public void nodeRemoved(final String path) {
                             listener.leaseRemoved(toCloudnamePath(path, TEMPORARY_ROOT));
@@ -280,27 +285,32 @@ public class ZooKeeperBackend implements CloudnameBackend {
     }
 
     @Override
-    public void addPermanentLeaseListener(final CloudnamePath pathToObserve, final LeaseListener listener) {
+    public void addPermanentLeaseListener(
+            final CloudnamePath pathToObserve, final LeaseListener listener) {
         try {
 
             final String parentPath = PERMANENT_ROOT + pathToObserve.getParent().join('/');
             final String fullPath = PERMANENT_ROOT + pathToObserve.join('/');
             curator.createContainers(parentPath);
-            final NodeCollectionWatcher watcher = new NodeCollectionWatcher(curator.getZookeeperClient().getZooKeeper(),
+            final NodeCollectionWatcher watcher = new NodeCollectionWatcher(
+                    curator.getZookeeperClient().getZooKeeper(),
                     parentPath,
                     new NodeWatcherListener() {
+
                         @Override
                         public void nodeCreated(final String path, final String data) {
                             if (path.equals(fullPath)) {
                                 listener.leaseCreated(toCloudnamePath(path, PERMANENT_ROOT), data);
                             }
                         }
+
                         @Override
                         public void dataChanged(final String path, final String data) {
                             if (path.equals(fullPath)) {
                                 listener.dataChanged(toCloudnamePath(path, PERMANENT_ROOT), data);
                             }
                         }
+
                         @Override
                         public void nodeRemoved(final String path) {
                             if (path.equals(fullPath)) {

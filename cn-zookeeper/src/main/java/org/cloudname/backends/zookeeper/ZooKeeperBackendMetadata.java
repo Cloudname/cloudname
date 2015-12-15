@@ -6,7 +6,7 @@ import org.cloudname.core.CloudnameBackend;
 import java.util.function.Function;
 
 /**
- * ZooKeeper metadata
+ * ZooKeeper metadata.
  */
 public class ZooKeeperBackendMetadata implements BackendMetadata {
     @Override

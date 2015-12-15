@@ -1,8 +1,8 @@
 package org.cloudname.backends.zookeeper;
 
 import com.google.common.base.Charsets;
+
 import org.apache.zookeeper.KeeperException;
-import org.apache.zookeeper.WatchedEvent;
 import org.apache.zookeeper.Watcher;
 import org.apache.zookeeper.ZooKeeper;
 import org.apache.zookeeper.data.Stat;
@@ -21,11 +21,11 @@ import java.util.logging.Logger;
  * Curator doesn't provide the necessary interface and the PathChildrenCache is best effort
  * (and not even a very good effort)
  *
- * Watches are kept as usual and the mzxid for each node is kept. If that changes between
+ * <p>Watches are kept as usual and the mzxid for each node is kept. If that changes between
  * watches it mens we've missed an event and the appropriate event is generated to the
  * listener.
  *
- * Note that this class only watches for changes one level down. Changes in children aren't
+ * <p>Note that this class only watches for changes one level down. Changes in children aren't
  * monitored. The path must exist beforehand.
  *
  * @author stalehd@gmail.com
@@ -43,9 +43,9 @@ public class NodeCollectionWatcher {
 
 
     /**
-     * @param zk ZooKeeper instance to use
-     * @param pathToWatch Path to observe
-     * @param listener Listener for callbacks
+     * Create and start the collection watcher. The supplied @link{ZooKeeper} instance is used to
+     * read nodes from the path <pre>pathToWatch</pre>. Changes are communicated with the
+     * supplied @link{NodeWatcherListener}.
      */
     public NodeCollectionWatcher(
             final ZooKeeper zk, final String pathToWatch, final NodeWatcherListener listener) {
@@ -63,66 +63,63 @@ public class NodeCollectionWatcher {
     }
 
     /**
-     * Watcher for node collections. Set by getChildren()
+     * Watcher for node collections. Set by getChildren().
      */
-    private final Watcher nodeCollectionWatcher = new Watcher() {
-        @Override
-        public void process(WatchedEvent watchedEvent) {
-            switch (watchedEvent.getType()) {
-                case NodeChildrenChanged:
-                    // Child values have changed, read children, generate events
-                    readChildNodes();
-                    break;
-                case None:
-                    // Some zookeeper event. Watches might not apply anymore. Reapply.
-                    switch (watchedEvent.getState()) {
-                        case ConnectedReadOnly:
-                            LOG.severe("Connected to readonly cluster");
-                            // Connected to a cluster without quorum. Nodes might not be
-                            // correct but re-read the nodes.
-                            readChildNodes();
-                            break;
-                        case SyncConnected:
-                            LOG.info("Connected to cluster");
-                            // (re-)Connected to the cluster. Nodes must be re-read. Discard
-                            // those that aren't found, keep unchanged ones.
-                            readChildNodes();
-                            break;
-                        case Disconnected:
-                            // Disconnected from the cluster. The nodes might not be
-                            // up to date (but a reconnect might solve the issue)
-                            LOG.log(Level.WARNING, "Disconnected from zk cluster");
-                            break;
-                        case Expired:
-                            // Session has expired. Nodes are no longer available
-                            removeAllChildNodes();
-                            break;
-                        default:
-                            break;
-                    }
-            }
-
+    private final Watcher nodeCollectionWatcher = (watchedEvent) -> {
+        switch (watchedEvent.getType()) {
+            case NodeChildrenChanged:
+                // Child values have changed, read children, generate events
+                readChildNodes();
+                break;
+            case None:
+                // Some zookeeper event. Watches might not apply anymore. Reapply.
+                switch (watchedEvent.getState()) {
+                    case ConnectedReadOnly:
+                        LOG.severe("Connected to readonly cluster");
+                        // Connected to a cluster without quorum. Nodes might not be
+                        // correct but re-read the nodes.
+                        readChildNodes();
+                        break;
+                    case SyncConnected:
+                        LOG.info("Connected to cluster");
+                        // (re-)Connected to the cluster. Nodes must be re-read. Discard
+                        // those that aren't found, keep unchanged ones.
+                        readChildNodes();
+                        break;
+                    case Disconnected:
+                        // Disconnected from the cluster. The nodes might not be
+                        // up to date (but a reconnect might solve the issue)
+                        LOG.log(Level.WARNING, "Disconnected from zk cluster");
+                        break;
+                    case Expired:
+                        // Session has expired. Nodes are no longer available
+                        removeAllChildNodes();
+                        break;
+                    default:
+                        break;
+                }
+                break;
+            default:
+                break;
         }
     };
 
     /**
-     * A watcher for the child nodes (set via getData()
+     * A watcher for the child nodes (set via getData()).
      */
-    private final Watcher changeWatcher = new Watcher() {
-        @Override
-        public void process(WatchedEvent watchedEvent) {
-            if (shuttingDown.get()) {
-                return;
-            }
-            switch (watchedEvent.getType()) {
-                case NodeDeleted:
-                    removeChildNode(watchedEvent.getPath());
-                    break;
-                case NodeDataChanged:
-                    processNode(watchedEvent.getPath());
-                    break;
-
-            }
+    private final Watcher changeWatcher = (watchedEvent) -> {
+        if (shuttingDown.get()) {
+            return;
+        }
+        switch (watchedEvent.getType()) {
+            case NodeDeleted:
+                removeChildNode(watchedEvent.getPath());
+                break;
+            case NodeDataChanged:
+                processNode(watchedEvent.getPath());
+                break;
+            default:
+                break;
         }
     };
 
@@ -166,7 +163,7 @@ public class NodeCollectionWatcher {
         } catch (final KeeperException.NoNodeException e) {
             // Node has been removed. Ignore the error?
             removeChildNode(e.getPath());
-        } catch (final KeeperException|InterruptedException e) {
+        } catch (final KeeperException | InterruptedException e) {
             LOG.log(Level.WARNING, "Got exception reading child nodes", e);
         }
     }
@@ -203,7 +200,7 @@ public class NodeCollectionWatcher {
         } catch (final KeeperException.NoNodeException e) {
             removeChildNode(e.getPath());
             // Node has been removed before we got to do anything. Ignore error?
-        } catch (final KeeperException|InterruptedException e) {
+        } catch (final KeeperException | InterruptedException e) {
             LOG.log(Level.WARNING, "Got exception adding child node with path " + nodePath, e);
         } catch (Exception ex) {
             LOG.log(Level.SEVERE, "Pooop!", ex);
@@ -223,7 +220,7 @@ public class NodeCollectionWatcher {
     }
 
     /**
-     * Invoke nodeCreated on listener
+     * Invoke nodeCreated on listener.
      */
     private void generateCreateEvent(final String nodePath, final String data) {
         try {
@@ -234,7 +231,7 @@ public class NodeCollectionWatcher {
     }
 
     /**
-     * Invoke dataChanged on listener
+     * Invoke dataChanged on listener.
      */
     private void generateDataChangeEvent(final String nodePath, final String data) {
         try {
@@ -245,7 +242,7 @@ public class NodeCollectionWatcher {
     }
 
     /**
-     * Invoke nodeRemoved on listener
+     * Invoke nodeRemoved on listener.
      */
     private void generateRemoveEvent(final String nodePath) {
         try {

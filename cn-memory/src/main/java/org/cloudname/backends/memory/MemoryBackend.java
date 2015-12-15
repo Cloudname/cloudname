@@ -31,6 +31,7 @@ public class MemoryBackend implements CloudnameBackend {
     private final Map<CloudnamePath, Set<LeaseListener>> observedTemporaryPaths = new HashMap<>();
     private final Map<CloudnamePath, Set<LeaseListener>> observedPermanentPaths = new HashMap<>();
     private final Object syncObject = new Object();
+    private final Random random = new Random();
 
     /* package-private */ void removeTemporaryLease(final CloudnamePath leasePath) {
         synchronized (syncObject) {
@@ -40,16 +41,13 @@ public class MemoryBackend implements CloudnameBackend {
             }
         }
     }
-    private final Random random = new Random();
 
     private String createRandomInstanceName() {
         return Long.toHexString(random.nextLong());
     }
 
     /**
-     * @param path The path that has changed
-     * @param event The event
-     * @param data The data
+     * Notify observers of changes.
      */
     private void notifyTemporaryObservers(
             final CloudnamePath path, final LeaseEvent event, final String data) {
@@ -75,7 +73,7 @@ public class MemoryBackend implements CloudnameBackend {
     }
 
     /**
-     * Notify observers of changes
+     * Notify observers of changes.
      */
     private void notifyPermanentObservers(
             final CloudnamePath path, final LeaseEvent event, final String data) {
@@ -127,7 +125,7 @@ public class MemoryBackend implements CloudnameBackend {
     }
 
     @Override
-    public boolean writePermanentLeaseData(final CloudnamePath path, String data) {
+    public boolean writePermanentLeaseData(final CloudnamePath path, final String data) {
         synchronized (syncObject) {
             if (!permanentLeases.containsKey(path)) {
                 return false;
@@ -149,7 +147,7 @@ public class MemoryBackend implements CloudnameBackend {
     }
 
     @Override
-    public boolean writeTemporaryLeaseData(final CloudnamePath path, String data) {
+    public boolean writeTemporaryLeaseData(final CloudnamePath path, final String data) {
         synchronized (syncObject) {
             if (!temporaryLeases.containsKey(path)) {
                 return false;

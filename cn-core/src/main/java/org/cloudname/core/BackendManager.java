@@ -12,16 +12,16 @@ import java.util.regex.Pattern;
  * constructor private and register through the @link{register()} method.
  */
 public class BackendManager {
+    private static final Pattern PATTERN = Pattern.compile("([a-z]*)://(.*)");
 
     /**
      * Small helper class that splits URLs into names and connection strings.
      */
     private static class BackendUrl {
-        private final Pattern PATTERN = Pattern.compile("([a-z]*)://(.*)");
         final String name;
         final String connectionString;
 
-        public BackendUrl(final String url) {
+        BackendUrl(final String url) {
             final Matcher matcher = PATTERN.matcher(url);
             if (!matcher.matches()) {
                 throw new IllegalArgumentException("Not a proper backend URL: " + url);
@@ -64,7 +64,8 @@ public class BackendManager {
     }
 
     /**
-     * Register a new (or existing) driver
+     * Add a new backend to the list of available backends.
+     *
      * @param backendIdentifier Name of backend. A string identifier used in the driver URL
      * @param createMethod Method to create backend based on the URL.
      */
@@ -77,7 +78,7 @@ public class BackendManager {
     }
 
     /**
-     * Deregister backend
+     * Removes a backend from the list of available backends.
      */
     public static void deregister(final String backendIdentifer) {
         drivers.remove(backendIdentifer);

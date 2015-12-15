@@ -66,7 +66,6 @@
 
   <build>
     <plugins>
-      <!-- Use Java 6 -->
       <plugin>
         <artifactId>maven-compiler-plugin</artifactId>
         <version>2.3.2</version>
@@ -85,6 +84,30 @@
           <useFile>false</useFile>
         </configuration>
       </plugin>
+
+      <!-- run the checkstyle plugin -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-checkstyle-plugin</artifactId>
+        <version>2.17</version>
+        <executions>
+          <execution>
+            <phase>process-sources</phase>
+            <configuration>
+              <configLocation>checkstyle.xml</configLocation>
+              <encoding>UTF-8</encoding>
+              <failsOnViolation>true</failsOnViolation>
+              <failsOnError>true</failsOnError>
+              <consoleOutput>false</consoleOutput>
+              <violationSeverity>warning</violationSeverity>
+            </configuration>
+            <goals>
+              <goal>check</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+
     </plugins>
   </build>
 

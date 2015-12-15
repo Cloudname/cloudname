@@ -11,7 +11,6 @@ import java.util.regex.Pattern;
  * @author stalehd@gmail.com
  */
 public class ServiceCoordinate {
-    // TODO: Tests, javadoc
     public static class Builder {
         private String region;
         private String tag;
@@ -36,6 +35,9 @@ public class ServiceCoordinate {
             return this;
         }
 
+        /**
+         * Initialise builder with existing @link}ServiceCoordinate} instance.
+         */
         public Builder fromCoordinate(final ServiceCoordinate coordinate) {
             service = coordinate.getService();
             tag = coordinate.getTag();
@@ -43,6 +45,11 @@ public class ServiceCoordinate {
             return this;
         }
 
+        /**
+         * Construct a ServiceCoordinate instance.
+         *
+         * @throws IllegalStateException if a valid instance can't be built
+         */
         public ServiceCoordinate build() {
             if (region == null) {
                 throw new IllegalStateException("Region can't be null");
@@ -65,8 +72,8 @@ public class ServiceCoordinate {
     private static final Pattern COORDINATE_PATTERN = Pattern.compile("(.*)\\.(.*)\\.(.*)");
 
     /**
-     * @param path The CloudnamePath instance to use when building the coordinate. The coordinate
-     *     must consist of three elements and can not be null.
+     * Create instance from a @link{CloudnamePath} instance.
+     *
      * @throws IllegalArgumentException if parameter is invalid
      */
     /* package-private */ ServiceCoordinate(final CloudnamePath path) {
@@ -82,57 +89,57 @@ public class ServiceCoordinate {
     }
 
     /**
-     * @return The coordinate's region
+     * The coordinate's region.
      */
     public String getRegion() {
         return region;
     }
 
     /**
-     * @return The coordinate's tag
+     * The coordinate's tag.
      */
     public String getTag() {
         return tag;
     }
 
     /**
-     * @return The coordinate's service name
+     * The coordinate's service name.
      */
     public String getService() {
         return service;
     }
 
     /**
-     * @param serviceCoordinateString String representation of coordinate
-     * @return ServiceCoordinate instance built from the string. Null if the coordinate
-     *     can't be parsed correctly.
+     * Parse a canonical string representation of a ServiceCoordinate.
+     *
+     * @return coordinate or null if the coordinate can't be parsed
      */
     public static ServiceCoordinate parse(final String serviceCoordinateString) {
         final Matcher matcher = COORDINATE_PATTERN.matcher(serviceCoordinateString);
         if (!matcher.matches()) {
             return null;
         }
-        final String[] path = new String[] { matcher.group(3), matcher.group(2), matcher.group(1) };
+        final String[] path = new String[] {matcher.group(3), matcher.group(2), matcher.group(1)};
         return new ServiceCoordinate(new CloudnamePath(path));
     }
 
     /**
-     * @return CloudnamePath representing this coordinate
+     * CloudnamePath representing this coordinate.
      */
     /* package-private */ CloudnamePath toCloudnamePath() {
-        return new CloudnamePath(new String[] { this.region, this.tag, this.service });
+        return new CloudnamePath(new String[] {this.region, this.tag, this.service});
     }
 
     @Override
-    public boolean equals(final Object o) {
-        if (this == o) {
+    public boolean equals(final Object otherInstance) {
+        if (this == otherInstance) {
             return true;
         }
-        if (o == null || getClass() != o.getClass()) {
+        if (otherInstance == null || getClass() != otherInstance.getClass()) {
             return false;
         }
 
-        final ServiceCoordinate other = (ServiceCoordinate) o;
+        final ServiceCoordinate other = (ServiceCoordinate) otherInstance;
 
         if (!this.region.equals(other.region)
                 || !this.tag.equals(other.tag)
