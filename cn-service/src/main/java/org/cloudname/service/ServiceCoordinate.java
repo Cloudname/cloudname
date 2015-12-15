@@ -11,6 +11,52 @@ import java.util.regex.Pattern;
  * @author stalehd@gmail.com
  */
 public class ServiceCoordinate {
+    // TODO: Tests, javadoc
+    public static class Builder {
+        private String region;
+        private String tag;
+        private String service;
+
+        public Builder() {
+
+        }
+
+        public Builder setRegion(final String region) {
+            this.region = region;
+            return this;
+        }
+
+        public Builder setTag(final String tag) {
+            this.tag = tag;
+            return this;
+        }
+
+        public Builder setService(final String service) {
+            this.service = service;
+            return this;
+        }
+
+        public Builder fromCoordinate(final ServiceCoordinate coordinate) {
+            service = coordinate.getService();
+            tag = coordinate.getTag();
+            region = coordinate.getRegion();
+            return this;
+        }
+
+        public ServiceCoordinate build() {
+            if (region == null) {
+                throw new IllegalStateException("Region can't be null");
+            }
+            if (tag == null) {
+                throw new IllegalStateException("Tag can't be null");
+            }
+            if (service == null) {
+                throw new IllegalStateException("Service can't be null");
+            }
+            return new ServiceCoordinate(new CloudnamePath(new String[] {region, tag, service}));
+        }
+    }
+
     private final String region;
     private final String tag;
     private final String service;

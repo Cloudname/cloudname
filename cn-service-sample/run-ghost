@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+# Run a ghost image.
+GHOST=$1
+if [ "" = "$GHOST" ]; then
+    echo "Must specify ghost name (inky, pinky, blinky, clyde)"
+    exit
+fi
+
+DOCKERMACHINE=default
+echo Launching ghost ${GHOST} with docker-machine ${DOCKERMACHINE}
+eval $(docker-machine env $DOCKERMACHINE)
+IP=$(docker-machine ip $DOCKERMACHINE)
+
+CONSUL_URL=consul://http://${IP}:8500/
+ZOOKEEPER_URL=zookeeper://${IP}:2181
+
+URL=${CONSUL_URL}
+docker run -d \
+    --net=host \
+    -e cloudname=${URL} \
+    -e cloudname_interface=${IP} \
+    -e ghost=${GHOST} \
+    cloudname/ghost

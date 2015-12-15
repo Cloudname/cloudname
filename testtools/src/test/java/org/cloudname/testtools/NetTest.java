@@ -7,6 +7,8 @@ import java.io.IOException;
 
 import org.junit.*;
 import static org.junit.Assert.*;
+import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.CoreMatchers.notNullValue;
 
 /**
  * Unit test for Net class.
@@ -65,5 +67,24 @@ public class NetTest {
         for (ServerSocket socket : sockets) {
             socket.close();
         }
+    }
+
+    /**
+     * Get the list of (probably external) host interfaces.
+     */
+    @Test
+    public void testGetHostAddress() throws IOException {
+        final List<String> hostAddressList = Net.getHostInterfaces();
+        assertThat(hostAddressList, is(notNullValue()));
+        // Won't check anything else. This is just a run through the code. It shouldn't break.
+    }
+
+    @Test
+    public void testOverrideHostAddressWithProperty() throws IOException {
+        System.setProperty("cloudname.interface", "10.1.1.1");
+        final List<String> hostAddressList = Net.getHostInterfaces();
+        assertThat(hostAddressList, is(notNullValue()));
+        assertThat(hostAddressList.size(), is(1));
+        assertThat(hostAddressList.get(0), is("10.1.1.1"));
     }
 }

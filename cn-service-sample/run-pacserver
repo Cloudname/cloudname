@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+DOCKERMACHINE=default
+echo Launching pac server with docker-machine ${DOCKERMACHINE}
+eval $(docker-machine env $DOCKERMACHINE)
+IP=$(docker-machine ip $DOCKERMACHINE)
+
+CONSUL_URL=consul://http://${IP}:8500/
+ZOOKEEPER_URL=zookeeper://${IP}:2181
+
+URL=${CONSUL_URL}
+
+docker run -d \
+    --net=host \
+    -e cloudname=${URL} \
+    cloudname/pacserver
