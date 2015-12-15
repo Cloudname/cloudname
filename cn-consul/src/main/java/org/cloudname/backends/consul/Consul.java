@@ -2,34 +2,37 @@ package org.cloudname.backends.consul;
 
 import org.glassfish.jersey.client.ClientProperties;
 import org.glassfish.jersey.internal.util.Base64;
+
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
+
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import javax.ws.rs.client.Client;
 import javax.ws.rs.client.ClientBuilder;
 import javax.ws.rs.client.Entity;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 /**
  * Consul interface. We have to roll our own since the existing libraries doesn't support watches
  * in any way but that's OK. We only use parts of Consul anyways. This implementation doesn't use
  * Consul's service endpoints since they can't store any data besides a single host:port entry.
  *
- * Temporary leases (aka ephemeral values) are created using sessions; a session is created with
+ * <p>Temporary leases (aka ephemeral values) are created using sessions; a session is created with
  * a keep-alive thread that pokes Consul every N seconds. The session flags are set to "delete"
  * which will remove the entries tagged with that session in the KV store when the session expires.
  * In Consul lingo this is a lock on a particular value. Pay close attention to the LockDelay
  * parameter when using this class since it tells us how often the ephemeral values can be updated
  * by the clients.
  *
- * Permanent leases are just plain entries into the KV store.
+ * <p>Permanent leases are just plain entries into the KV store.
  *
- *  TODO: Use single session when creating leases.
- * @author Ståle Dahl <stalehd@gmail.com>
+ * <p>TODO: Use single session when creating leases.
+ *
+ * @author stalehd@gmail.com
  */
 public class Consul {
     private static final Logger LOG = Logger.getLogger(Consul.class.getName());
@@ -38,8 +41,9 @@ public class Consul {
 
     private final String endpoint;
     private final Client httpClient;
+
     /**
-     * @param endpoint Consul agent endpoint
+     * Create new backend with the specified endpoint address.
      */
     public Consul(final String endpoint) {
         this.endpoint = endpoint;
@@ -75,8 +79,10 @@ public class Consul {
      * @param name Name of session. The name does not carry any particular semantics but makes
      *             it easier to correlate the sessions with the values in the KV store for
      *             outsiders rummaging around in Consul.
+     *
      * @param ttlMs Session TTL. The frequency of keep-alive calls to Consul made by the session
-     *            object. In milliseconds.
+     *              object. In milliseconds.
+     *
      * @param lockDelay Delay between allowing locks to be set. This affects the speed at which
      *                  you can set the ephemeral values. Normally this is 15 seconds but for
      *                  tests you might want to set it lower. Very scarce documentation at
@@ -181,7 +187,7 @@ public class Consul {
     }
 
     /**
-     * Remove permanent value
+     * Remove permanent value.
      */
     public boolean removePermanentData(final String name) {
         final Response response = httpClient

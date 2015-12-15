@@ -10,7 +10,7 @@ import java.util.regex.Pattern;
  * A coordinate representing a running service. The coordinate consists of four parts; instance id,
  * service name, tag and region.
  *
- * Note that the order of elements in the string representation is opposite of the CloudnamePath
+ * <p>Note that the order of elements in the string representation is opposite of the CloudnamePath
  * class; you can't create a canonical representation of the instance coordinate by calling join()
  * on the CloudnamePath instance.
  *
@@ -30,10 +30,11 @@ public class InstanceCoordinate {
     private final String instance;
 
     /**
-     * @param path CloudnamePath instance to use as source
+     * Create new instance based on CloudnamePath.
+     *
      * @throws IllegalArgumentException if parameters are invalid
      */
-	/* package-private */ InstanceCoordinate(final CloudnamePath path) {
+    /* package-private */ InstanceCoordinate(final CloudnamePath path) {
         if (path == null) {
             throw new IllegalArgumentException("Path can not be null");
         }
@@ -47,43 +48,43 @@ public class InstanceCoordinate {
     }
 
     /**
-     * @return The region of the coordinate
+     * The region of the coordinate.
      */
     public String getRegion() {
         return region;
     }
 
     /**
-     * @return The tag of the coordinate
+     * The tag of the coordinate.
      */
     public String getTag() {
         return tag;
     }
 
     /**
-     * @return The service name
+     * The service name.
      */
     public String getService() {
         return service;
     }
 
     /**
-     * @return The instance identifier
+     * The instance identifier.
      */
     public String getInstance() {
         return instance;
     }
 
     /**
-     * @return A CloudnamePath instance representing this coordinate
+     * A CloudnamePath instance representing this coordinate.
      */
     /* package-private */ CloudnamePath toCloudnamePath() {
         return new CloudnamePath(
-                new String[] { this.region, this.tag, this.service, this.instance });
+                new String[] {this.region, this.tag, this.service, this.instance});
     }
 
     /**
-     * @return Canonical string representation of coordinate
+     * Canonical string representation of coordinate.
      */
     public String toCanonicalString() {
         return new StringBuffer()
@@ -95,7 +96,7 @@ public class InstanceCoordinate {
     }
 
     /**
-     * @return Coordinate represented as a JSON-formatted string
+     * Coordinate represented as a JSON-formatted string.
      */
     /* package-private */ String toJsonString() {
         return new JSONObject()
@@ -107,8 +108,7 @@ public class InstanceCoordinate {
     }
 
     /**
-     * @param jsonString A coordinate serialized as a JSON-formatted string
-     * @return InstanceCoordinate built from the string
+     * Create InstanceCoordinate instance from JSON string.
      */
     /* package-private */ static InstanceCoordinate fromJson(final String jsonString) {
         final JSONObject object = new JSONObject(jsonString);
@@ -122,8 +122,7 @@ public class InstanceCoordinate {
     }
 
     /**
-     * @param string A canonical string representation of a coordinate
-     * @return InstanceCoordinate built from the string
+     * Parse a canonical string representation of a coordinate.
      */
     public static InstanceCoordinate parse(final String string) {
         if (string == null) {

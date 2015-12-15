@@ -1,5 +1,10 @@
 package org.cloudname.samples.service;
 
+import static spark.Spark.init;
+import static spark.Spark.port;
+import static spark.Spark.staticFileLocation;
+import static spark.Spark.webSocket;
+
 import org.cloudname.core.BackendManager;
 import org.cloudname.flags.Flag;
 import org.cloudname.flags.Flags;
@@ -16,14 +21,12 @@ import org.json.JSONObject;
 import java.util.concurrent.Executors;
 import java.util.logging.Logger;
 
-import static spark.Spark.*;
-
 /**
  * The server hosting the web page. Static pages (on the root) are served out of the resources,
  * web socket is served through /messages.
  */
-public class DemoServer {
-    private static final Logger LOG = Logger.getLogger(DemoServer.class.getName());
+public class PacServer {
+    private static final Logger LOG = Logger.getLogger(PacServer.class.getName());
     private final int httpPort = 4567;
 
     @Flag (name = "cloudname-url", description = "Cloudname URL", required = true)
@@ -36,7 +39,7 @@ public class DemoServer {
 
     public static final NotificationPublisher publisher = new NotificationPublisher();
 
-    private DemoServer() {
+    private PacServer() {
         service = new CloudnameService(BackendManager.getBackend(cloudnameUrl));
     }
 
@@ -89,7 +92,7 @@ public class DemoServer {
                     }
 
                     @Override
-                    public void onServiceRemoved(InstanceCoordinate coordinate) {
+                    public void onServiceRemoved(final InstanceCoordinate coordinate) {
                         LOG.info("Service " + coordinate.toCanonicalString() + " was removed");
                         publisher.publish(getRemoveNotification(coordinate));
                     }
@@ -107,10 +110,15 @@ public class DemoServer {
         LOG.info("Starting server on port " + httpPort + "....");
         init();
     }
-    public static void main(final String[] args) {
-        new Flags().loadOpts(DemoServer.class).parse(args);
 
-        final DemoServer demoServer = new DemoServer();
+    /**
+     * Start the server. Registers in Cloudname, starts a heartbeat thread for the clients connected
+     * via web sockets and starts monitoring for services.
+     */
+    public static void main(final String[] args) {
+        new Flags().loadOpts(PacServer.class).parse(args);
+
+        final PacServer demoServer = new PacServer();
 
         demoServer.connectToCloudname();
 

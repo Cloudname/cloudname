@@ -4,16 +4,16 @@ package org.cloudname.core;
  * Cloudname supports different backends which implements this interface. This interface isn't used
  * by clients directly but the clients will interface with libraries built on top of this interface.
  *
- * There are two kinds of leases - permanent and temporary. The permanent leases persist in the
+ * <p>There are two kinds of leases - permanent and temporary. The permanent leases persist in the
  * backend and aren't removed when clients disconnect, even if *all* clients disconnect.
  * The temporary leases are removed by the backend when the client closes. Note that clients might
  * not be well-behaved and may terminate without calling close(). The backend should remove
  * these leases automatically.
  *
- * Clients listen on both kinds of leases and get notifications through listeners whenever something
- * is changed. Notifications to the clients are sent in the same order they are received.
+ * <p>Clients listen on both kinds of leases and get notifications through listeners whenever
+ * something is changed. Notifications to the clients are sent in the same order they are received.
  *
- * Each lease has a data string attached to the lease and clients may update this freely.
+ * <p>Each lease has a data string attached to the lease and clients may update this freely.
  *
  * @author stalehd@gmail.com
  */
@@ -81,7 +81,7 @@ public interface CloudnameBackend extends AutoCloseable {
      * terminates or closes the connection. Other clients will still see the lease. Permanent leases
      * must persist until they are explicitly removed.
      *
-     * All permanent leases must be unique. Duplicate permanent leases yield errors.
+     * <p>All permanent leases must be unique. Duplicate permanent leases yield errors.
      *
      * @param path path to the permanent lease
      * @param data data to store in the permanent lease when it is created

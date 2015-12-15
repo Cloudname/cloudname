@@ -19,7 +19,7 @@ import java.util.concurrent.atomic.AtomicReference;
  * with sessions fits nicely though. This is currently a proof-of-concept implementation tha haven't
  * been tested extensively.
  *
- * @author Ståle Dahl <stalehd@gmail.com>
+ * @author stalehd@gmail.com
  */
 public class ConsulBackend implements CloudnameBackend {
     final Consul consul;
@@ -35,28 +35,28 @@ public class ConsulBackend implements CloudnameBackend {
     private static final String PERMANENT_PREFIX = "permanent";
 
     /**
-     * Convert a cloudname path to a session name
+     * Convert a cloudname path to a session name.
      */
     private String pathToSession(final CloudnamePath path) {
         return CN_PREFIX + SEPARATOR + path.join(SEPARATOR);
     }
 
     /**
-     * Convert a cloudname path to an ephemeral KV key name
+     * Convert a cloudname path to an ephemeral KV key name.
      */
     private String pathToEphemeralKv(final CloudnamePath path) {
         return CN_PREFIX + SEPARATOR + EPHEMERAL_PREFIX + SEPARATOR + path.join(SEPARATOR);
     }
 
     /**
-     * Convert cloudname path to permanent KV key
+     * Convert cloudname path to permanent KV key.
      */
     private String pathToPermanentKv(final CloudnamePath path) {
         return CN_PREFIX + SEPARATOR + PERMANENT_PREFIX + SEPARATOR + path.join(SEPARATOR);
     }
 
     /**
-     * Convert ephemeral or permanent key name into a Cloudname path
+     * Convert ephemeral or permanent key name into a Cloudname path.
      */
     private CloudnamePath kvNameToCloudnamePath(final String name) {
         final String[] elements = name.split("" + SEPARATOR);
@@ -65,7 +65,8 @@ public class ConsulBackend implements CloudnameBackend {
     }
 
     /**
-     * @param consulEndpoint The URI for the endpoint
+     * Create new backend connected to the specified endpoint.
+     *
      * @throws IllegalArgumentException  the endpoint doesn't exist
      */
     public ConsulBackend(final String consulEndpoint) {
@@ -91,7 +92,7 @@ public class ConsulBackend implements CloudnameBackend {
      * conditions across the cluster. They probably do.
      */
     private String getRandomInstanceId() {
-        synchronized(syncObject) {
+        synchronized (syncObject) {
             String id = Long.toHexString(random.nextLong());
             while (createdIds.contains(id)) {
                 id = Long.toHexString(random.nextLong());
@@ -123,7 +124,7 @@ public class ConsulBackend implements CloudnameBackend {
 
         return new LeaseHandle() {
             @Override
-            public boolean writeLeaseData(String data) {
+            public boolean writeLeaseData(final String data) {
                 if (session.isClosed()) {
                     return false;
                 }
@@ -177,12 +178,12 @@ public class ConsulBackend implements CloudnameBackend {
             }
 
             @Override
-            public void changed(String valueName, String value) {
+            public void changed(final String valueName, final String value) {
                 listener.dataChanged(kvNameToCloudnamePath(valueName), value);
             }
 
             @Override
-            public void removed(String valueName) {
+            public void removed(final String valueName) {
                 listener.leaseRemoved(kvNameToCloudnamePath(valueName));
             }
         });
@@ -233,12 +234,12 @@ public class ConsulBackend implements CloudnameBackend {
             }
 
             @Override
-            public void changed(String valueName, String value) {
+            public void changed(final String valueName, final String value) {
                 listener.dataChanged(kvNameToCloudnamePath(valueName), value);
             }
 
             @Override
-            public void removed(String valueName) {
+            public void removed(final String valueName) {
                 listener.leaseRemoved(kvNameToCloudnamePath(valueName));
             }
         });

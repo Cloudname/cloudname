@@ -18,6 +18,6 @@ public class MemoryBackendMetadata implements BackendMetadata {
 
     @Override
     public Function<String, CloudnameBackend> getFactoryMethod() {
-        return (s) -> new MemoryBackend();
+        return (connectionString) -> new MemoryBackend();
     }
 }

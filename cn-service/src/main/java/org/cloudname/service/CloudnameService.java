@@ -1,4 +1,5 @@
 package org.cloudname.service;
+
 import org.cloudname.core.CloudnameBackend;
 import org.cloudname.core.CloudnamePath;
 import org.cloudname.core.LeaseHandle;
@@ -15,13 +16,10 @@ import java.util.logging.Logger;
  * Service discovery implementation. Use registerService() and addServiceListener() to register
  * and locate services.
  *
- * TODO: Enable lookups based on partial coordinates. Create builder for service coordinates,
- *     use own coordinate to resolve complete coordinate.
- *
  * @author stalehd@gmail.com
  */
 public class CloudnameService implements AutoCloseable {
-    private final Logger LOG = Logger.getLogger(CloudnameService.class.getName());
+    private static final Logger LOG = Logger.getLogger(CloudnameService.class.getName());
 
     private final CloudnameBackend backend;
     private final List<ServiceHandle> handles = new ArrayList<>();
@@ -31,6 +29,8 @@ public class CloudnameService implements AutoCloseable {
     private final Object syncObject = new Object();
 
     /**
+     * Create the service interface.
+     *
      * @oaram backend  backend implementation to use
      * @throws IllegalArgumentException if parameter is invalid
      */
@@ -200,17 +200,17 @@ public class CloudnameService implements AutoCloseable {
         }
         final LeaseListener leaseListener = new LeaseListener() {
             @Override
-            public void leaseCreated(CloudnamePath path, String data) {
+            public void leaseCreated(final CloudnamePath path, final String data) {
                 listener.onServiceCreated(Endpoint.fromJson(data));
             }
 
             @Override
-            public void leaseRemoved(CloudnamePath path) {
+            public void leaseRemoved(final CloudnamePath path) {
                 listener.onServiceRemoved();
             }
 
             @Override
-            public void dataChanged(CloudnamePath path, String data) {
+            public void dataChanged(final CloudnamePath path, final String data) {
                 listener.onServiceChanged(Endpoint.fromJson(data));
             }
         };

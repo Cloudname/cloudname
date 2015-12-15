@@ -17,6 +17,8 @@ public class MemoryLeaseHandle implements LeaseHandle {
     private AtomicBoolean expired = new AtomicBoolean(false);
 
     /**
+     * New lease instance.
+     *
      * @param backend The backend issuing the lease
      * @param clientLeasePath The path to the lease
      */
@@ -27,7 +29,7 @@ public class MemoryLeaseHandle implements LeaseHandle {
     }
 
     @Override
-    public boolean writeLeaseData(String data) {
+    public boolean writeLeaseData(final String data) {
         return backend.writeTemporaryLeaseData(clientLeasePath, data);
     }
 

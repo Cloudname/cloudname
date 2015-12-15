@@ -6,7 +6,7 @@ import java.util.logging.Logger;
  * Simple ID generator that will produce unique IDs given that no ID
  * generator instances with the same worker ID exist at the same time.
  *
- * The default instance of the ID generator uses 40 bits for the
+ * <p>The default instance of the ID generator uses 40 bits for the
  * timestamp, 12 bits for the worker ID and 12 bits for the sequence.
  * These numbers translate to the following limitations:
  *
@@ -22,7 +22,7 @@ import java.util.logging.Logger;
  *        IDs generated.  In extreme cases this might be a problem.
  * </ul>
  *
- * TODO(borud): In order to ensure that no two IdGenerator instances
+ * <p>TODO(borud): In order to ensure that no two IdGenerator instances
  *   share the same worker-id we need to add a factory/manager for the
  *   IdGenerator which takes care of allocating the worker-id.
  *
@@ -71,7 +71,7 @@ public class IdGenerator {
      *
      * @param workerId the worker id of the id generator.
      */
-    public IdGenerator(long workerId) {
+    public IdGenerator(final long workerId) {
         this(workerId, defaultTimeProvider, DEFAULT_NUM_BITS_WORKER_ID, DEFAULT_NUM_BITS_SEQUENCE);
     }
 
@@ -84,17 +84,18 @@ public class IdGenerator {
      * @param workerId the worker id of the id generator.
      * @param timeProvider override default time provider.
      */
-    public IdGenerator(long workerId, TimeProvider timeProvider) {
+    public IdGenerator(final long workerId, final TimeProvider timeProvider) {
         this(workerId, timeProvider, DEFAULT_NUM_BITS_WORKER_ID, DEFAULT_NUM_BITS_SEQUENCE);
     }
 
     /**
      * Create new IdGenerator with the specified bit layout.
+     *
      * @param workerId The worker ID.
      * @param numBitsWorkerId The number of bits to use for the worker ID.
      * @param numBitsSequence The number of bits to use for the sequence.
      */
-    public IdGenerator(long workerId, int numBitsWorkerId, int numBitsSequence) {
+    public IdGenerator(final long workerId, final int numBitsWorkerId, final int numBitsSequence) {
         this(workerId, defaultTimeProvider, numBitsWorkerId, numBitsSequence);
     }
     /**
@@ -114,14 +115,14 @@ public class IdGenerator {
      *                        (ie the maximum throughput per id generator
      *                        per second)
      */
-    public IdGenerator(long workerId, TimeProvider timeProvider,
-                       int numBitsWorkerId, int numBitsSequence) {
+    public IdGenerator(final long workerId, final TimeProvider timeProvider,
+                       final int numBitsWorkerId, final int numBitsSequence) {
         // Do some sanity checks on the layout
         if ((numBitsWorkerId + numBitsSequence) > 63) {
             throw new IllegalArgumentException("The number of bits for the "
                     + "id generator cannot exceed 64 bits");
         }
-        int numBitsTimestamp = Long.SIZE - numBitsWorkerId - numBitsSequence;
+        final int numBitsTimestamp = Long.SIZE - numBitsWorkerId - numBitsSequence;
 
         if (Math.pow(2, numBitsWorkerId) < workerId) {
             throw new IllegalArgumentException("There isn't enough room to fit the worker ID "
@@ -140,14 +141,15 @@ public class IdGenerator {
     /**
      * Generate next unique ID.
      *
-     * @throws IllegalStateException if the clock has gone backwards
-     *   by more than {@code maxWaitForClockCatchupInMilliseconds}
      * @return the next unique ID as a long value.
+     * @throws IllegalStateException if the clock has gone backwards
+     *     by more than {@code maxWaitForClockCatchupInMilliseconds}
      */
     public long getNextId() {
-        long timestamp = timeProvider.getTimeInMillis();
 
-        synchronized(syncObject) {
+        synchronized (syncObject) {
+            long timestamp = timeProvider.getTimeInMillis();
+
             // Deal with the simple case first.
             if (prevTimestamp < timestamp) {
                 sequence = 0L;
@@ -177,6 +179,9 @@ public class IdGenerator {
         }
     }
 
+    /**
+     * Get next id as a hex string.
+     */
     public String getNextIdHex() {
         return Long.toString(getNextId(), 16);
     }
@@ -190,7 +195,7 @@ public class IdGenerator {
      * @param workerId Worker ID to use
      * @param sequence Sequence counter
      */
-    private long buildKey(long timestamp, long workerId, long sequence) {
+    private long buildKey(final long timestamp, final long workerId, final long sequence) {
         return
             ((timestamp & timestampBitMask) << (long) timestampLeftShiftBy)
             | ((workerId & workerIdBitMask) << (long) workerLeftShiftBy)
@@ -204,10 +209,13 @@ public class IdGenerator {
      *
      * @param bitsToSet the number of bits to set in the bit mask.
      */
-    private static long makeLongBitMask(int bitsToSet) {
+    private static long makeLongBitMask(final int bitsToSet) {
         return (0xFFFFFFFFFFFFFFFFL >>> (64 - bitsToSet));
     }
 
+    /**
+     * Get the worker id.
+     */
     public long getWorkerId() {
         return workerId;
     }

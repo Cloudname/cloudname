@@ -9,7 +9,7 @@ import java.util.regex.Pattern;
  * backend implementation but it can be represented as an uniquely identifying string for the
  * leases handed out. A path can be split into elements which can be accessed individually.
  *
- * Paths are an ordered set of strings consisting of the characters according to RFC 952 and
+ * <p>Paths are an ordered set of strings consisting of the characters according to RFC 952 and
  * RFC 1123, ie [a-z,0-9,-]. The names cannot start or end with an hyphen and can be between
  * 1 and 63 characters long.
  *
@@ -46,7 +46,7 @@ public class CloudnamePath {
     /**
      * @param pathElements the string array to create the path from. Order is preserved so
      *     pathElements[0] corresponds to the first element in the path. Note that the element will
-     *     be converted to lower case strings
+     *     be converted to lower case strings.
      * @throws AssertionError if the pathElements parameter is null
      */
     public CloudnamePath(final String[] pathElements) {
@@ -60,7 +60,8 @@ public class CloudnamePath {
             }
             final String element = pathElements[i].toLowerCase();
             if (!isValidPathElementName(element)) {
-                throw new IllegalArgumentException("Name element " + element + " isn't a valid name");
+                throw new IllegalArgumentException("Name element "
+                        + element + " isn't a valid name");
             }
             this.pathElements[i] = element;
         }
@@ -90,14 +91,14 @@ public class CloudnamePath {
     }
 
     /**
-     * @return  the number of elements in the path
+     * The number of elements in the path.
      */
     public int length() {
         return pathElements.length;
     }
 
     /**
-     * Join the path elements into a string, f.e. join "foo", "bar" into "foo:bar"
+     * Join the path elements into a string, f.e. join "foo", "bar" into "foo:bar".
      *
      * @param separator  separator character between elements
      * @return  joined elements
@@ -116,8 +117,8 @@ public class CloudnamePath {
     }
 
     /**
-     * @param index  index of element
-     * @return  element at index
+     * Get element by index.
+     *
      * @throws IndexOutOfBoundsException if the index is out of range
      */
     public String get(final int index) {

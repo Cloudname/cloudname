@@ -24,9 +24,11 @@ import java.util.logging.Logger;
 /**
  * A sample service. This service provides a simple web page with a coordinate, known peers and a
  * shutdown button.
+ *
+ * @author stalehd@gmail.com
  */
-public class TestService {
-    private static final Logger LOG = Logger.getLogger(TestService.class.getName());
+public class GhostService {
+    private static final Logger LOG = Logger.getLogger(GhostService.class.getName());
 
     @Flag (name = "cloudname-url", description = "Cloudname URL", required = true)
     private static String cloudnameUrl = null;
@@ -42,7 +44,8 @@ public class TestService {
     private final Map<String, InstanceCoordinate> peerMap = new ConcurrentHashMap<>();
     private final CloudnameService service;
     private final int sparkPort;
-    private TestService() {
+
+    private GhostService() {
         service = new CloudnameService(BackendManager.getBackend(cloudnameUrl));
         try {
             sparkPort = Net.getFreePort();
@@ -56,17 +59,20 @@ public class TestService {
         for (final String endpoint : Net.getHostInterfaces()) {
             serviceData.addEndpoint(new Endpoint("http", endpoint, sparkPort));
         }
-        try (final ServiceHandle handle = service.registerService(getServiceCoordinate(), serviceData)) {
+        try (final ServiceHandle handle
+                     = service.registerService(getServiceCoordinate(), serviceData)) {
             assignedCoordinate.set(handle.getCoordinate());
             service.addServiceListener(getServiceCoordinate(), new ServiceListener() {
                 @Override
-                public void onServiceCreated(final InstanceCoordinate coordinate, final ServiceData serviceData) {
+                public void onServiceCreated(
+                        final InstanceCoordinate coordinate, final ServiceData serviceData) {
                     LOG.info("Adding " + coordinate + " to peer set");
                     peerMap.put(coordinate.toCanonicalString(), coordinate);
                 }
 
                 @Override
-                public void onServiceDataChanged(final InstanceCoordinate coordinate, final ServiceData data) {
+                public void onServiceDataChanged(
+                        final InstanceCoordinate coordinate, final ServiceData data) {
 
                 }
 
@@ -107,42 +113,49 @@ public class TestService {
     }
 
     private String getStatusPage() {
-        return  "<html lang=\"en\">\n" +
-                "    <head>\n" +
-                "        <title>Hello there!</title>\n" +
-                "        <style>\n" +
-                "            body { \n" +
-                "                background-color: black; \n" +
-                "                font-family: sans-serif; \n" +
-                "                font-size: 14pt; \n" +
-                "                color: lightblue;\n" +
-                "            }\n" +
-                "        </style>\n" +
-                "    </head>\n" +
-                "    <body>\n" +
-                "        <p>My coordinate is <strong>" + assignedCoordinate.get().toCanonicalString() + "</strong></p>\n" +
-                "        <h1>My peers</h1>\n" +
-                getPeerSetList() +
-                "        <hr/>\n" +
-                "        <form action=\"/shutdown\" method=\"POST\">\n" +
-                "            <button type=\"submit\">Shut down</button>\n" +
-                "        </form>\n" +
-                "    </body>\n" +
-                "</html>";
+        return  "<html lang=\"en\">\n"
+                + "    <head>\n"
+                + "        <title>Hello there!</title>\n"
+                + "        <style>\n"
+                + "            body { \n"
+                + "                background-color: black; \n"
+                + "                font-family: sans-serif; \n"
+                + "                font-size: 14pt; \n"
+                + "                color: lightblue;\n"
+                + "            }\n"
+                + "        </style>\n"
+                + "    </head>\n"
+                + "    <body>\n"
+                + "        <p>My coordinate is <strong>"
+                + assignedCoordinate.get().toCanonicalString()
+                + "</strong></p>\n"
+                + "        <h1>My peers</h1>\n"
+                + getPeerSetList()
+                + "        <hr/>\n"
+                + "        <form action=\"/shutdown\" method=\"POST\">\n"
+                + "            <button type=\"submit\">Shut down</button>\n"
+                + "        </form>\n"
+                + "    </body>\n"
+                + "</html>";
     }
+
     private void setupWebserver() {
         Spark.port(sparkPort);
         Spark.get("/", (req, res) ->  getStatusPage());
         Spark.post("/shutdown", (req, res) -> {
             terminateLatch.countDown();
-            return "<strong>Shutting down in a jiffy!</strong><script>setTimeout(function() { window.close(); }, 1000);</script>";
+            return "<strong>Shutting down in a jiffy!</strong>"
+                    + "<script>setTimeout(function() { window.close(); }, 1000);</script>";
         });
         Spark.init();
     }
 
+    /**
+     * Launch the test server.
+     */
     public static void main(final String[] args) {
-        new Flags().loadOpts(TestService.class).parse(args);
-        final TestService service = new TestService();
+        new Flags().loadOpts(GhostService.class).parse(args);
+        final GhostService service = new GhostService();
         Executors.newSingleThreadExecutor().execute(() -> {
             Spark.awaitInitialization();
             service.connectToCloudname();

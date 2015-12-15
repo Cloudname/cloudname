@@ -12,10 +12,10 @@ public interface LeaseHandle extends AutoCloseable {
      * @param data  data to write. Cannot be null.
      * @return true if data is written
      */
-	boolean writeLeaseData(final String data);
+    boolean writeLeaseData(final String data);
 
     /**
-     * @return The full path of the lease
+     * The full path of the lease.
      */
-	CloudnamePath getLeasePath();
+    CloudnamePath getLeasePath();
 }

@@ -40,8 +40,9 @@ public class ServiceData {
     }
 
     /**
-     * @param name Name of endpoint
-     * @return The endpoint with the specified name. Null if the endpoint doesn't exist
+     * Retrieve endpoint based on its name.
+     *
+     * @return The matching endpoint if found. Null if the endpoint doesn't exist
      */
     public Endpoint getEndpoint(final String name) {
         synchronized (syncObject) {
@@ -55,7 +56,8 @@ public class ServiceData {
     }
 
     /**
-     * @param endpoint Endpoint to add
+     * Add endpoint.
+     *
      * @return true if endpoint can be added. False if the endpoint already exists.
      * @throws IllegalArgumentException if endpoint is invalid
      */
@@ -73,7 +75,8 @@ public class ServiceData {
     }
 
     /**
-     * @param endpoint endpoint to remove
+     * Remove endpoint.
+     *
      * @return True if the endpoint has been removed, false if the endpoint can't be removed. Nulls
      * @throws IllegalArgumentException if endpoint is invalid
      */
@@ -91,19 +94,20 @@ public class ServiceData {
     }
 
     /**
-     * @return Service data serialized as a JSON string
+     * Serialize instance to a JSON string.
      */
     /* package-private */ String toJsonString() {
         final JSONArray epList = new JSONArray();
-        int i = 0;
+        int index = 0;
         for (Map.Entry<String, Endpoint> entry : endpoints.entrySet()) {
-            epList.put(i++, new JSONObject(entry.getValue().toJsonString()));
+            epList.put(index++, new JSONObject(entry.getValue().toJsonString()));
         }
         return new JSONObject().put("endpoints", epList).toString();
     }
 
     /**
-     * @param jsonString JSON string to create instance from
+     * Serialize instance from JSON string.
+     *
      * @throws IllegalArgumentException if parameter is invalid
      */
     /* package-private */ static ServiceData fromJsonString(final String jsonString) {

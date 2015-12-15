@@ -1,4 +1,5 @@
 package org.cloudname.service;
+
 import org.cloudname.core.LeaseHandle;
 
 import java.util.logging.Level;
@@ -15,12 +16,12 @@ public class ServiceHandle implements AutoCloseable {
     private static final Logger LOG = Logger.getLogger(ServiceHandle.class.getName());
     private final LeaseHandle leaseHandle;
     private final InstanceCoordinate instanceCoordinate;
-	private final ServiceData serviceData;
+    private final ServiceData serviceData;
 
     /**
-     * @param instanceCoordinate The instance coordinate this handle belongs to
-     * @param serviceData The service data object
-     * @param leaseHandle The Cloudname handle for the lease
+     * Construct ServiceHandle from @link{InstanceCoordinate}, @link{ServiceData} and
+     * @link{LeaseHandle} instances.
+     *
      * @throws IllegalArgumentException if parameters are invalid
      */
     public ServiceHandle(
@@ -42,8 +43,9 @@ public class ServiceHandle implements AutoCloseable {
     }
 
     /**
-     * @param endpoint The endpoint to register
-     * @return true if endpoint is registered
+     * Register endpoint. Will update the backend's registration.
+     *
+     * @return true if successful
      */
     public boolean registerEndpoint(final Endpoint endpoint) {
         if (!serviceData.addEndpoint(endpoint)) {
@@ -53,8 +55,9 @@ public class ServiceHandle implements AutoCloseable {
     }
 
     /**
-     * @param endpoint The endpoint to remove
-     * @return true if endpoint is removed
+     * Remove endpoint from service registration.
+     *
+     * @return true if successful
      */
     public boolean removeEndpoint(final Endpoint endpoint) {
         if (!serviceData.removeEndpoint(endpoint)) {
@@ -73,6 +76,9 @@ public class ServiceHandle implements AutoCloseable {
         }
     }
 
+    /**
+     * Get the coordinate this @link{ServiceHandle} instance represents.
+     */
     public InstanceCoordinate getCoordinate() {
         return instanceCoordinate;
     }

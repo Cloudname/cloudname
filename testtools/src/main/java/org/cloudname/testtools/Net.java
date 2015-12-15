@@ -1,14 +1,13 @@
 package org.cloudname.testtools;
 
+import java.io.IOException;
 import java.net.InterfaceAddress;
 import java.net.NetworkInterface;
+import java.net.ServerSocket;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Enumeration;
 import java.util.List;
-import java.util.ArrayList;
-
-import java.net.ServerSocket;
-import java.io.IOException;
 import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -21,25 +20,30 @@ import java.util.logging.Logger;
 public class Net {
     private static final Logger LOG = Logger.getLogger(Net.class.getName());
 
+    private Net() {
+        /* utility class */
+    }
+
     /**
      * Find a network port that is not in use.
-     * <p>
-     * The only way to implement this sensibly without obvious race
+     *
+     * <p>The only way to implement this sensibly without obvious race
      * conditions would be if we could return an opened listen socket.
      * This way we would only run into trouble if we were unable to
      * find a port we can bind at all.
-     * <p>
-     * However, since most of the code we need to test doesn't let us
+     *
+     * <p>However, since most of the code we need to test doesn't let us
      * inject listen sockets this is impractical.  We could of course
      * pass a socket back and have the client code close it and then
      * re-use it, but that would be burdening the developer unduly.
-     * <p>
-     * This means that the goal of this code is to, with some
+     *
+     * <p>This means that the goal of this code is to, with some
      * probability, locate a port number that appears to be free and
      * hope that the time window is narrow enough so other threads or
      * processes cannot grab it before we make use of it.
-     * @throws IOException if an IO error occurs
+     *
      * @return a port number which is probably free so we can bind it
+     * @throws IOException if an IO error occurs
      */
     public static int getFreePort() throws IOException {
         int[] port = getFreePorts(1);
@@ -54,7 +58,7 @@ public class Net {
      * @return an array of numPorts port numbers.
      * @throws IOException if an IO error occurs.
      */
-    public static int[] getFreePorts(int numPorts) throws IOException {
+    public static int[] getFreePorts(final int numPorts) throws IOException {
         List<ServerSocket> sockets = new ArrayList<ServerSocket>(numPorts);
         int[] portNums = new int[numPorts];
 
@@ -81,7 +85,7 @@ public class Net {
      * by setting the CLOUDNAME_INTERFACE environment variable or the cloudname.interface system
      * property.
      *
-     * Note that both IPv4 and IPv6 addresses will be returned.
+     * <p>Note that both IPv4 and IPv6 addresses will be returned.
      *
      * @return list of addresses
      */
