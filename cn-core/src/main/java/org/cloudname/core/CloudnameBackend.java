@@ -119,10 +119,10 @@ public interface CloudnameBackend extends AutoCloseable {
      * Add a listener to a permanent lease. The listener is attached to just one lease, as opposed
      * to the termporary lease listener.
      *
-     * @param pathToObserver path to lease
+     * @param pathToObserve path to lease
      * @param listener callbacks on this listener is invoked by the backend
      */
-    void addPermanentLeaseListener(final CloudnamePath pathToObserver, final LeaseListener listener);
+    void addPermanentLeaseListener(final CloudnamePath pathToObserve, final LeaseListener listener);
 
     /**
      * Remove listener on permanent lease. Unknown listeners are ignored by the backend.
