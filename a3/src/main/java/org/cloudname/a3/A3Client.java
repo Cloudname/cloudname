@@ -77,8 +77,9 @@ public class A3Client
      *
      * @param in an InputStream which contains valid JSON user database.
      * @return an A3Client instance backed by MemoryStorage
-     * @deprecated does not specify how to convert bytes to
-     * characters, use a Reader instead of InputStream.
+     * @deprecated does not specify how to convert bytes to characters, use a Reader instead of
+     *      InputStream.
+     * @throws IOException if there's an error reading from the memory storage
      */
     public static A3Client newMemoryOnlyClient(InputStream in) throws IOException {
         return new A3Client(MemoryStorage.fromInputStream(in));
@@ -90,6 +91,7 @@ public class A3Client
      *
      * @param in a Reader which contains a valid JSON user database.
      * @return an A3Client instance backed by MemoryStorage
+     * @throws IOException if there's an error reading from the storage
      */
     public static A3Client newMemoryOnlyClient(Reader in) throws IOException {
         return new A3Client(MemoryStorage.fromReader(in));

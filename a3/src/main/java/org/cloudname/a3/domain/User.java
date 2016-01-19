@@ -45,7 +45,16 @@ public class User {
      * This constructor is mainly used by Jackson in order to create
      * instances of the User object from JSON.
      *
-     * The Set<String> of roles should be lowercase role names.
+     * The Set[string] of roles should be lowercase role names.
+     *
+     * @param username user name
+     * @param password user's password
+     * @param oldPassword old password for user
+     * @param oldPasswordExpiry expiry date for old password
+     * @param realName User's real name
+     * @param email User's email
+     * @param roles User roles
+     * @param properties User properties
      */
     @JsonCreator
     public User(@JsonProperty("username") String username,
@@ -177,7 +186,9 @@ public class User {
     }
 
     /**
-     * Create a User instance from a JSON string.
+     * @param json JSON String
+     * @return User instance from a JSON string.
+     * @throws IOException if there's an error reading from JSON
      */
     public static User fromJson(String json) throws IOException {
         final ObjectMapper mapper = new ObjectMapper();

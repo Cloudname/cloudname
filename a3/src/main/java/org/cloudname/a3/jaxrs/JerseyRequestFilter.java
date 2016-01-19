@@ -31,12 +31,12 @@ import org.cloudname.a3.domain.User;
  * (the user might me trying to access a publicly available resource). However if
  * the user is specified but the username or password is wrong then we let the user know.
  *
- * <h4>Dependencies</h4>
+ * <strong>Dependencies</strong>
  * The filter expects an {@link A3Client} instance to be provided by Jersey. For that to work
- * you need to have a @{@link javax.ws.rs.ext.Provider.Provider} creating it available somewhere where Jersey can
+ * you need to have a @{@link javax.ws.rs.ext.Provider} creating it available somewhere where Jersey can
  * find it.
  *
- * <h4>Configuration</h4>
+ * <strong>Configuration</strong>
  * <p>
  * You need to configure Jersey to use this filter - set its init parameter
  * <code>com.sun.jersey.spi.container.ContainerRequestFilters</code>

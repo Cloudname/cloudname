@@ -13,6 +13,7 @@ import org.cloudname.core.CloudnameBackend;
 import org.cloudname.core.CloudnamePath;
 import org.cloudname.core.LeaseHandle;
 import org.cloudname.core.LeaseListener;
+import org.cloudname.core.LeaseType;
 import org.junit.Test;
 
 import java.util.ArrayList;
@@ -47,6 +48,28 @@ public abstract class CoreBackendTest {
     protected int getBackendPropagationTime() {
         return 100;
     }
+
+    @Test
+    public void leaseCreationNullValues() throws Exception {
+        final CloudnamePath permPath = new CloudnamePath(new String[] {"local", "lease", "perm"});
+        try (final CloudnameBackend backend = getBackend()) {
+            assertThat(backend.createLease(null, null, null), is(nullValue()));
+
+            assertThat(backend.createLease(LeaseType.PERMANENT, null, null),
+                    is(nullValue()));
+
+            assertThat(backend.createLease(LeaseType.PERMANENT, permPath, null),
+                    is(nullValue()));
+
+        }
+    }
+
+    final AtomicInteger nodeCounter = new AtomicInteger(0);
+
+    private CloudnamePath appendUniqueName(final CloudnamePath path) {
+        return new CloudnamePath(path, "node" + Integer.toHexString(nodeCounter.incrementAndGet()));
+    }
+
     /**
      * Ensure multiple clients can connect and that leases get an unique path for each client.
      */
@@ -54,7 +77,9 @@ public abstract class CoreBackendTest {
     public void temporaryLeaseCreation() throws Exception {
         try (final CloudnameBackend backend = getBackend()) {
             final String data = Long.toHexString(random.nextLong());
-            final LeaseHandle lease = backend.createTemporaryLease(serviceA, data);
+            final LeaseHandle lease = backend.createLease(
+                    LeaseType.TEMPORARY, appendUniqueName(serviceA), data);
+
             assertThat("Expected lease to be not null", lease, is(notNullValue()));
 
             assertTrue("Expected lease path to be a subpath of the supplied lease (" + serviceA
@@ -62,22 +87,23 @@ public abstract class CoreBackendTest {
                     serviceA.isSubpathOf(lease.getLeasePath()));
 
             assertThat("The temporary lease data can be read",
-                    backend.readTemporaryLeaseData(lease.getLeasePath()), is(data));
+                    backend.readLeaseData(lease.getLeasePath()), is(data));
 
             final String newData = Long.toHexString(random.nextLong());
             assertThat("Expected to be able to write lease data but didn't",
-                    lease.writeLeaseData(newData), is(true));
+                    lease.writeData(newData), is(true));
 
             assertThat("Expected to be able to read data back but didn't",
-                    backend.readTemporaryLeaseData(lease.getLeasePath()), is(newData));
+                    backend.readLeaseData(lease.getLeasePath()), is(newData));
             lease.close();
 
             assertThat("Expect the lease path to be null", lease.getLeasePath(), is(nullValue()));
 
             assertFalse("Did not expect to be able to write lease data for a closed lease",
-                    lease.writeLeaseData(Long.toHexString(random.nextLong())));
+                    lease.writeData(Long.toHexString(random.nextLong())));
+
             assertThat("The temporary lease data can not be read",
-                    backend.readTemporaryLeaseData(lease.getLeasePath()), is(nullValue()));
+                    backend.readLeaseData(lease.getLeasePath()), is(nullValue()));
 
 
             final int numberOfLeases = 50;
@@ -85,7 +111,8 @@ public abstract class CoreBackendTest {
             final Set<String> leasePaths = new HashSet<>();
             for (int i = 0; i < numberOfLeases; i++) {
                 final String randomData = Long.toHexString(random.nextLong());
-                final LeaseHandle handle = backend.createTemporaryLease(serviceB, randomData);
+                final LeaseHandle handle = backend.createLease(
+                        LeaseType.TEMPORARY, appendUniqueName(serviceB), randomData);
                 leasePaths.add(handle.getLeasePath().join(':'));
                 handle.close();
             }
@@ -131,24 +158,24 @@ public abstract class CoreBackendTest {
                     dataCounter.countDown();
                 }
             };
-            backend.addTemporaryLeaseListener(rootPath, listener);
-            final LeaseHandle handle = backend.createTemporaryLease(rootPath, firstData);
+            backend.addLeaseCollectionListener(rootPath, listener);
+            final LeaseHandle handle = backend.createLease(
+                    LeaseType.TEMPORARY, appendUniqueName(rootPath), firstData);
             assertThat(handle, is(notNullValue()));
             Thread.sleep(getBackendPropagationTime());
-
-            handle.writeLeaseData(lastData);
-            Thread.sleep(getBackendPropagationTime());
-
-            handle.close();
-
             assertTrue("Expected create notification but didn't get one",
                     createCounter.await(getBackendPropagationTime(), TimeUnit.MILLISECONDS));
-            assertTrue("Expected remove notification but didn't get one",
-                    removeCounter.await(getBackendPropagationTime(), TimeUnit.MILLISECONDS));
+
+            handle.writeData(lastData);
+            Thread.sleep(getBackendPropagationTime());
             assertTrue("Expected data notification but didn't get one",
                     dataCounter.await(getBackendPropagationTime(), TimeUnit.MILLISECONDS));
 
-            backend.removeTemporaryLeaseListener(listener);
+            handle.close();
+            Thread.sleep(getBackendPropagationTime());
+            assertTrue("Expected remove notification but didn't get one",
+                    removeCounter.await(getBackendPropagationTime(), TimeUnit.MILLISECONDS));
+            backend.removeLeaseListener(listener);
         }
     }
 
@@ -164,33 +191,35 @@ public abstract class CoreBackendTest {
 
 
         try (final CloudnameBackend backend = getBackend()) {
-            backend.removePermanentLease(leasePath);
+            backend.removeLease(leasePath);
 
-            assertThat("Permanent lease can be created",
-                    backend.createPermanantLease(leasePath, dataString), is(true));
+            assertThat("Expect to be able to create permanent lease",
+                    backend.createLease(LeaseType.PERMANENT, leasePath, dataString),
+                    is(notNullValue()));
 
-            assertThat("Permanent lease data can be read",
-                    backend.readPermanentLeaseData(leasePath), is(dataString));
+            assertThat("Expect to be able to read lease's data",
+                    backend.readLeaseData(leasePath), is(dataString));
 
-            assertThat("Permanent lease can't be created twice",
-                    backend.createPermanantLease(leasePath, dataString), is(false));
+            assertThat("Expect permanent lease to be created only once",
+                    backend.createLease(LeaseType.PERMANENT, leasePath, dataString),
+                    is(nullValue()));
 
-            assertThat("Permanent lease can be updated",
-                    backend.writePermanentLeaseData(leasePath, newDataString), is(true));
+            assertThat("Expect to be able to write lease data",
+                    backend.writeLeaseData(leasePath, newDataString), is(true));
 
-            assertThat("Permanent lease data can be read after update",
-                    backend.readPermanentLeaseData(leasePath), is(newDataString));
+            assertThat("Expect to be able to read after write",
+                    backend.readLeaseData(leasePath), is(newDataString));
         }
 
         try (final CloudnameBackend backend = getBackend()) {
             assertThat("Permanent lease data can be read from another backend",
-                    backend.readPermanentLeaseData(leasePath), is(newDataString));
+                    backend.readLeaseData(leasePath), is(newDataString));
             assertThat("Permanent lease can be removed",
-                    backend.removePermanentLease(leasePath), is(true));
+                    backend.removeLease(leasePath), is(true));
             assertThat("Lease can't be removed twice",
-                    backend.removePermanentLease(leasePath), is(false));
+                    backend.removeLease(leasePath), is(false));
             assertThat("Lease data can't be read from deleted lease",
-                    backend.readPermanentLeaseData(leasePath), is(nullValue()));
+                    backend.readLeaseData(leasePath), is(nullValue()));
         }
     }
 
@@ -203,7 +232,8 @@ public abstract class CoreBackendTest {
             final CloudnamePath rootPath = new CloudnamePath(new String[]{"root", "lease"});
             final String clientData = "client data here";
 
-            final LeaseHandle lease = backend.createTemporaryLease(rootPath, clientData);
+            final LeaseHandle lease = backend.createLease(
+                    LeaseType.TEMPORARY, appendUniqueName(rootPath), clientData);
             assertThat("Handle to lease is returned", lease, is(notNullValue()));
             assertThat("Lease is a child of the root lease",
                     rootPath.isSubpathOf(lease.getLeasePath()), is(true));
@@ -239,13 +269,13 @@ public abstract class CoreBackendTest {
                     }
                 };
                 listeners.add(listener);
-                backend.addTemporaryLeaseListener(rootPath, listener);
+                backend.addLeaseCollectionListener(rootPath, listener);
             }
 
             // Change the data a few times. Every change should be propagated to the listeners
             // in the same order they have changed
             for (int i = 0; i < numUpdates; i++) {
-                lease.writeLeaseData(Integer.toString(i));
+                lease.writeData(Integer.toString(i));
                 Thread.sleep(getBackendPropagationTime());
             }
 
@@ -270,7 +300,7 @@ public abstract class CoreBackendTest {
             // Remove the listeners
             for (final LeaseListener listener : listeners) {
                 lease.close();
-                backend.removeTemporaryLeaseListener(listener);
+                backend.removeLeaseListener(listener);
             }
         }
     }
@@ -296,62 +326,60 @@ public abstract class CoreBackendTest {
             final int n = numberOfClients - 1;
             final CountDownLatch removeNotifications = new CountDownLatch(n * (n + 1) / 2);
 
-            final Runnable clientProcess = new Runnable() {
-                @Override
-                public void run() {
-                    final String myData = Long.toHexString(random.nextLong());
-                    final LeaseHandle handle = backend.createTemporaryLease(rootLease, myData);
-                    assertThat("Got a valid handle back", handle, is(notNullValue()));
-                    backend.addTemporaryLeaseListener(rootLease, new LeaseListener() {
-                        @Override
-                        public void leaseCreated(final CloudnamePath path, final String data) {
-                            assertThat("Notification belongs to root path",
-                                    rootLease.isSubpathOf(path), is(true));
-                            createNotifications.countDown();
-                        }
-
-                        @Override
-                        public void leaseRemoved(final CloudnamePath path) {
-                            removeNotifications.countDown();
-                        }
-
-                        @Override
-                        public void dataChanged(final CloudnamePath path, final String data) {
-                            dataNotifications.countDown();
-                        }
-                    });
-
-                    try {
-                        assertThat(createNotifications.await(
-                                getBackendPropagationTime(), TimeUnit.MILLISECONDS),
-                                is(true));
-                    } catch (InterruptedException ie) {
-                        throw new RuntimeException(ie);
+            final Runnable clientProcess = () -> {
+                final String myData = Long.toHexString(random.nextLong());
+                final LeaseHandle handle = backend.createLease(
+                        LeaseType.TEMPORARY, appendUniqueName(rootLease), myData);
+                assertThat("Got a valid handle back", handle, is(notNullValue()));
+                backend.addLeaseCollectionListener(rootLease, new LeaseListener() {
+                    @Override
+                    public void leaseCreated(final CloudnamePath path, final String data) {
+                        assertThat("Notification belongs to root path",
+                                rootLease.isSubpathOf(path), is(true));
+                        createNotifications.countDown();
                     }
 
-                    // Change the data for my own lease, wait for it to propagate
-                    assertThat(handle.writeLeaseData(Long.toHexString(random.nextLong())),
+                    @Override
+                    public void leaseRemoved(final CloudnamePath path) {
+                        removeNotifications.countDown();
+                    }
+
+                    @Override
+                    public void dataChanged(final CloudnamePath path, final String data) {
+                        dataNotifications.countDown();
+                    }
+                });
+
+                try {
+                    assertThat(createNotifications.await(
+                            getBackendPropagationTime(), TimeUnit.MILLISECONDS),
                             is(true));
-                    try {
-                        Thread.sleep(getBackendPropagationTime());
-                    } catch (final InterruptedException ie) {
-                        throw new RuntimeException(ie);
-                    }
+                } catch (InterruptedException ie) {
+                    throw new RuntimeException(ie);
+                }
 
-                    try {
-                        assertThat(dataNotifications.await(
-                                getBackendPropagationTime(), TimeUnit.MILLISECONDS),
-                                is(true));
-                    } catch (InterruptedException ie) {
-                        throw new RuntimeException(ie);
-                    }
+                // Change the data for my own lease, wait for it to propagate
+                assertThat(handle.writeData(Long.toHexString(random.nextLong())),
+                        is(true));
+                try {
+                    Thread.sleep(getBackendPropagationTime());
+                } catch (final InterruptedException ie) {
+                    throw new RuntimeException(ie);
+                }
 
-                    // ..and close my lease
-                    try {
-                        handle.close();
-                    } catch (Exception ex) {
-                        throw new RuntimeException(ex);
-                    }
+                try {
+                    assertThat(dataNotifications.await(
+                            getBackendPropagationTime(), TimeUnit.MILLISECONDS),
+                            is(true));
+                } catch (InterruptedException ie) {
+                    throw new RuntimeException(ie);
+                }
+
+                // ..and close my lease
+                try {
+                    handle.close();
+                } catch (Exception ex) {
+                    throw new RuntimeException(ex);
                 }
             };
 
@@ -383,7 +411,7 @@ public abstract class CoreBackendTest {
                 public void dataChanged(final CloudnamePath path, final String data) {
                 }
             };
-            backend.removeTemporaryLeaseListener(unknownnListener);
+            backend.removeLeaseListener(unknownnListener);
         }
     }
 
@@ -427,21 +455,24 @@ public abstract class CoreBackendTest {
                 }
 
                 public void createLease() {
-                    backend.addTemporaryLeaseListener(rootPath, listener);
+                    backend.addLeaseCollectionListener(rootPath, listener);
                     try {
                         Thread.sleep(getBackendPropagationTime());
                     } catch (final InterruptedException ie) {
                         throw new RuntimeException(ie);
                     }
-                    handle = backend.createTemporaryLease(rootPath, id);
+                    handle = backend.createLease(
+                            LeaseType.TEMPORARY, appendUniqueName(rootPath), id);
                 }
 
                 public void writeData() {
-                    handle.writeLeaseData(id);
+                    handle.writeData(id);
                 }
 
                 public void checkNumberOfNotifications() {
-                    // There will be two notifications; one for this lease, one for the other
+                    // There will be either two or three notifications; one for this lease and one
+                    // for the other with possibly one more for the root path if the backend uses
+                    // a tree structure
                     assertThat("Expected 2 create notifications", createNotifications.get(), is(2));
                     // There will be two notifications; one for this lease, one for the other
                     assertThat("Expected 2 data notifications", dataNotifications.get(), is(2));
@@ -468,16 +499,10 @@ public abstract class CoreBackendTest {
                 workers.add(leaseWorker2);
             }
 
-            for (final LeaseWorker worker : workers) {
-                worker.writeData();
-            }
+            workers.forEach(LeaseWorker::writeData);
             Thread.sleep(getBackendPropagationTime());
-            for (final LeaseWorker worker : workers) {
-                worker.checkNumberOfNotifications();
-            }
-            for (final LeaseWorker worker : workers) {
-                worker.closeLease();
-            }
+            workers.forEach(LeaseWorker::checkNumberOfNotifications);
+            workers.forEach(LeaseWorker::closeLease);
         }
     }
 
@@ -491,9 +516,10 @@ public abstract class CoreBackendTest {
         final String newLeaseData = "popcultural reference";
 
         try (final CloudnameBackend backend = getBackend()) {
-            backend.removePermanentLease(rootLease);
+            backend.removeLease(rootLease);
             assertThat("Can create permanent node",
-                    backend.createPermanantLease(rootLease, leaseData), is(true));
+                    backend.createLease(LeaseType.PERMANENT, rootLease, leaseData),
+                    is(notNullValue()));
         }
 
         final AtomicInteger numberOfNotifications = new AtomicInteger(0);
@@ -529,19 +555,19 @@ public abstract class CoreBackendTest {
         try (final CloudnameBackend backend = getBackend()) {
 
             assertThat("Lease still exists",
-                    backend.readPermanentLeaseData(rootLease), is(leaseData));
+                    backend.readLeaseData(rootLease), is(leaseData));
 
             // Add the lease back
-            backend.addPermanentLeaseListener(rootLease, listener);
+            backend.addLeaseListener(rootLease, listener);
 
             Thread.sleep(getBackendPropagationTime());
 
             assertThat("New data can be written",
-                    backend.writePermanentLeaseData(rootLease, newLeaseData), is(true));
+                    backend.writeLeaseData(rootLease, newLeaseData), is(true));
 
             Thread.sleep(getBackendPropagationTime());
             // Write new data
-            assertThat("Lease can be removed", backend.removePermanentLease(rootLease), is(true));
+            assertThat("Lease can be removed", backend.removeLease(rootLease), is(true));
 
             assertTrue(createLatch.await(getBackendPropagationTime(), TimeUnit.MILLISECONDS));
             assertTrue(dataLatch.await(getBackendPropagationTime(), TimeUnit.MILLISECONDS));
@@ -550,9 +576,9 @@ public abstract class CoreBackendTest {
             assertThat("One notifications is expected but only got "
                     + numberOfNotifications.get(), numberOfNotifications.get(), is(3));
 
-            backend.removePermanentLeaseListener(listener);
+            backend.removeLeaseListener(listener);
             // just to be sure - this won't upset anything
-            backend.removePermanentLeaseListener(listener);
+            backend.removeLeaseListener(listener);
         }
     }
 
@@ -569,7 +595,7 @@ public abstract class CoreBackendTest {
                 new String[] {"tertiary", "permanent", "lease"});
 
         try (final CloudnameBackend backend = getBackend()) {
-            backend.addPermanentLeaseListener(permanentA, new LeaseListener() {
+            backend.addLeaseListener(permanentA, new LeaseListener() {
                 @Override
                 public void leaseCreated(final CloudnamePath path, final String data) {
                     assertThat(path, is(equalTo(permanentA)));
@@ -586,7 +612,7 @@ public abstract class CoreBackendTest {
                 }
             });
 
-            backend.addPermanentLeaseListener(permanentB, new LeaseListener() {
+            backend.addLeaseListener(permanentB, new LeaseListener() {
                 @Override
                 public void leaseCreated(final CloudnamePath path, final String data) {
                     assertThat(path, is(equalTo(permanentB)));
@@ -603,7 +629,7 @@ public abstract class CoreBackendTest {
                 }
             });
 
-            backend.addPermanentLeaseListener(permanentC, new LeaseListener() {
+            backend.addLeaseListener(permanentC, new LeaseListener() {
                 @Override
                 public void leaseCreated(final CloudnamePath path, final String data) {
                     fail("Did not expect any leases to be created at " + permanentC);
@@ -620,19 +646,40 @@ public abstract class CoreBackendTest {
                 }
             });
 
-            backend.createPermanantLease(permanentA, "Some data that belongs to A");
-            backend.createPermanantLease(permanentB, "Some data that belongs to B");
+            backend.createLease(LeaseType.PERMANENT, permanentA, "Some data that belongs to A");
+            backend.createLease(LeaseType.PERMANENT, permanentB, "Some data that belongs to B");
+        }
+    }
 
-            // Some might say this is a dirty trick but permanent and temporary leases should not
-            // interfere with eachother.
-            final LeaseHandle handle = backend.createTemporaryLease(
-                    permanentC, "Some data that belongs to C");
-            assertThat(handle, is(notNullValue()));
-            handle.writeLeaseData("Some other data that belongs to C");
-            try {
-                handle.close();
-            } catch (Exception ex) {
-                fail(ex.getMessage());
+    @Test
+    public void ensureClosedLeasesArePropagatedToOwners() throws Exception {
+        for (final LeaseType leaseType : LeaseType.values()) {
+            final CloudnamePath l1 = new CloudnamePath(new String[]{"owner", "lease1"});
+            final CloudnamePath l2 = new CloudnamePath(new String[]{"owner", "lease2"});
+
+            try (final CloudnameBackend backend1 = getBackend();
+                 final CloudnameBackend backend2 = getBackend()) {
+
+                final CloudnamePath t1 = new CloudnamePath(l1, "temp");
+                final CloudnamePath t2 = new CloudnamePath(l2, "temp");
+
+                final LeaseHandle handle1 = backend1.createLease(leaseType, t1, "l1");
+                final LeaseHandle handle2 = backend2.createLease(leaseType, t2, "l2");
+
+                assertThat(t1, is(notNullValue()));
+                assertThat(t2, is(notNullValue()));
+
+                assertThat(handle1.writeData("l1update"), is(true));
+                assertThat(handle2.writeData("l2update"), is(true));
+
+                assertThat(backend1.removeLease(t2), is(true));
+                assertThat(backend2.removeLease(t1), is(true));
+
+                Thread.sleep(getBackendPropagationTime());
+
+                // Clients will be unable to write data to removed leases
+                assertThat(handle1.writeData("anydata"), is(false));
+                assertThat(handle2.writeData("anydata"), is(false));
             }
         }
     }

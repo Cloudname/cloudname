@@ -4,9 +4,11 @@ import org.cloudname.core.CloudnameBackend;
 import org.cloudname.core.CloudnamePath;
 import org.cloudname.core.LeaseHandle;
 import org.cloudname.core.LeaseListener;
+import org.cloudname.core.LeaseType;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.logging.Level;
@@ -27,11 +29,13 @@ public class CloudnameService implements AutoCloseable {
     private final List<LeaseListener> permanentListeners = new ArrayList<>();
     private final Set<ServiceCoordinate> permanentUpdatesInProgress = new CopyOnWriteArraySet<>();
     private final Object syncObject = new Object();
+    private final Random random = new Random();
+    private static final int MAX_COORDINATE_RETRIES = 10;
 
     /**
      * Create the service interface.
      *
-     * @oaram backend  backend implementation to use
+     * @param backend  backend implementation to use
      * @throws IllegalArgumentException if parameter is invalid
      */
     public CloudnameService(final CloudnameBackend backend) {
@@ -60,8 +64,22 @@ public class CloudnameService implements AutoCloseable {
         if (serviceData == null) {
             throw new IllegalArgumentException("Service Data cannot be null");
         }
-        final LeaseHandle leaseHandle = backend.createTemporaryLease(
-                serviceCoordinate.toCloudnamePath(), serviceData.toJsonString());
+        // Create unique coordinate; the coordinate is just a random number.
+        int numRetries = 0;
+        LeaseHandle leaseHandle = null;
+        while (numRetries < MAX_COORDINATE_RETRIES && leaseHandle == null) {
+            final CloudnamePath newCoordinate = new CloudnamePath(
+                    serviceCoordinate.toCloudnamePath(), Long.toHexString(random.nextLong()));
+            leaseHandle = backend.createLease(LeaseType.TEMPORARY,
+                    newCoordinate, serviceData.toJsonString());
+            numRetries++;
+        }
+
+        if (numRetries == MAX_COORDINATE_RETRIES && leaseHandle == null) {
+            LOG.severe("Could not find available coordinate after " + MAX_COORDINATE_RETRIES
+                    + " for service " + serviceCoordinate);
+            return null;
+        }
 
         final ServiceHandle serviceHandle = new ServiceHandle(
                 new InstanceCoordinate(leaseHandle.getLeasePath()), serviceData, leaseHandle);
@@ -113,12 +131,15 @@ public class CloudnameService implements AutoCloseable {
         synchronized (syncObject) {
             temporaryListeners.add(leaseListener);
         }
-        backend.addTemporaryLeaseListener(coordinate.toCloudnamePath(), leaseListener);
+        backend.addLeaseCollectionListener(coordinate.toCloudnamePath(), leaseListener);
     }
 
     /**
      * Create a permanent service. The service registration will be kept when the client exits. The
      * service will have a single endpoint.
+     *
+     * @param coordinate The service's coordinate
+     * @param endpoint Endpoint for service     * @return true if service is created
      */
     public boolean createPermanentService(
             final ServiceCoordinate coordinate, final Endpoint endpoint) {
@@ -129,7 +150,9 @@ public class CloudnameService implements AutoCloseable {
             throw new IllegalArgumentException("Endpoint can't be null");
         }
 
-        return backend.createPermanantLease(coordinate.toCloudnamePath(), endpoint.toJsonString());
+        return (backend.createLease(
+                LeaseType.PERMANENT, coordinate.toCloudnamePath(), endpoint.toJsonString())
+                != null);
     }
 
     /**
@@ -137,6 +160,9 @@ public class CloudnameService implements AutoCloseable {
      * trips to the backend system. The update is done in two operations; one delete and one
      * create. If the delete operation fail and the create operation succeeds it might end up
      * removing the permanent service coordinate. Clients will not be notified of the removal.
+     *
+     * @param coordinate The service's coordinate
+     * @param endpoint The service's endpoint
      */
     public boolean updatePermanentService(
             final ServiceCoordinate coordinate, final Endpoint endpoint) {
@@ -153,7 +179,7 @@ public class CloudnameService implements AutoCloseable {
             return false;
         }
         // Check if the endpoint name still matches.
-        final String data = backend.readPermanentLeaseData(coordinate.toCloudnamePath());
+        final String data = backend.readLeaseData(coordinate.toCloudnamePath());
         if (data == null) {
             return false;
         }
@@ -165,7 +191,7 @@ public class CloudnameService implements AutoCloseable {
         }
         permanentUpdatesInProgress.add(coordinate);
         try {
-            return backend.writePermanentLeaseData(
+            return backend.writeLeaseData(
                     coordinate.toCloudnamePath(), endpoint.toJsonString());
         } catch (final RuntimeException ex) {
             LOG.log(Level.WARNING, "Got exception updating permanent lease. The system might be in"
@@ -183,7 +209,7 @@ public class CloudnameService implements AutoCloseable {
         if (coordinate == null) {
             throw new IllegalArgumentException("Coordinate can not be null");
         }
-        return backend.removePermanentLease(coordinate.toCloudnamePath());
+        return backend.removeLease(coordinate.toCloudnamePath());
     }
 
     /**
@@ -217,7 +243,7 @@ public class CloudnameService implements AutoCloseable {
         synchronized (syncObject) {
             permanentListeners.add(leaseListener);
         }
-        backend.addPermanentLeaseListener(coordinate.toCloudnamePath(), leaseListener);
+        backend.addLeaseListener(coordinate.toCloudnamePath(), leaseListener);
     }
 
     @Override
@@ -227,10 +253,10 @@ public class CloudnameService implements AutoCloseable {
                 handle.close();
             }
             for (final LeaseListener listener : temporaryListeners) {
-                backend.removeTemporaryLeaseListener(listener);
+                backend.removeLeaseListener(listener);
             }
             for (final LeaseListener listener : permanentListeners) {
-                backend.removePermanentLeaseListener(listener);
+                backend.removeLeaseListener(listener);
             }
         }
     }

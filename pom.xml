@@ -22,6 +22,11 @@
       <name>Bjorn Borud</name>
       <email>bborud@gmail.com</email>
     </developer>
+    <developer>
+      <id>stalehd</id>
+      <name>Staale Dahl</name>
+      <email>stalehd@gmail.com</email>
+    </developer>
   </developers>
 
   <scm>
@@ -63,6 +68,18 @@
     <module>flags</module>
     <module>idgen</module>
   </modules>
+
+  <profiles>
+    <profile>
+      <id>disable-java8-doclint</id>
+      <activation>
+        <jdk>[1.8,)</jdk>
+      </activation>
+      <properties>
+        <additionalparam>-Xdoclint:none</additionalparam>
+      </properties>
+    </profile>
+  </profiles>
 
   <build>
     <plugins>
@@ -110,6 +127,18 @@
 
     </plugins>
   </build>
+
+  <reporting>
+    <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-javadoc-plugin</artifactId>
+        <version>2.10.3</version>
+        <configuration>
+        </configuration>
+      </plugin>
+    </plugins>
+  </reporting>
 
   <pluginRepositories>
     <pluginRepository>

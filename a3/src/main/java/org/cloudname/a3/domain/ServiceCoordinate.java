@@ -103,8 +103,8 @@ public class ServiceCoordinate {
     /**
      * Get the path prefix for a Service coordinate.
      *
-     * @param namespace {@see getPathPrefix(String,boolean)}
-     * @return
+     * @param namespace THe namespace for the path prefix
+     * @return a ZooKeeper path prefix
      */
     public String getPathPrefix(String namespace) {
         return getPathPrefix(namespace, false);

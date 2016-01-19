@@ -51,7 +51,7 @@ public class ServiceHandle implements AutoCloseable {
         if (!serviceData.addEndpoint(endpoint)) {
             return false;
         }
-        return this.leaseHandle.writeLeaseData(serviceData.toJsonString());
+        return this.leaseHandle.writeData(serviceData.toJsonString());
     }
 
     /**
@@ -63,7 +63,7 @@ public class ServiceHandle implements AutoCloseable {
         if (!serviceData.removeEndpoint(endpoint)) {
             return false;
         }
-        return this.leaseHandle.writeLeaseData(serviceData.toJsonString());
+        return this.leaseHandle.writeData(serviceData.toJsonString());
     }
 
     @Override

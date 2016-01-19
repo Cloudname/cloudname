@@ -4,6 +4,7 @@ import org.cloudname.core.CloudnameBackend;
 import org.cloudname.core.CloudnamePath;
 import org.cloudname.core.LeaseHandle;
 import org.cloudname.core.LeaseListener;
+import org.cloudname.core.LeaseType;
 
 import java.util.Arrays;
 import java.util.HashSet;
@@ -12,6 +13,7 @@ import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.logging.Logger;
 
 /**
  * This is a basic implementation of a CloudName backend. It uses the KV store for all data since
@@ -22,6 +24,8 @@ import java.util.concurrent.atomic.AtomicReference;
  * @author stalehd@gmail.com
  */
 public class ConsulBackend implements CloudnameBackend {
+    private static final Logger LOG = Logger.getLogger(ConsulBackend.class.getName());
+
     final Consul consul;
 
     private static final int SESSION_TTL = 10;
@@ -31,8 +35,6 @@ public class ConsulBackend implements CloudnameBackend {
     private final Map<LeaseListener, ConsulWatch> watches = new ConcurrentHashMap<>();
     private static final char SEPARATOR = '/';
     private static final String CN_PREFIX = "cn";
-    private static final String EPHEMERAL_PREFIX = "ephemeral";
-    private static final String PERMANENT_PREFIX = "permanent";
 
     /**
      * Convert a cloudname path to a session name.
@@ -42,17 +44,10 @@ public class ConsulBackend implements CloudnameBackend {
     }
 
     /**
-     * Convert a cloudname path to an ephemeral KV key name.
+     * Convert a cloudname path to a KV key name.
      */
-    private String pathToEphemeralKv(final CloudnamePath path) {
-        return CN_PREFIX + SEPARATOR + EPHEMERAL_PREFIX + SEPARATOR + path.join(SEPARATOR);
-    }
-
-    /**
-     * Convert cloudname path to permanent KV key.
-     */
-    private String pathToPermanentKv(final CloudnamePath path) {
-        return CN_PREFIX + SEPARATOR + PERMANENT_PREFIX + SEPARATOR + path.join(SEPARATOR);
+    private String pathToKv(final CloudnamePath path) {
+        return CN_PREFIX + SEPARATOR + SEPARATOR + path.join(SEPARATOR);
     }
 
     /**
@@ -102,8 +97,7 @@ public class ConsulBackend implements CloudnameBackend {
         }
     }
 
-    @Override
-    public LeaseHandle createTemporaryLease(final CloudnamePath path, final String data) {
+    private LeaseHandle createTemporary(final CloudnamePath path, final String data) {
         // Create session with TTL set to <something> and Behavior=delete. The session isn't
         // used to uniquely identify the client but to create ephemeral values in the KV store.
         final ConsulSession session
@@ -115,7 +109,7 @@ public class ConsulBackend implements CloudnameBackend {
         while (!leaseAcquired) {
             instancePath.set(new CloudnamePath(path, getRandomInstanceId()));
             leaseAcquired = consul.writeSessionData(
-                    pathToEphemeralKv(instancePath.get()), data, session.getId());
+                    pathToKv(instancePath.get()), data, session.getId());
         }
 
         sessions.put(instancePath.get(), session);
@@ -124,12 +118,12 @@ public class ConsulBackend implements CloudnameBackend {
 
         return new LeaseHandle() {
             @Override
-            public boolean writeLeaseData(final String data) {
+            public boolean writeData(final String data) {
                 if (session.isClosed()) {
                     return false;
                 }
                 return consul.writeSessionData(
-                        pathToEphemeralKv(instancePath.get()), data, session.getId());
+                        pathToKv(instancePath.get()), data, session.getId());
             }
 
             @Override
@@ -150,62 +144,61 @@ public class ConsulBackend implements CloudnameBackend {
     }
 
     @Override
-    public boolean writeTemporaryLeaseData(final CloudnamePath path, final String data) {
+    public boolean writeLeaseData(final CloudnamePath path, final String data) {
         final ConsulSession session = sessions.get(path);
         if (session == null) {
             return false;
         }
-        return consul.writeSessionData(pathToEphemeralKv(path), data, session.getId());
+        return consul.writeSessionData(pathToKv(path), data, session.getId());
     }
 
     @Override
-    public String readTemporaryLeaseData(final CloudnamePath path) {
+    public String readLeaseData(final CloudnamePath path) {
         if (path == null) {
             return null;
         }
-        return consul.readData(pathToEphemeralKv(path));
+        return consul.readData(pathToKv(path));
     }
 
     @Override
-    public void addTemporaryLeaseListener(
-            final CloudnamePath pathToWatch, final LeaseListener listener) {
-        final ConsulWatch watch = consul.createWatch(pathToEphemeralKv(pathToWatch));
-        watches.put(listener, watch);
-        watch.startWatching(new ConsulWatch.ConsulWatchListener() {
-            @Override
-            public void created(final String valueName, final String value) {
-                listener.leaseCreated(kvNameToCloudnamePath(valueName), value);
-            }
+    public LeaseHandle createLease(
+            final LeaseType type, final CloudnamePath path, final String data) {
+        switch (type) {
+            case PERMANENT:
+                if (consul.createPermanentData(pathToKv(path), data)) {
+                    return new LeaseHandle() {
+                        @Override
+                        public boolean writeData(final String data) {
+                            return writeLeaseData(path, data);
+                        }
 
-            @Override
-            public void changed(final String valueName, final String value) {
-                listener.dataChanged(kvNameToCloudnamePath(valueName), value);
-            }
+                        @Override
+                        public CloudnamePath getLeasePath() {
+                            return path;
+                        }
 
-            @Override
-            public void removed(final String valueName) {
-                listener.leaseRemoved(kvNameToCloudnamePath(valueName));
-            }
-        });
-    }
+                        @Override
+                        public void close() throws Exception {
+                            // nothing to do
+                        }
+                    };
+                }
+                return null;
 
-    @Override
-    public void removeTemporaryLeaseListener(final LeaseListener listener) {
-        // Remove watcher
-        final ConsulWatch watch = watches.get(listener);
-        if (watch != null) {
-            watch.stop();
+            case TEMPORARY:
+                return createTemporary(path, data);
+
+            default:
+                LOG.severe("Uknown lease type: " + type
+                        + " - don't know how to create that kind of lease"
+                        + " (path = " + path + ", data = " + data + ")");
+                return null;
         }
     }
 
     @Override
-    public boolean createPermanantLease(final CloudnamePath path, final String data) {
-        return consul.createPermanentData(pathToPermanentKv(path), data);
-    }
-
-    @Override
-    public boolean removePermanentLease(final CloudnamePath path) {
-        final String consulPath = pathToPermanentKv(path);
+    public boolean removeLease(final CloudnamePath path) {
+        final String consulPath = pathToKv(path);
         if (consul.readData(consulPath) == null) {
             return false;
         }
@@ -213,19 +206,40 @@ public class ConsulBackend implements CloudnameBackend {
     }
 
     @Override
-    public boolean writePermanentLeaseData(final CloudnamePath path, final String data) {
-        return consul.writePermanentData(pathToPermanentKv(path), data);
+    public void addLeaseListener(final CloudnamePath leaseToObserve, final LeaseListener listener) {
+        final ConsulWatch watch = consul.createWatch(pathToKv(leaseToObserve));
+        watches.put(listener, watch);
+        watch.startWatching(new ConsulWatch.ConsulWatchListener() {
+            @Override
+            public void created(final String valueName, final String value) {
+                final CloudnamePath path = kvNameToCloudnamePath(valueName);
+                if (path.equals(leaseToObserve)) {
+                    listener.leaseCreated(path, value);
+                }
+            }
+
+            @Override
+            public void changed(final String valueName, final String value) {
+                final CloudnamePath path = kvNameToCloudnamePath(valueName);
+                if (path.equals(leaseToObserve)) {
+                    listener.dataChanged(path, value);
+                }
+            }
+
+            @Override
+            public void removed(final String valueName) {
+                final CloudnamePath path = kvNameToCloudnamePath(valueName);
+                if (path.equals(leaseToObserve)) {
+                    listener.leaseRemoved(path);
+                }
+            }
+        });
     }
 
     @Override
-    public String readPermanentLeaseData(final CloudnamePath path) {
-        return consul.readData(pathToPermanentKv(path));
-    }
-
-    @Override
-    public void addPermanentLeaseListener(
+    public void addLeaseCollectionListener(
             final CloudnamePath pathToObserve, final LeaseListener listener) {
-        final ConsulWatch watch = consul.createWatch(pathToPermanentKv(pathToObserve));
+        final ConsulWatch watch = consul.createWatch(pathToKv(pathToObserve));
         watches.put(listener, watch);
         watch.startWatching(new ConsulWatch.ConsulWatchListener() {
             @Override
@@ -246,7 +260,7 @@ public class ConsulBackend implements CloudnameBackend {
     }
 
     @Override
-    public void removePermanentLeaseListener(final LeaseListener listener) {
+    public void removeLeaseListener(final LeaseListener listener) {
         final ConsulWatch watch = watches.get(listener);
         if (watch != null) {
             watch.stop();
