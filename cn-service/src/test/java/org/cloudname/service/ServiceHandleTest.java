@@ -20,7 +20,7 @@ public class ServiceHandleTest {
         final ServiceData serviceData = new ServiceData(new ArrayList<Endpoint>());
         final LeaseHandle handle = new LeaseHandle() {
             @Override
-            public boolean writeLeaseData(String data) {
+            public boolean writeData(String data) {
                 return true;
             }
 
@@ -57,7 +57,7 @@ public class ServiceHandleTest {
         final ServiceData serviceData = new ServiceData(Arrays.asList(ep1));
         final LeaseHandle handle = new LeaseHandle() {
             @Override
-            public boolean writeLeaseData(String data) {
+            public boolean writeData(String data) {
                 return false;
             }
 

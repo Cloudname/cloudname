@@ -19,6 +19,37 @@ package org.cloudname.core;
  */
 public interface CloudnameBackend extends AutoCloseable {
     /**
+     * Create a lease.The temporary lease is limited by the client's connection and will
+     * be available for as long as the client is connected to the backend. Once the client
+     * disconnects (either through the LeaseHandle instance that is returned or just vanishing
+     * from the face of the earth) the lease is removed by the backend. The backend should support
+     * an unlimited number of leases (FSVO "unlimited").
+     *
+     * @param type Type of lease. This value cannot be null.
+     *
+     * @param path The full path to lease. This value cannot be null.
+     *
+     * @param data Lease data. This is an arbitrary string supplied by the client. It
+     *     carries no particular semantics for the backend and the backend only has to return the
+     *     same string to the client. This value cannot be null.
+     *
+     * @return A LeaseHandle instance that the client can use to manipulate its data or release
+     *     the lease (i.e. close it).
+     */
+    LeaseHandle createLease(LeaseType type, CloudnamePath path, String data);
+
+    /**
+     * Remove a lease. The lease will be removed and clients listening on the lease
+     * will be notified. Leases with the {@link LeaseType} set to PERMANENT can be removed by any
+     * client. Leases with the {@link LeaseType} set to TEMPORARY can only be removed by the owner
+     * (ie creator) of the lease.
+     *
+     * @param path the path to the lease
+     * @return true if lease is removed
+     */
+    boolean removeLease(final CloudnamePath path);
+
+    /**
      * Create a temporary lease. The temporary lease is limited by the client's connection and will
      * be available for as long as the client is connected to the backend. Once the client
      * disconnects (either through the LeaseHandle instance that is returned or just vanishing
@@ -38,17 +69,15 @@ public interface CloudnameBackend extends AutoCloseable {
      * @return A LeaseHandle instance that the client can use to manipulate its data or release
      *     the lease (i.e. close it). The path to the lease can be accessed through this.
      */
-    LeaseHandle createTemporaryLease(final CloudnamePath path, final String data);
 
     /**
-     * Update a client's lease. Normally this is something the client does itself but libraries
-     * built on top of the backends might use it to set additional properties.
+     * Update a client's lease.
      *
-     * @param path path to the temporary lease
+     * @param path path to the lease
      * @param data the updated lease data
      * @return true if successful, false otherwise
      */
-    boolean writeTemporaryLeaseData(final CloudnamePath path, final String data);
+    boolean writeLeaseData(final CloudnamePath path, final String data);
 
     /**
      * Read temporary lease data. Clients won't use this in regular use but rather monitor changes
@@ -57,76 +86,28 @@ public interface CloudnameBackend extends AutoCloseable {
      * @param path path to the client lease
      * @return the data stored in the client lease
      */
-    String readTemporaryLeaseData(final CloudnamePath path);
+    String readLeaseData(final CloudnamePath path);
 
     /**
-     * Add a listener to a set of temporary leases identified by a path. The temporary leases
-     * doesn't have to exist but as soon as someone creates a lease matching the given path a
-     * notification must be sent by the backend implementation.
+     * Add a listener to a set of leases identified by a path. As soon as someone creates a lease
+     * matching the given path a notification is be sent by the backend.
      *
      * @param pathToWatch the path to observe for changes
      * @param listener client's listener. Callbacks on this listener will be invoked by the backend
      */
-    void addTemporaryLeaseListener(final CloudnamePath pathToWatch, final LeaseListener listener);
+    void addLeaseCollectionListener(final CloudnamePath pathToWatch, final LeaseListener listener);
 
     /**
-     * Remove a previously attached listener. The backend will ignore leases that don't exist.
-     *
-     * @param listener the listener to remove
-     */
-    void removeTemporaryLeaseListener(final LeaseListener listener);
-
-    /**
-     * Create a permanent lease. A permanent lease persists even if the client that created it
-     * terminates or closes the connection. Other clients will still see the lease. Permanent leases
-     * must persist until they are explicitly removed.
-     *
-     * <p>All permanent leases must be unique. Duplicate permanent leases yield errors.
-     *
-     * @param path path to the permanent lease
-     * @param data data to store in the permanent lease when it is created
-     * @return true if successful
-     */
-    boolean createPermanantLease(final CloudnamePath path, final String data);
-
-    /**
-     * Remove a permanent lease. The lease will be removed and clients listening on the lease
-     * will be notified.
-     *
-     * @param path the path to the lease
-     * @return true if lease is removed
-     */
-    boolean removePermanentLease(final CloudnamePath path);
-
-    /**
-     * Update data on permanent lease.
-     *
-     * @param path path to the permanent lease
-     * @param data data to write to the lease
-     * @return true if successful
-     */
-    boolean writePermanentLeaseData(final CloudnamePath path, final String data);
-
-    /**
-     * Read data from permanent lease.
-     *
-     * @param path path to permanent lease
-     * @return data stored in lease or null if the lease doesn't exist
-     */
-    String readPermanentLeaseData(final CloudnamePath path);
-
-    /**
-     * Add a listener to a permanent lease. The listener is attached to just one lease, as opposed
-     * to the termporary lease listener.
+     * Listen to a single lease.
      *
      * @param pathToObserve path to lease
      * @param listener callbacks on this listener is invoked by the backend
      */
-    void addPermanentLeaseListener(final CloudnamePath pathToObserve, final LeaseListener listener);
+    void addLeaseListener(final CloudnamePath pathToObserve, final LeaseListener listener);
 
     /**
      * Remove listener on permanent lease. Unknown listeners are ignored by the backend.
      * @param listener the listener to remove
      */
-    void removePermanentLeaseListener(final LeaseListener listener);
+    void removeLeaseListener(final LeaseListener listener);
 }

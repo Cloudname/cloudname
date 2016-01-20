@@ -7,17 +7,16 @@ import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.framework.CuratorFrameworkFactory;
 import org.apache.curator.retry.ExponentialBackoffRetry;
 import org.apache.zookeeper.CreateMode;
-import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.data.Stat;
 import org.cloudname.core.CloudnameBackend;
 import org.cloudname.core.CloudnamePath;
 import org.cloudname.core.LeaseHandle;
 import org.cloudname.core.LeaseListener;
+import org.cloudname.core.LeaseType;
 
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Random;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Level;
@@ -31,15 +30,12 @@ import java.util.logging.Logger;
  */
 public class ZooKeeperBackend implements CloudnameBackend {
     private static final Logger LOG = Logger.getLogger(ZooKeeperBackend.class.getName());
-    private static final String TEMPORARY_ROOT = "/cn/temporary/";
-    private static final String PERMANENT_ROOT = "/cn/permanent/";
+    private static final String ZK_ROOT = "/cn/";
     private static final int CONNECTION_TIMEOUT_SECONDS = 30;
 
-    // PRNG for instance names. These will be "random enough" for instance identifiers
-    private final Random random = new Random();
     private final CuratorFramework curator;
-    private final Map<LeaseListener, NodeCollectionWatcher> clientListeners = new HashMap<>();
-    private final Map<LeaseListener, NodeCollectionWatcher> permanentListeners = new HashMap<>();
+    private final Map<LeaseListener, NodeCollectionWatcher> collectionListeners = new HashMap<>();
+    private final Map<LeaseListener, NodeCollectionWatcher> leaseListeners = new HashMap<>();
     private final Object syncObject = new Object();
 
     /**
@@ -60,65 +56,8 @@ public class ZooKeeperBackend implements CloudnameBackend {
     }
 
     @Override
-    public LeaseHandle createTemporaryLease(final CloudnamePath path, final String data) {
-        boolean created = false;
-        CloudnamePath tempInstancePath = null;
-        String tempZkPath = null;
-        while (!created) {
-            final long instanceId = random.nextLong();
-            tempInstancePath = new CloudnamePath(path, Long.toHexString(instanceId));
-            tempZkPath = TEMPORARY_ROOT + tempInstancePath.join('/');
-            try {
-
-                curator.create()
-                        .creatingParentContainersIfNeeded()
-                        .withMode(CreateMode.EPHEMERAL)
-                        .forPath(tempZkPath, data.getBytes(Charsets.UTF_8));
-                created = true;
-            } catch (final Exception ex) {
-                LOG.log(Level.WARNING, "Could not create client node at " + tempInstancePath, ex);
-            }
-        }
-        final CloudnamePath instancePath = tempInstancePath;
-        final String zkInstancePath = tempZkPath;
-        return new LeaseHandle() {
-            private AtomicBoolean closed = new AtomicBoolean(false);
-
-            @Override
-            public boolean writeLeaseData(final String data) {
-                if (closed.get()) {
-                    LOG.info("Attempt to write data to closed leased handle " + data);
-                    return false;
-                }
-                return writeTemporaryLeaseData(instancePath, data);
-            }
-
-            @Override
-            public CloudnamePath getLeasePath() {
-                if (closed.get()) {
-                    return null;
-                }
-                return instancePath;
-            }
-
-            @Override
-            public void close() throws IOException {
-                if (closed.get()) {
-                    return;
-                }
-                try {
-                    curator.delete().forPath(zkInstancePath);
-                    closed.set(true);
-                } catch (final Exception ex) {
-                    throw new IOException(ex);
-                }
-            }
-        };
-    }
-
-    @Override
-    public boolean writeTemporaryLeaseData(final CloudnamePath path, final String data) {
-        final String zkPath = TEMPORARY_ROOT + path.join('/');
+    public boolean writeLeaseData(final CloudnamePath path, final String data) {
+        final String zkPath = ZK_ROOT + path.join('/');
         try {
             final Stat nodeStat = curator.checkExists().forPath(zkPath);
             if (nodeStat == null) {
@@ -135,11 +74,11 @@ public class ZooKeeperBackend implements CloudnameBackend {
     }
 
     @Override
-    public String readTemporaryLeaseData(final CloudnamePath path) {
+    public String readLeaseData(final CloudnamePath path) {
         if (path == null) {
             return null;
         }
-        final String zkPath = TEMPORARY_ROOT + path.join('/');
+        final String zkPath = ZK_ROOT + path.join('/');
         try {
             curator.sync().forPath(zkPath);
             final byte[] bytes = curator.getData().forPath(zkPath);
@@ -150,20 +89,20 @@ public class ZooKeeperBackend implements CloudnameBackend {
         return null;
     }
 
-    private CloudnamePath toCloudnamePath(final String zkPath, final String pathPrefix) {
-        final String clientPath = zkPath.substring(pathPrefix.length());
+    private CloudnamePath toCloudnamePath(final String zkPath) {
+        final String clientPath = zkPath.substring(ZK_ROOT.length());
         final String[] elements = clientPath.split("/");
         return new CloudnamePath(elements);
     }
 
     @Override
-    public void addTemporaryLeaseListener(
+    public void addLeaseCollectionListener(
             final CloudnamePath pathToObserve, final LeaseListener listener) {
         // Ideally the PathChildrenCache class in Curator would be used here to keep track of the
         // changes but it is ever so slightly broken and misses most of the watches that ZooKeeper
         // triggers, ignores the mzxid on the nodes and generally makes a mess of things. Enter
         // custom code.
-        final String zkPath = TEMPORARY_ROOT + pathToObserve.join('/');
+        final String zkPath = ZK_ROOT + pathToObserve.join('/');
         try {
             curator.createContainers(zkPath);
             final NodeCollectionWatcher watcher = new NodeCollectionWatcher(
@@ -173,22 +112,22 @@ public class ZooKeeperBackend implements CloudnameBackend {
 
                         @Override
                         public void nodeCreated(final String path, final String data) {
-                            listener.leaseCreated(toCloudnamePath(path, TEMPORARY_ROOT), data);
+                            listener.leaseCreated(toCloudnamePath(path), data);
                         }
 
                         @Override
                         public void dataChanged(final String path, final String data) {
-                            listener.dataChanged(toCloudnamePath(path, TEMPORARY_ROOT), data);
+                            listener.dataChanged(toCloudnamePath(path), data);
                         }
 
                         @Override
                         public void nodeRemoved(final String path) {
-                            listener.leaseRemoved(toCloudnamePath(path, TEMPORARY_ROOT));
+                            listener.leaseRemoved(toCloudnamePath(path));
                         }
                     });
 
             synchronized (syncObject) {
-                clientListeners.put(listener, watcher);
+                collectionListeners.put(listener, watcher);
             }
         } catch (final Exception exception) {
             LOG.log(Level.WARNING, "Got exception when creating node watcher", exception);
@@ -196,40 +135,135 @@ public class ZooKeeperBackend implements CloudnameBackend {
     }
 
     @Override
-    public void removeTemporaryLeaseListener(final LeaseListener listener) {
+    public void addLeaseListener(final CloudnamePath leaseToObserve, final LeaseListener listener) {
+        try {
+            final String parentPath = ZK_ROOT + leaseToObserve.getParent().join('/');
+            final String fullPath = ZK_ROOT + leaseToObserve.join('/');
+            curator.createContainers(parentPath);
+            final NodeCollectionWatcher watcher = new NodeCollectionWatcher(
+                    curator.getZookeeperClient().getZooKeeper(),
+                    parentPath,
+                    new NodeWatcherListener() {
+
+                        @Override
+                        public void nodeCreated(final String path, final String data) {
+                            if (path.equals(fullPath)) {
+                                listener.leaseCreated(toCloudnamePath(path), data);
+                            }
+                        }
+
+                        @Override
+                        public void dataChanged(final String path, final String data) {
+                            if (path.equals(fullPath)) {
+                                listener.dataChanged(toCloudnamePath(path), data);
+                            }
+                        }
+
+                        @Override
+                        public void nodeRemoved(final String path) {
+                            if (path.equals(fullPath)) {
+                                listener.leaseRemoved(toCloudnamePath(path));
+                            }
+                        }
+                    });
+
+            synchronized (syncObject) {
+                leaseListeners.put(listener, watcher);
+            }
+        } catch (final Exception exception) {
+            LOG.log(Level.WARNING, "Got exception when creating node watcher", exception);
+        }
+    }
+
+    @Override
+    public void removeLeaseListener(final LeaseListener listener) {
         synchronized (syncObject) {
-            final NodeCollectionWatcher watcher = clientListeners.get(listener);
-            if (watcher != null) {
-                clientListeners.remove(listener);
-                watcher.shutdown();
+            final NodeCollectionWatcher collectionWatcher = collectionListeners.get(listener);
+            if (collectionWatcher != null) {
+                collectionListeners.remove(listener);
+                collectionWatcher.shutdown();
+            }
+            final NodeCollectionWatcher leaseWatcher = leaseListeners.get(listener);
+            if (leaseWatcher != null) {
+                leaseListeners.remove(listener);
+                leaseWatcher.shutdown();
             }
         }
     }
 
     @Override
-    public boolean createPermanantLease(final CloudnamePath path, final String data) {
-        final String zkPath = PERMANENT_ROOT + path.join('/');
+    public LeaseHandle createLease(
+            final LeaseType type, final CloudnamePath path, final String data) {
+        if (type == null || path == null || data == null) {
+            return null;
+        }
+
+        final String zkPath = ZK_ROOT + path.join('/');
         try {
             curator.sync().forPath(zkPath);
             final Stat nodeStat = curator.checkExists().forPath(zkPath);
             if (nodeStat == null) {
-                curator.create()
+                final CreateMode mode = (type == LeaseType.PERMANENT
+                        ? CreateMode.PERSISTENT : CreateMode.EPHEMERAL);
+
+                final String returnedPath = curator.create()
                         .creatingParentContainersIfNeeded()
+                        .withMode(mode)
                         .forPath(zkPath, data.getBytes(Charsets.UTF_8));
-                return true;
+
+                if (returnedPath == null) {
+                    LOG.warning("Could not create node for path " + path
+                            + " - Curator returned null on create()");
+                    return null;
+                }
+                return new LeaseHandle() {
+                    private AtomicBoolean closed = new AtomicBoolean(false);
+
+                    @Override
+                    public boolean writeData(final String data) {
+                        if (closed.get()) {
+                            LOG.info("Attempt to write data to closed leased handle " + data);
+                            return false;
+                        }
+                        return writeLeaseData(path, data);
+                    }
+
+                    @Override
+                    public CloudnamePath getLeasePath() {
+                        if (closed.get()) {
+                            return null;
+                        }
+                        return path;
+                    }
+
+                    @Override
+                    public void close() throws IOException {
+                        if (type == LeaseType.PERMANENT || closed.get()) {
+                            return;
+                        }
+                        try {
+                            curator.delete().forPath(zkPath);
+                            closed.set(true);
+                        } catch (final Exception ex) {
+                            throw new IOException(ex);
+                        }
+                    }
+                };
             }
-            LOG.log(Level.INFO, "Attempt to create permanent node at " + path
+
+            LOG.log(Level.INFO, "Attempt to create node at " + path
                     + " with data " + data + " but it already exists");
+
         } catch (final Exception ex) {
-            LOG.log(Level.WARNING, "Got exception creating parent container for permanent lease"
+            LOG.log(Level.WARNING, "Got exception creating parent container for lease"
                     + " for lease " + path + " with data " + data, ex);
         }
-        return false;
+        return null;
     }
 
     @Override
-    public boolean removePermanentLease(final CloudnamePath path) {
-        final String zkPath = PERMANENT_ROOT + path.join('/');
+    public boolean removeLease(final CloudnamePath path) {
+        final String zkPath = ZK_ROOT + path.join('/');
         try {
             final Stat nodeStat = curator.checkExists().forPath(zkPath);
             if (nodeStat != null) {
@@ -240,115 +274,18 @@ public class ZooKeeperBackend implements CloudnameBackend {
             }
             return false;
         } catch (final Exception ex) {
-            LOG.log(Level.WARNING, "Got error removing permanent lease for lease " + path, ex);
+            LOG.log(Level.WARNING, "Got error removing node for lease " + path, ex);
             return false;
-        }
-    }
-
-    @Override
-    public boolean writePermanentLeaseData(final CloudnamePath path, final String data) {
-        final String zkPath = PERMANENT_ROOT + path.join('/');
-        try {
-            curator.sync().forPath(zkPath);
-            final Stat nodeStat = curator.checkExists().forPath(zkPath);
-            if (nodeStat == null) {
-                LOG.log(Level.WARNING, "Can't write permanent lease data for lease " + path
-                        + " with data " + data + " since the lease doesn't exist");
-                return false;
-            }
-            curator.setData()
-                    .withVersion(nodeStat.getVersion())
-                    .forPath(zkPath, data.getBytes(Charsets.UTF_8));
-        } catch (final Exception ex) {
-            LOG.log(Level.WARNING, "Got exception writing permanent lease data for " + path
-                    + " with data " + data, ex);
-            return false;
-        }
-        return true;
-    }
-
-    @Override
-    public String readPermanentLeaseData(final CloudnamePath path) {
-        final String zkPath = PERMANENT_ROOT + path.join('/');
-        try {
-            curator.sync().forPath(zkPath);
-            final byte[] bytes = curator.getData().forPath(zkPath);
-            return new String(bytes, Charsets.UTF_8);
-        } catch (final Exception ex) {
-            if (ex instanceof KeeperException.NoNodeException) {
-                // OK - nothing to worry about
-                return null;
-            }
-            LOG.log(Level.WARNING, "Got exception reading permanent lease data for " + path, ex);
-            return null;
-        }
-    }
-
-    @Override
-    public void addPermanentLeaseListener(
-            final CloudnamePath pathToObserve, final LeaseListener listener) {
-        try {
-
-            final String parentPath = PERMANENT_ROOT + pathToObserve.getParent().join('/');
-            final String fullPath = PERMANENT_ROOT + pathToObserve.join('/');
-            curator.createContainers(parentPath);
-            final NodeCollectionWatcher watcher = new NodeCollectionWatcher(
-                    curator.getZookeeperClient().getZooKeeper(),
-                    parentPath,
-                    new NodeWatcherListener() {
-
-                        @Override
-                        public void nodeCreated(final String path, final String data) {
-                            if (path.equals(fullPath)) {
-                                listener.leaseCreated(toCloudnamePath(path, PERMANENT_ROOT), data);
-                            }
-                        }
-
-                        @Override
-                        public void dataChanged(final String path, final String data) {
-                            if (path.equals(fullPath)) {
-                                listener.dataChanged(toCloudnamePath(path, PERMANENT_ROOT), data);
-                            }
-                        }
-
-                        @Override
-                        public void nodeRemoved(final String path) {
-                            if (path.equals(fullPath)) {
-                                listener.leaseRemoved(toCloudnamePath(path, PERMANENT_ROOT));
-                            }
-                        }
-                    });
-
-            synchronized (syncObject) {
-                permanentListeners.put(listener, watcher);
-            }
-        } catch (final Exception exception) {
-            LOG.log(Level.WARNING, "Got exception when creating node watcher", exception);
-        }
-    }
-
-    @Override
-    public void removePermanentLeaseListener(final LeaseListener listener) {
-        synchronized (syncObject) {
-            final NodeCollectionWatcher watcher = permanentListeners.get(listener);
-            if (watcher != null) {
-                permanentListeners.remove(listener);
-                watcher.shutdown();
-            }
         }
     }
 
     @Override
     public void close() {
         synchronized (syncObject) {
-            for (final NodeCollectionWatcher watcher : clientListeners.values()) {
-                watcher.shutdown();
-            }
-            clientListeners.clear();
-            for (final NodeCollectionWatcher watcher : permanentListeners.values()) {
-                watcher.shutdown();
-            }
-            permanentListeners.clear();
+            collectionListeners.values().forEach(NodeCollectionWatcher::shutdown);
+            collectionListeners.clear();
+            leaseListeners.values().forEach(NodeCollectionWatcher::shutdown);
+            leaseListeners.clear();
         }
     }
 }

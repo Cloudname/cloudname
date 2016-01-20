@@ -29,8 +29,8 @@ public class MemoryLeaseHandle implements LeaseHandle {
     }
 
     @Override
-    public boolean writeLeaseData(final String data) {
-        return backend.writeTemporaryLeaseData(clientLeasePath, data);
+    public boolean writeData(final String data) {
+        return backend.writeLeaseData(clientLeasePath, data);
     }
 
     @Override
@@ -43,7 +43,7 @@ public class MemoryLeaseHandle implements LeaseHandle {
 
     @Override
     public void close() throws IOException {
-        backend.removeTemporaryLease(clientLeasePath);
+        backend.removeLease(clientLeasePath);
         expired.set(true);
     }
 }

@@ -28,57 +28,38 @@ public class BackendManagerTest {
     private CloudnameBackend createBackend() {
         return new CloudnameBackend() {
             @Override
-            public LeaseHandle createTemporaryLease(CloudnamePath path, String data) {
+            public LeaseHandle createLease(LeaseType type, CloudnamePath path, String data) {
                 return null;
             }
 
             @Override
-            public boolean writeTemporaryLeaseData(CloudnamePath path, String data) {
+            public boolean writeLeaseData(CloudnamePath path, String data) {
                 return false;
             }
 
             @Override
-            public String readTemporaryLeaseData(CloudnamePath path) {
+            public String readLeaseData(CloudnamePath path) {
                 return null;
             }
 
             @Override
-            public void addTemporaryLeaseListener(CloudnamePath pathToWatch, LeaseListener listener) {
-
-            }
-
-            @Override
-            public void removeTemporaryLeaseListener(LeaseListener listener) {
-
-            }
-
-            @Override
-            public boolean createPermanantLease(CloudnamePath path, String data) {
+            public boolean removeLease(CloudnamePath path) {
                 return false;
             }
 
             @Override
-            public boolean removePermanentLease(CloudnamePath path) {
-                return false;
-            }
-
-            @Override
-            public boolean writePermanentLeaseData(CloudnamePath path, String data) {
-                return false;
-            }
-
-            @Override
-            public String readPermanentLeaseData(CloudnamePath path) {
-                return null;
-            }
-
-            @Override
-            public void addPermanentLeaseListener(CloudnamePath pathToObserver, LeaseListener listener) {
+            public void addLeaseCollectionListener(
+                    CloudnamePath pathToObserve, LeaseListener listener) {
 
             }
 
             @Override
-            public void removePermanentLeaseListener(LeaseListener listener) {
+            public void addLeaseListener(CloudnamePath pathToObserve, LeaseListener listener) {
+
+            }
+
+            @Override
+            public void removeLeaseListener(LeaseListener listener) {
 
             }
 
