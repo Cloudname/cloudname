@@ -8,9 +8,12 @@ import junit.framework.Assert;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
+import java.util.ArrayList;
+import java.util.List;
 
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.isA;
+import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertThat;
@@ -217,9 +220,12 @@ public class FlagsTest {
         Flags flags = new Flags()
             .loadOpts(FlagsOptionTest.class);
 
-        assertEquals(flags.getFlagsAsList().size(), 2);
-        assertEquals(flags.getFlagsAsList().get(0).name(), "int");
-        assertEquals(flags.getFlagsAsList().get(1).name(), "Integer");
+        List<Flag> list = flags.getFlagsAsList();
+        assertEquals(list.size(), 2);
+        List<String> nameList = new ArrayList<String>();
+        nameList.add(list.get(0).name());
+        nameList.add(list.get(1).name());
+        assertThat(nameList, containsInAnyOrder("int", "Integer"));
     }
 
     /**
