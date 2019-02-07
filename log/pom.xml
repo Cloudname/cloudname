@@ -103,24 +103,6 @@
       </plugin>
 
       <plugin>
-        <groupId>org.dstovall</groupId>
-        <artifactId>onejar-maven-plugin</artifactId>
-        <version>1.4.4</version>
-        <executions>
-          <execution>
-            <configuration>
-              <!-- Optional, default is false -->
-              <attachToBuild>true</attachToBuild>
-	      <mainClass>org.cloudname.log.logcat.Main</mainClass>
-	      <filename>logcat-${project.version}.jar</filename>
-            </configuration>
-            <goals>
-              <goal>one-jar</goal>
-            </goals>
-          </execution>
-        </executions>
-      </plugin>
-      <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-checkstyle-plugin</artifactId>
         <version>2.17</version>
@@ -201,6 +183,6 @@
       <artifactId>junit-dep</artifactId>
       <scope>test</scope>
     </dependency>
-  </dependencies>      
-  
+  </dependencies>
+
 </project>

@@ -42,7 +42,7 @@
     <!-- Dependency versions -->
     <cn.zookeeper.version>3.4.6</cn.zookeeper.version>
     <cn.curator.version>2.9.0</cn.curator.version>
-    <cn.jackson.version>2.1.1</cn.jackson.version>
+    <cn.jackson.version>[2.8.11.1,)</cn.jackson.version>
     <cn.junit.version>4.11</cn.junit.version>
     <cn.netty.version>3.7.0.Final</cn.netty.version>
     <cn.protobuf.version>2.6.1</cn.protobuf.version>
