@@ -30,6 +30,19 @@
     <url>https://github.com/Cloudname/cloudname</url>
   </scm>
 
+  <distributionManagement>
+    <repository>
+      <id>github-cloudname</id>
+      <name>GitHub Cloudname</name>
+      <url>https://maven.pkg.github.com/cloudname/cloudname</url>
+    </repository>
+    <snapshotRepository>
+      <id>github-cloudname</id>
+      <name>GitHub Cloudname</name>
+      <url>https://maven.pkg.github.com/cloudname/cloudname</url>
+    </snapshotRepository>
+  </distributionManagement>
+
   <properties>
     <!-- Sheer optimism -->
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -39,10 +52,10 @@
     <cn.jackson.version>2.1.1</cn.jackson.version>
     <cn.junit.version>4.11</cn.junit.version>
     <cn.netty.version>3.2.8.Final</cn.netty.version>
-    <cn.protobuf.version>2.3.0</cn.protobuf.version>
+    <cn.protobuf.version>2.6.1</cn.protobuf.version>
     <cn.jline.version>0.9.94</cn.jline.version>
     <cn.jmxri.version>1.2.1</cn.jmxri.version>
-    <cn.jsr250-api.version>1.0</cn.jsr250-api.version>
+    <cn.annotation-api.version>1.3.2</cn.annotation-api.version>
     <cn.jersey.version>1.16</cn.jersey.version>
     <cn.jbcrypt.version>0.3m</cn.jbcrypt.version>
     <cn.joda-time.version>2.1</cn.joda-time.version>
@@ -64,13 +77,13 @@
 
   <build>
     <plugins>
-      <!-- Use Java 6 -->
+      <!-- Use Java 8 -->
       <plugin>
         <artifactId>maven-compiler-plugin</artifactId>
         <version>2.3.2</version>
         <configuration>
-          <source>1.6</source>
-          <target>1.6</target>
+          <source>1.8</source>
+          <target>1.8</target>
         </configuration>
       </plugin>
 
@@ -97,8 +110,8 @@
 
   <pluginRepositories>
     <pluginRepository>
-      <id>onejar-maven-plugin.googlecode.com</id>
-      <url>http://onejar-maven-plugin.googlecode.com/svn/mavenrepo</url>
+      <id>redhat-earlyaccess</id>
+      <url>https://maven.repository.redhat.com/earlyaccess/all/</url>
     </pluginRepository>
   </pluginRepositories>
 
@@ -242,8 +255,8 @@
 
     <dependency>
       <groupId>javax.annotation</groupId>
-      <artifactId>jsr250-api</artifactId>
-      <version>${cn.jsr250-api.version}</version>
+      <artifactId>javax.annotation-api</artifactId>
+      <version>${cn.annotation-api.version}</version>
     </dependency>
 
     <dependency>

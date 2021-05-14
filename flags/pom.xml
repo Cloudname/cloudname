@@ -22,6 +22,11 @@
       <artifactId>jopt-simple</artifactId>
     </dependency>
 
+    <dependency>
+      <groupId>javax.annotation</groupId>
+      <artifactId>javax.annotation-api</artifactId>
+    </dependency>
+
     <!-- Testing artifacts -->
     <dependency>
       <groupId>junit</groupId>

@@ -148,8 +148,8 @@ public class ZkResolverIntegrationTest {
     public void testAllResolving() throws Exception {
         List<Endpoint> endpoints = cn.getResolver().resolve("all.service.user.cell");
         assertEquals(2, endpoints.size());
-        assertEquals("foo", endpoints.get(0).getName());
-        assertEquals("bar", endpoints.get(1).getName());
+        assertEquals("bar", endpoints.get(0).getName());
+        assertEquals("foo", endpoints.get(1).getName());
     }
 
     /**
@@ -360,7 +360,7 @@ public class ZkResolverIntegrationTest {
 
         undrain();
 
-        assertFalse(latchWrapper.latch.await(3000, TimeUnit.MILLISECONDS));
+        assertFalse(latchWrapper.latch.await(100, TimeUnit.MILLISECONDS));
     }
 
     @Test

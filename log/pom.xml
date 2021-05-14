@@ -27,7 +27,7 @@
         </os>
       </activation>
       <properties>
-        <protoc.executable>bin/protoc-mac_os_x-x86_64</protoc.executable>
+        <protoc.executable>bin/protoc-2.6.1-mac_os_x-x86_64</protoc.executable>
       </properties>
     </profile>
 
@@ -40,7 +40,7 @@
         </os>
       </activation>
       <properties>
-        <protoc.executable>bin/protoc-linux-i386</protoc.executable>
+        <protoc.executable>bin/protoc-2.6.1-linux-i386</protoc.executable>
       </properties>
     </profile>
     <profile>
@@ -51,7 +51,7 @@
         </os>
       </activation>
       <properties>
-        <protoc.executable>bin/protoc-2.3.0-win32.exe</protoc.executable>
+        <protoc.executable>bin/protoc-2.6.1-win32.exe</protoc.executable>
       </properties>
     </profile>
   </profiles>
