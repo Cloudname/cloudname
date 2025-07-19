@@ -49,7 +49,7 @@
     <cn.jline.version>0.9.94</cn.jline.version>
     <cn.jmxri.version>1.2.1</cn.jmxri.version>
     <cn.jsr250-api.version>1.0</cn.jsr250-api.version>
-    <cn.jbcrypt.version>0.3m</cn.jbcrypt.version>
+    <cn.jbcrypt.version>0.4</cn.jbcrypt.version>
     <cn.joda-time.version>2.1</cn.joda-time.version>
     <cn.a3.jersey.version>1.16</cn.a3.jersey.version>
   </properties>
